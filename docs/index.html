@@ -50,8 +50,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .pill.up-in{background:#10b981;color:#fff;}
 .pill.down-in{background:#ef4444;color:#fff;}
 /* tabs */
-.tabs{display:flex;gap:8px;margin-bottom:16px;}
-.tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border-radius:16px;font-size:14px;
+.tabs{display:flex;gap:6px;margin-bottom:16px;}
+.tabs button{flex:1;min-height:44px;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px 6px;border-radius:16px;font-size:13px;
   font-weight:700;border:2px solid #e2e8f0;background:#fff;color:#94a3b8;cursor:pointer;font-family:inherit;}
 .tabs button.on{background:#6366f1;color:#fff;border-color:#6366f1;}
 /* generic card */
@@ -77,6 +77,30 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .bar-item .row .r{font-weight:700;color:#475569;}
 .track{height:10px;background:#f1f5f9;border-radius:99px;overflow:hidden;}
 .track .fill{height:100%;border-radius:99px;}
+/* budget */
+.budget-hero{border-radius:18px;padding:16px;background:#f8fafc;border:2px solid #f1f5f9;margin-bottom:12px;}
+.budget-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;}
+.budget-head .label{font-size:12px;color:#94a3b8;font-weight:700;}
+.budget-head .value{font-size:24px;color:#475569;font-weight:800;}
+.budget-head .remain{text-align:right;font-size:12px;color:#64748b;font-weight:600;}
+.budget-head .remain b{display:block;font-size:16px;color:#475569;}
+.budget-progress{height:12px;border-radius:99px;background:#e2e8f0;overflow:hidden;}
+.budget-progress .fill{height:100%;border-radius:99px;background:#10b981;transition:width .2s;}
+.budget-progress .fill.warn{background:#f59e0b;}.budget-progress .fill.over{background:#ef4444;}
+.budget-caption{display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:#94a3b8;font-weight:600;}
+.budget-row{padding:10px 0;border-bottom:1px solid #f1f5f9;}
+.budget-row:last-child{border-bottom:none;}
+.budget-row .topline{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:13px;font-weight:700;color:#475569;margin-bottom:6px;}
+.budget-row .topline .amount{color:#64748b;white-space:nowrap;}
+.budget-actions{display:flex;gap:8px;margin-top:12px;}
+.budget-actions button{flex:1;min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:14px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.budget-actions .primary{background:#6366f1;border-color:#6366f1;color:#fff;}
+.budget-form-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;}
+.budget-form-row .name{flex:1;min-width:0;color:#475569;font-size:14px;font-weight:700;}
+.budget-form-row .name span{display:block;color:#94a3b8;font-size:11px;font-weight:500;margin-top:2px;}
+.budget-form-row .money{display:flex;align-items:center;width:132px;border:2px solid #e2e8f0;background:#f8fafc;border-radius:12px;padding:0 9px;color:#94a3b8;font-weight:700;}
+.budget-form-row input{width:100%;min-width:0;height:40px;border:none;background:none;outline:none;color:#475569;text-align:right;font-size:14px;font-weight:700;font-family:inherit;}
+.planning-note{font-size:12px;color:#94a3b8;line-height:1.6;margin:-6px 0 12px;}
 /* tag grid */
 .tag-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .tag-card{text-align:left;padding:12px;border-radius:16px;background:#eef2ff;border:2px solid #e0e7ff;cursor:pointer;font-family:inherit;}
@@ -269,12 +293,14 @@ const getCat=(t,k)=>(t==='income'?INCOME_CATS:EXPENSE_CATS)[k];
 const fmt=cents=>(Number(cents)/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SCHEMA_VERSION=2;
-const BACKUP_VERSION=1;
+const BACKUP_VERSION=2;
 const PREFS_SCHEMA_VERSION=1;
+const DECISIONS_SCHEMA_VERSION=1;
 const KEY='myBudgetBook_v2';
 const LEGACY_KEY='myBudgetBook_v1';
 const META_KEY='myBudgetBook_meta_v1';
 const PREFS_KEY='myBudgetBook_prefs_v1';
+const DECISIONS_KEY='myBudgetBook_decisions_v1';
 let recoveryRaw='',recoveryError='',recoveryDownloaded=false;
 
 function uuid(){
@@ -321,7 +347,7 @@ function envelope(records,forExport=false){
   const data={schemaVersion:SCHEMA_VERSION,records};
   return forExport?{...data,appName:'CassieProject',exportedAt:new Date().toISOString(),recordCount:records.length}:data;
 }
-function backupEnvelope(records,preferences){return {appName:'CassieProject',backupVersion:BACKUP_VERSION,schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),recordCount:records.length,records,preferences};}
+function backupEnvelope(records,preferences,decisionData){return {appName:'CassieProject',backupVersion:BACKUP_VERSION,schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),recordCount:records.length,records,preferences,decisions:decisionData};}
 function readStoredData(){
   let raw='';
   try{
@@ -337,18 +363,20 @@ function persist(records,force=false){
   try{localStorage.setItem(KEY,JSON.stringify(envelope(records)));return true;}
   catch(error){toast('保存失败：'+error.message);return false;}
 }
-function persistFullRestore(records,preferences,force=false){
+function persistFullRestore(records,preferences,decisionData=null,force=false){
   if(storageLocked&&!force){toast('请先处理数据救援，再继续记账');return false;}
-  let oldRecords=null,oldPreferences=null;
+  let oldRecords=null,oldPreferences=null,oldDecisions=null;
   try{
-    oldRecords=localStorage.getItem(KEY);oldPreferences=localStorage.getItem(PREFS_KEY);
+    oldRecords=localStorage.getItem(KEY);oldPreferences=localStorage.getItem(PREFS_KEY);oldDecisions=localStorage.getItem(DECISIONS_KEY);
     localStorage.setItem(KEY,JSON.stringify(envelope(records)));
     localStorage.setItem(PREFS_KEY,JSON.stringify(preferences));
+    if(decisionData)localStorage.setItem(DECISIONS_KEY,JSON.stringify(decisionData));
     return true;
   }catch(error){
     try{
       if(oldRecords===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,oldRecords);
       if(oldPreferences===null)localStorage.removeItem(PREFS_KEY);else localStorage.setItem(PREFS_KEY,oldPreferences);
+      if(oldDecisions===null)localStorage.removeItem(DECISIONS_KEY);else localStorage.setItem(DECISIONS_KEY,oldDecisions);
     }catch(rollbackError){toast('完整恢复失败，且本地回滚未完成，请保留自动下载的恢复前备份');return false;}
     toast('完整恢复失败：'+error.message);return false;
   }
@@ -387,14 +415,35 @@ function readPrefs(){
 }
 function savePrefs(){try{prefs.schemaVersion=PREFS_SCHEMA_VERSION;prefs.updatedAt=new Date().toISOString();localStorage.setItem(PREFS_KEY,JSON.stringify(prefs));return true;}catch(error){toast('快捷设置保存失败：'+error.message);return false;}}
 function hasPreferenceData(preferences=prefs){return !!(preferences.recent.expense||preferences.recent.income||preferences.favorites.expense.length||preferences.favorites.income.length||preferences.templates.length);}
+function validYearMonth(value){if(!/^\d{4}-\d{2}$/.test(value))return false;const[y,m]=value.split('-').map(Number);return y>=2000&&y<=2100&&m>=1&&m<=12;}
+function defaultDecisions(){return {schemaVersion:DECISIONS_SCHEMA_VERSION,updatedAt:'',budgets:{}};}
+function normalizeDecisions(source){
+  const decisionData=defaultDecisions();let ignored=0;
+  if(!source||typeof source!=='object'||source.schemaVersion!==DECISIONS_SCHEMA_VERSION)return {decisionData,ignored:1,supported:false};
+  decisionData.updatedAt=typeof source.updatedAt==='string'&&Number.isFinite(Date.parse(source.updatedAt))?new Date(source.updatedAt).toISOString():'';
+  const budgets=source.budgets&&typeof source.budgets==='object'?source.budgets:{};
+  Object.entries(budgets).forEach(([month,value])=>{
+    if(!validYearMonth(month)||!value||typeof value!=='object'){ignored++;return;}
+    const totalCents=Number.isSafeInteger(value.totalCents)&&value.totalCents>0?value.totalCents:null,categories={};
+    if(value.totalCents!==null&&value.totalCents!==undefined&&totalCents===null)ignored++;
+    const rawCategories=value.categories&&typeof value.categories==='object'?value.categories:{};
+    Object.entries(rawCategories).forEach(([cat,amount])=>{if(EXPENSE_CATS[cat]&&Number.isSafeInteger(amount)&&amount>0)categories[cat]=amount;else ignored++;});
+    if(totalCents!==null||Object.keys(categories).length)decisionData.budgets[month]={totalCents,categories,updatedAt:typeof value.updatedAt==='string'&&Number.isFinite(Date.parse(value.updatedAt))?new Date(value.updatedAt).toISOString():''};
+    else ignored++;
+  });
+  return {decisionData,ignored,supported:true};
+}
+function readDecisions(){try{const raw=localStorage.getItem(DECISIONS_KEY);return raw?normalizeDecisions(JSON.parse(raw)).decisionData:defaultDecisions();}catch(error){return defaultDecisions();}}
+function saveDecisions(){if(storageLocked){toast('请先处理数据救援，再调整规划');return false;}try{decisions.schemaVersion=DECISIONS_SCHEMA_VERSION;decisions.updatedAt=new Date().toISOString();localStorage.setItem(DECISIONS_KEY,JSON.stringify(decisions));return true;}catch(error){toast('规划数据保存失败：'+error.message);return false;}}
+function hasDecisionData(decisionData=decisions){return Object.keys(decisionData.budgets).length>0;}
 function backupStatus(){
-  const hasSettings=hasPreferenceData();
-  if(!state.records.length&&!hasSettings)return {warn:false,text:'数据只保存在当前浏览器。开始记账后请定期导出 JSON 备份。'};
-  if(!backupMeta.lastBackupAt)return {warn:true,text:`当前有 ${state.records.length} 笔记录${hasSettings?'和快捷设置':''}尚未备份，建议现在导出。`};
+  const hasSettings=hasPreferenceData(),hasPlans=hasDecisionData();
+  if(!state.records.length&&!hasSettings&&!hasPlans)return {warn:false,text:'数据只保存在当前浏览器。开始记账后请定期导出 JSON 备份。'};
+  if(!backupMeta.lastBackupAt)return {warn:true,text:`当前有 ${state.records.length} 笔记录${hasSettings?'、快捷设置':''}${hasPlans?'和规划数据':''}尚未备份，建议现在导出。`};
   const days=Math.max(0,Math.floor((Date.now()-Date.parse(backupMeta.lastBackupAt))/86400000));
-  const added=Math.max(0,state.records.length-(backupMeta.recordCount||0)),settingsChanged=!!prefs.updatedAt&&prefs.updatedAt!==backupMeta.prefsUpdatedAt,warn=days>=14||added>=30||settingsChanged;
+  const added=Math.max(0,state.records.length-(backupMeta.recordCount||0)),settingsChanged=!!prefs.updatedAt&&prefs.updatedAt!==backupMeta.prefsUpdatedAt,plansChanged=!!decisions.updatedAt&&decisions.updatedAt!==backupMeta.decisionsUpdatedAt,warn=days>=14||added>=30||settingsChanged||plansChanged;
   const date=new Date(backupMeta.lastBackupAt).toLocaleDateString('zh-CN');
-  return {warn,text:`上次完整备份：${date}${added?`，之后新增 ${added} 笔`:''}${settingsChanged?'，快捷设置有变更':''}${warn?'，建议重新导出。':'。'}`};
+  return {warn,text:`上次完整备份：${date}${added?`，之后新增 ${added} 笔`:''}${settingsChanged?'，快捷设置有变更':''}${plansChanged?'，规划数据有变更':''}${warn?'，建议重新导出。':'。'}`};
 }
 
 /* ============ 状态 ============ */
@@ -402,6 +451,7 @@ const loaded=readStoredData();
 let storageLocked=loaded.locked;
 let backupMeta=readBackupMeta();
 let prefs=readPrefs();
+let decisions=readDecisions();
 const now=new Date();
 function defaultFilters(){return {keyword:'',type:'all',cat:'all',sub:'all',range:'all',start:'',end:'',minCents:null,maxCents:null};}
 let state={records:loaded.records,view:'month',tab:'overview',year:now.getFullYear(),month:now.getMonth(),
@@ -439,6 +489,15 @@ function filterRecords(records,filters,today=todayStr()){
     return true;
   });
 }
+function monthKey(year=state.year,month=state.month){return `${year}-${String(month+1).padStart(2,'0')}`;}
+function previousMonthKey(value){const[y,m]=value.split('-').map(Number),date=new Date(y,m-2,1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;}
+function calculateBudget(value,records=state.records,decisionData=decisions){
+  const budget=decisionData.budgets[value]||null,actualByCat={};let spentCents=0;
+  records.forEach(record=>{if(record.type!=='expense'||record.date.slice(0,7)!==value)return;spentCents+=record.amountCents;actualByCat[record.cat]=(actualByCat[record.cat]||0)+record.amountCents;});
+  const categories=budget?Object.entries(budget.categories).map(([cat,limitCents])=>{const actualCents=actualByCat[cat]||0;return {cat,limitCents,actualCents,percent:limitCents?actualCents/limitCents*100:0};}).sort((a,b)=>b.percent-a.percent):[];
+  return {configured:!!budget,budget,totalCents:budget?budget.totalCents:null,spentCents,remainingCents:budget&&budget.totalCents!==null?budget.totalCents-spentCents:null,percent:budget&&budget.totalCents?spentCents/budget.totalCents*100:null,categories};
+}
+function budgetLevel(percent){return percent===null?'':percent>=100?'over':percent>=80?'warn':'';}
 
 /* ============ 图表(纯SVG) ============ */
 function trendSVG(){
@@ -499,16 +558,18 @@ function render(){
     <button class="${state.tab==='overview'?'on':''}" data-action="set-tab" data-value="overview">🍩 概览</button>
     <button class="${state.tab==='calendar'?'on':''}" data-action="set-tab" data-value="calendar">📅 日历</button>
     <button class="${state.tab==='list'?'on':''}" data-action="set-tab" data-value="list">📋 明细</button>
+    <button class="${state.tab==='planning'?'on':''}" data-action="set-tab" data-value="planning">🧭 规划</button>
   </div>`;
 
   html+=renderQuickActions();
   if(state.tab==='overview')html+=renderOverview(recs);
   if(state.tab==='calendar')html+=renderCalendar();
   if(state.tab==='list')html+=renderList();
+  if(state.tab==='planning')html+=renderPlanning();
 
   html+=`
   <div class="card" style="margin-top:4px;">
-    <h3>☁️ 完整备份 <span class="sub">账目 + 快捷设置</span></h3>
+    <h3>☁️ 完整备份 <span class="sub">账目 + 设置 + 规划</span></h3>
     <p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>
     ${storageLocked?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}
     <div class="backup">${storageLocked?`<button data-action="open-recovery">🛟 数据救援</button>`:`<button data-action="export">⬇️ 导出完整备份</button>`}<button data-action="import-trigger">⬆️ 导入备份</button></div>
@@ -533,10 +594,33 @@ function renderQuickActions(){
   return h+`</div></div>`;
 }
 
+function renderBudgetCard(showAction=true){
+  if(state.view!=='month')return '';
+  const key=monthKey(),metrics=calculateBudget(key),label=`${state.year}年${state.month+1}月`;
+  if(!metrics.configured)return `<div class="card"><h3>🎯 本月预算 <span class="sub">${label}</span></h3><div class="empty" style="padding:16px 0">还没有设置本月预算<br><span style="font-size:12px;font-weight:500">先决定钱要花在哪里，再开始记录执行</span></div>${showAction?`<div class="budget-actions"><button class="primary" data-action="open-planning">设置本月预算</button></div>`:''}</div>`;
+  let h=`<div class="card"><h3>🎯 本月预算 <span class="sub">${label}</span></h3>`;
+  if(metrics.totalCents!==null){const level=budgetLevel(metrics.percent),remaining=metrics.remainingCents;
+    h+=`<div class="budget-hero"><div class="budget-head"><div><div class="label">预算总额</div><div class="value">¥${fmt(metrics.totalCents)}</div></div><div class="remain">${remaining>=0?'剩余':'已超出'}<b class="${remaining<0?'ex-c':''}">¥${fmt(Math.abs(remaining))}</b></div></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.spentCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div></div>`;
+  }else h+=`<div class="budget-hero"><div class="budget-head"><div><div class="label">本月已支出</div><div class="value">¥${fmt(metrics.spentCents)}</div></div><div class="remain">已设置<b>${metrics.categories.length} 项分类预算</b></div></div></div>`;
+  metrics.categories.slice(0,5).forEach(item=>{const cat=EXPENSE_CATS[item.cat],level=budgetLevel(item.percent);h+=`<div class="budget-row"><div class="topline"><span>${cat.emoji} ${cat.name}</span><span class="amount">¥${fmt(item.actualCents)} / ${fmt(item.limitCents)}</span></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,item.percent)}%"></div></div></div>`;});
+  if(showAction)h+=`<div class="budget-actions"><button data-action="open-planning">管理本月预算</button></div>`;
+  return h+`</div>`;
+}
+
+function renderPlanning(){
+  const key=monthKey(),metrics=calculateBudget(key),budget=metrics.budget||{totalCents:null,categories:{}},previous=decisions.budgets[previousMonthKey(key)];
+  let h=renderBudgetCard(false);
+  h+=`<div class="card"><h3>🧭 制定月度计划 <span class="sub">${state.year}年${state.month+1}月</span></h3><p class="planning-note">总预算控制本月整体支出；分类预算用于提前表达家庭的消费优先级。金额均可留空。</p>
+    <div class="budget-form-row"><div class="name">本月总预算<span>本月所有支出的上限</span></div><div class="money">¥<input id="budgetTotal" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="未设置" value="${budget.totalCents?(budget.totalCents/100).toFixed(2):''}"></div></div>`;
+  Object.entries(EXPENSE_CATS).forEach(([catKey,cat])=>{const value=budget.categories[catKey],actual=metrics.categories.find(item=>item.cat===catKey)?.actualCents||state.records.filter(record=>record.type==='expense'&&record.cat===catKey&&record.date.slice(0,7)===key).reduce((sum,record)=>sum+record.amountCents,0);h+=`<div class="budget-form-row"><div class="name">${cat.emoji} ${cat.name}<span>本月已用 ¥${fmt(actual)}</span></div><div class="money">¥<input class="category-budget" data-cat="${catKey}" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="${cat.name}预算" placeholder="未设置" value="${value?(value/100).toFixed(2):''}"></div></div>`;});
+  h+=`<div class="budget-actions">${previous&&!metrics.configured?`<button data-action="copy-previous-budget">复制上月预算</button>`:''}<button class="primary" data-action="save-budget">保存本月预算</button></div></div>`;
+  return h;
+}
+
 function renderOverview(recs){
   const exp=recs.filter(r=>r.type==='expense');
   // 趋势
-  let h=`<div class="card"><h3>📈 ${state.year}年 收支趋势</h3><div class="legend"><span><i class="dot" style="background:#10b981"></i>收入</span><span><i class="dot" style="background:#6366f1"></i>支出</span></div>${trendSVG()}</div>`;
+  let h=renderBudgetCard()+`<div class="card"><h3>📈 ${state.year}年 收支趋势</h3><div class="legend"><span><i class="dot" style="background:#10b981"></i>收入</span><span><i class="dot" style="background:#6366f1"></i>支出</span></div>${trendSVG()}</div>`;
   // 专项
   const tagMap=Object.create(null);exp.forEach(r=>{if(!r.tag)return;if(!tagMap[r.tag])tagMap[r.tag]={tag:r.tag,total:0,count:0};tagMap[r.tag].total+=r.amountCents;tagMap[r.tag].count++;});
   const tags=Object.values(tagMap).sort((a,b)=>b.total-a.total);
@@ -653,7 +737,8 @@ function renderList(){
 
 /* ============ 交互 ============ */
 function setView(v){state.view=v;state.selectedDay=null;render();}
-function setTab(t){state.tab=t;if(t==='calendar')state.view='month';render();}
+function setTab(t){state.tab=t;if(t==='calendar'||t==='planning')state.view='month';render();}
+function openPlanning(){state.tab='planning';state.view='month';render();}
 function setCalMode(m){state.calMode=m;state.selectedDay=null;render();}
 function shift(d){state.selectedDay=null;if(state.view==='year'){state.year+=d;render();return;}let m=state.month+d,y=state.year;if(m>11){m=0;y++;}if(m<0){m=11;y--;}state.month=m;state.year=y;render();}
 function goToday(){const date=new Date();state.view='month';state.year=date.getFullYear();state.month=date.getMonth();state.selectedDay=null;render();}
@@ -684,6 +769,30 @@ function applyFilters(){
   state.filters={keyword,type,cat,sub,range,start,end,minCents,maxCents};render();
 }
 function clearFilters(){state.filters=defaultFilters();render();}
+function readBudgetInput(element){
+  const raw=element.value.trim();if(!raw)return null;
+  if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return false;
+  const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>0?cents:false;
+}
+function saveBudget(){
+  const totalCents=readBudgetInput(document.getElementById('budgetTotal'));if(totalCents===false){toast('总预算最多保留两位小数');return;}
+  const categories={};let invalid=false;
+  document.querySelectorAll('.category-budget').forEach(input=>{const value=readBudgetInput(input);if(value===false)invalid=true;else if(value!==null)categories[input.dataset.cat]=value;});
+  if(invalid){toast('分类预算最多保留两位小数');return;}
+  const categoryTotal=Object.values(categories).reduce((sum,value)=>sum+value,0);
+  if(totalCents===null&&!categoryTotal){toast('请至少设置一项预算');return;}
+  if(totalCents!==null&&categoryTotal>totalCents){toast('分类预算合计不能高于总预算');return;}
+  const key=monthKey(),old=decisions.budgets[key],nowIso=new Date().toISOString();
+  decisions.budgets[key]={totalCents,categories,updatedAt:nowIso};
+  if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
+  render();toast('本月预算已保存');
+}
+function copyPreviousBudget(){
+  const key=monthKey(),source=decisions.budgets[previousMonthKey(key)];if(!source){toast('上月没有可复制的预算');return;}
+  const old=decisions.budgets[key];decisions.budgets[key]={totalCents:source.totalCents,categories:{...source.categories},updatedAt:new Date().toISOString()};
+  if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
+  render();toast('已复制上月预算');
+}
 let deletedUndo=null;
 function delRec(id){
   const index=state.records.findIndex(r=>r.id===id);if(index<0)return;
@@ -834,9 +943,9 @@ function downloadText(content,filename,type='application/json'){
   a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);
 }
 function exportData(prefix='完整账本备份',showToast=true,mark=true){
-  downloadText(JSON.stringify(backupEnvelope(state.records,prefs),null,2),`${prefix}_${todayStr()}.json`);
+  downloadText(JSON.stringify(backupEnvelope(state.records,prefs,decisions),null,2),`${prefix}_${todayStr()}.json`);
   if(mark){
-    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,prefsUpdatedAt:prefs.updatedAt};
+    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,prefsUpdatedAt:prefs.updatedAt,decisionsUpdatedAt:decisions.updatedAt};
     try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份已下载，但备份时间记录失败');return;}
     render();
   }
@@ -861,13 +970,15 @@ function parseBackup(parsed,name=''){
   const legacy=Array.isArray(parsed),raw=legacy?parsed:parsed&&parsed.records;
   if(!Array.isArray(raw))throw new Error('备份中没有记录数组');
   if(!legacy&&parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('账目版本不受支持');
-  if(!legacy&&parsed.backupVersion!==undefined&&parsed.backupVersion!==BACKUP_VERSION)throw new Error('完整备份版本不受支持');
+  if(!legacy&&parsed.backupVersion!==undefined&&![1,BACKUP_VERSION].includes(parsed.backupVersion))throw new Error('完整备份版本不受支持');
   const result=normalizeRecords(raw);if(result.errors.length)throw new Error(`${result.errors[0]}，共 ${result.errors.length} 条异常`);
   const hasSettingsField=!legacy&&Object.prototype.hasOwnProperty.call(parsed,'preferences');
   const normalized=hasSettingsField?normalizePrefs(parsed.preferences):{preferences:defaultPrefs(),ignored:0,supported:false};
-  const format=legacy?'旧版数组':parsed.backupVersion===BACKUP_VERSION?'完整备份 v1':`账目备份 v${parsed.schemaVersion}`;
+  const hasDecisionsField=!legacy&&Object.prototype.hasOwnProperty.call(parsed,'decisions'),normalizedDecisions=hasDecisionsField?normalizeDecisions(parsed.decisions):{decisionData:defaultDecisions(),ignored:0,supported:false};
+  const format=legacy?'旧版数组':parsed.backupVersion?`完整备份 v${parsed.backupVersion}`:`账目备份 v${parsed.schemaVersion}`;
   return {records:result.records,preferences:normalized.preferences,hasPreferences:hasSettingsField&&normalized.supported,preferenceWarnings:normalized.ignored,
-    source:{name,format,exportedAt:legacy?'':parsed.exportedAt||''}};
+    decisions:normalizedDecisions.decisionData,hasDecisions:hasDecisionsField&&normalizedDecisions.supported,decisionWarnings:normalizedDecisions.ignored,
+    source:{name,format,backupVersion:legacy?null:parsed.backupVersion||null,exportedAt:legacy?'':parsed.exportedAt||''}};
 }
 document.getElementById('importFile').addEventListener('change',function(e){
   const file=e.target.files[0];if(!file)return;const reader=new FileReader();
@@ -883,7 +994,9 @@ function openImportPreview(){
   const exportedAt=pendingImport.source.exportedAt&&Number.isFinite(Date.parse(pendingImport.source.exportedAt))?new Date(pendingImport.source.exportedAt).toLocaleString('zh-CN'):'未提供';
   const importedPrefs=pendingImport.preferences,favorites=importedPrefs.favorites.expense.length+importedPrefs.favorites.income.length,recent=Number(!!importedPrefs.recent.expense)+Number(!!importedPrefs.recent.income);
   const settingsInfo=pendingImport.hasPreferences?`<div class="summary-grid"><div>最近分类<b>${recent} 个</b></div><div>收藏分类<b>${favorites} 个</b></div><div>快速模板<b>${importedPrefs.templates.length} 个</b></div><div>设置校验<b>${pendingImport.preferenceWarnings?`忽略 ${pendingImport.preferenceWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.preferenceWarnings?'快捷设置版本无法识别，将只导入账目。':'这是旧版账目备份，不包含快捷设置。'}</p>`;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${esc(pendingImport.source.format)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div>${settingsInfo}<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">操作前会自动下载当前完整备份；“完整恢复”会覆盖当前账目和快捷设置。</p></div><div class="sheet-foot"><div class="import-actions"><button data-action="apply-import" data-value="merge">合并账目</button><button data-action="apply-import" data-value="replace">覆盖账目</button>${pendingImport.hasPreferences?`<button class="full" data-action="apply-import" data-value="full">完整恢复账目与设置</button>`:''}</div></div></div></div>`;
+  const planningInfo=pendingImport.hasDecisions?`<div class="summary-grid"><div>预算月份<b>${Object.keys(pendingImport.decisions.budgets).length} 个月</b></div><div>规划校验<b>${pendingImport.decisionWarnings?`忽略 ${pendingImport.decisionWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.decisionWarnings?'规划数据版本无法识别，将保留当前规划。':'此备份不包含规划数据，完整恢复时会保留当前规划。'}</p>`;
+  const canRestore=pendingImport.hasPreferences||pendingImport.hasDecisions;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${esc(pendingImport.source.format)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div>${settingsInfo}${planningInfo}<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">操作前会自动下载当前完整备份；“完整恢复”会覆盖账目，并恢复文件中可识别的设置和规划。</p></div><div class="sheet-foot"><div class="import-actions"><button data-action="apply-import" data-value="merge">合并账目</button><button data-action="apply-import" data-value="replace">覆盖账目</button>${canRestore?`<button class="full" data-action="apply-import" data-value="full">完整恢复可识别数据</button>`:''}</div></div></div></div>`;
   document.body.style.overflow='hidden';
 }
 function applyImport(mode){
@@ -896,12 +1009,12 @@ function applyImport(mode){
     incoming.forEach(r=>{const old=map.get(r.id);if(!old||r.updatedAt>old.updatedAt)map.set(r.id,r);});
     next=[...map.values()];
   }
-  if(mode==='full'&&!pendingImport.hasPreferences){toast('这个备份不包含可恢复的快捷设置');return;}
-  const restoredPrefs=mode==='full'?pendingImport.preferences:null;
-  if(restoredPrefs?!persistFullRestore(next,restoredPrefs,storageLocked):!persist(next,storageLocked))return;
-  const count=next.length;state.records=next;if(restoredPrefs)prefs=restoredPrefs;pendingImport=null;
+  if(mode==='full'&&!pendingImport.hasPreferences&&!pendingImport.hasDecisions){toast('这个备份不包含可完整恢复的数据');return;}
+  const restoredPrefs=mode==='full'&&pendingImport.hasPreferences?pendingImport.preferences:null,restoredDecisions=mode==='full'&&pendingImport.hasDecisions?pendingImport.decisions:null;
+  if(mode==='full'?!persistFullRestore(next,restoredPrefs||prefs,restoredDecisions,storageLocked):!persist(next,storageLocked))return;
+  const count=next.length;state.records=next;if(restoredPrefs)prefs=restoredPrefs;if(restoredDecisions)decisions=restoredDecisions;pendingImport=null;
   if(storageLocked){storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;}
-  closeModals();render();toast(restoredPrefs?`完整恢复成功，共 ${count} 笔`:`账目导入成功，共 ${count} 笔`);
+  closeModals();render();toast(mode==='full'?`完整恢复成功，共 ${count} 笔`:`账目导入成功，共 ${count} 笔`);
 }
 let toastTimer;
 function toast(msg,undo=false){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.classList.toggle('undo',undo);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undo?8000:1800);}
@@ -911,10 +1024,10 @@ document.addEventListener('click',event=>{
   const action=el.dataset.action,value=el.dataset.value;
   if(action==='close-overlay'&&event.target!==el)return;
   const actions={
-    'set-view':()=>setView(value),'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,
+    'set-view':()=>setView(value),'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,
     'set-calendar-mode':()=>setCalMode(value),'calendar-shift':()=>calShift(Number(value)),'select-day':()=>selDay(value),
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),'open-tag':()=>openTag(value),
-    'apply-filters':applyFilters,'clear-filters':clearFilters,
+    'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(value),'edit-record':()=>openRecordForm(null,value),'copy-record':()=>copyRecord(value),'delete-record':()=>delRec(value),
     'undo-delete':undoDelete,'close-modal':closeModals,'close-overlay':closeModals,
     'switch-type':()=>switchType(value),'select-category':()=>selCat(value),'select-subcategory':()=>selSub(value),'select-quick':()=>selQuick(value),
