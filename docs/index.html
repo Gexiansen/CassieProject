@@ -221,7 +221,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .td-box .n{font-size:30px;font-weight:800;color:#4f46e5;}
 /* backup bar */
 .backup{display:flex;gap:8px;margin-top:4px;}
-.backup button{flex:1;background:#fff;border:2px solid #e2e8f0;color:#64748b;border-radius:14px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;}
+.backup button{flex:1;min-height:44px;background:#fff;border:2px solid #e2e8f0;color:#64748b;border-radius:14px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;}
 .backup button:hover{background:#f8fafc;}
 .backup-status{font-size:12px;color:#94a3b8;font-weight:500;margin-bottom:10px;line-height:1.5;}
 .backup-status.warn{color:#d97706;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:8px 10px;}
@@ -229,6 +229,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
 .summary-grid div{background:#f8fafc;border-radius:12px;padding:10px;color:#64748b;font-size:12px;}
 .summary-grid b{display:block;color:#475569;font-size:14px;margin-top:2px;}
+.import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.import-actions button{min-height:44px;background:#fff;border:2px solid #e2e8f0;color:#64748b;border-radius:14px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
+.import-actions .full{grid-column:1/-1;background:#6366f1;border-color:#6366f1;color:#fff;}
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#334155;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:10px;white-space:nowrap;}
 .toast.show{opacity:1;pointer-events:auto;}
 .toast button{display:none;border:none;background:#fff;color:#4f46e5;border-radius:99px;padding:4px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;}
@@ -266,6 +269,8 @@ const getCat=(t,k)=>(t==='income'?INCOME_CATS:EXPENSE_CATS)[k];
 const fmt=cents=>(Number(cents)/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SCHEMA_VERSION=2;
+const BACKUP_VERSION=1;
+const PREFS_SCHEMA_VERSION=1;
 const KEY='myBudgetBook_v2';
 const LEGACY_KEY='myBudgetBook_v1';
 const META_KEY='myBudgetBook_meta_v1';
@@ -316,6 +321,7 @@ function envelope(records,forExport=false){
   const data={schemaVersion:SCHEMA_VERSION,records};
   return forExport?{...data,appName:'CassieProject',exportedAt:new Date().toISOString(),recordCount:records.length}:data;
 }
+function backupEnvelope(records,preferences){return {appName:'CassieProject',backupVersion:BACKUP_VERSION,schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),recordCount:records.length,records,preferences};}
 function readStoredData(){
   let raw='';
   try{
@@ -331,40 +337,64 @@ function persist(records,force=false){
   try{localStorage.setItem(KEY,JSON.stringify(envelope(records)));return true;}
   catch(error){toast('保存失败：'+error.message);return false;}
 }
+function persistFullRestore(records,preferences,force=false){
+  if(storageLocked&&!force){toast('请先处理数据救援，再继续记账');return false;}
+  let oldRecords=null,oldPreferences=null;
+  try{
+    oldRecords=localStorage.getItem(KEY);oldPreferences=localStorage.getItem(PREFS_KEY);
+    localStorage.setItem(KEY,JSON.stringify(envelope(records)));
+    localStorage.setItem(PREFS_KEY,JSON.stringify(preferences));
+    return true;
+  }catch(error){
+    try{
+      if(oldRecords===null)localStorage.removeItem(KEY);else localStorage.setItem(KEY,oldRecords);
+      if(oldPreferences===null)localStorage.removeItem(PREFS_KEY);else localStorage.setItem(PREFS_KEY,oldPreferences);
+    }catch(rollbackError){toast('完整恢复失败，且本地回滚未完成，请保留自动下载的恢复前备份');return false;}
+    toast('完整恢复失败：'+error.message);return false;
+  }
+}
 function readBackupMeta(){try{const raw=localStorage.getItem(META_KEY);return raw?JSON.parse(raw):{};}catch(error){return {};}}
 function validChoice(type,cat,sub){
   const cats=type==='income'?INCOME_CATS:EXPENSE_CATS;
   return !!(cats[cat]&&Object.prototype.hasOwnProperty.call(cats[cat].subs,sub));
 }
-function defaultPrefs(){return {recent:{expense:null,income:null},favorites:{expense:[],income:[]},templates:[]};}
-function readPrefs(){
-  const result=defaultPrefs();
-  try{
-    const raw=localStorage.getItem(PREFS_KEY);if(!raw)return result;
-    const source=JSON.parse(raw);if(!source||typeof source!=='object')return result;
-    ['expense','income'].forEach(type=>{
-      const recent=source.recent&&source.recent[type];
-      if(recent&&validChoice(type,recent.cat,recent.sub))result.recent[type]={cat:recent.cat,sub:recent.sub};
-      const values=source.favorites&&Array.isArray(source.favorites[type])?source.favorites[type]:[];
-      result.favorites[type]=[...new Set(values.filter(value=>{const[cat,sub]=String(value).split('/');return validChoice(type,cat,sub);}))].slice(0,8);
-    });
-    const templates=Array.isArray(source.templates)?source.templates:[];
-    result.templates=templates.filter(item=>item&&typeof item==='object'&&typeof item.id==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.test(item.id)&&validChoice(item.type,item.cat,item.sub)).slice(0,12).map(item=>({
-      id:item.id.slice(0,80),name:String(item.name||'常用模板').trim().slice(0,20)||'常用模板',type:item.type,cat:item.cat,sub:item.sub,
+function defaultPrefs(){return {schemaVersion:PREFS_SCHEMA_VERSION,updatedAt:'',recent:{expense:null,income:null},favorites:{expense:[],income:[]},templates:[]};}
+function normalizePrefs(source){
+  const preferences=defaultPrefs();let ignored=0;
+  if(!source||typeof source!=='object'||source.schemaVersion!==undefined&&source.schemaVersion!==PREFS_SCHEMA_VERSION)return {preferences,ignored:1,supported:false};
+  preferences.updatedAt=typeof source.updatedAt==='string'&&Number.isFinite(Date.parse(source.updatedAt))?new Date(source.updatedAt).toISOString():'';
+  ['expense','income'].forEach(type=>{
+    const recent=source.recent&&source.recent[type];
+    if(recent&&validChoice(type,recent.cat,recent.sub))preferences.recent[type]={cat:recent.cat,sub:recent.sub};
+    else if(recent)ignored++;
+    const values=source.favorites&&Array.isArray(source.favorites[type])?source.favorites[type]:[];
+    values.forEach(value=>{const[cat,sub]=String(value).split('/'),safe=`${cat}/${sub}`;if(validChoice(type,cat,sub)&&!preferences.favorites[type].includes(safe)&&preferences.favorites[type].length<8)preferences.favorites[type].push(safe);else ignored++;});
+  });
+  const templates=Array.isArray(source.templates)?source.templates:[];
+  templates.forEach(item=>{
+    if(preferences.templates.length>=12){ignored++;return;}
+    if(!item||typeof item!=='object'||typeof item.id!=='string'||!/^[a-zA-Z0-9_-]{1,80}$/.test(item.id)||!validChoice(item.type,item.cat,item.sub)){ignored++;return;}
+    preferences.templates.push({id:item.id,name:String(item.name||'常用模板').trim().slice(0,20)||'常用模板',type:item.type,cat:item.cat,sub:item.sub,
       amountCents:Number.isSafeInteger(item.amountCents)&&item.amountCents>0?item.amountCents:null,
-      note:typeof item.note==='string'?item.note.trim().slice(0,20):'',tag:item.type==='expense'&&typeof item.tag==='string'?item.tag.trim().slice(0,12):''
-    }));
-  }catch(error){return result;}
-  return result;
+      note:typeof item.note==='string'?item.note.trim().slice(0,20):'',tag:item.type==='expense'&&typeof item.tag==='string'?item.tag.trim().slice(0,12):''});
+  });
+  return {preferences,ignored,supported:true};
 }
-function savePrefs(){try{localStorage.setItem(PREFS_KEY,JSON.stringify(prefs));return true;}catch(error){toast('快捷设置保存失败：'+error.message);return false;}}
+function readPrefs(){
+  try{
+    const raw=localStorage.getItem(PREFS_KEY);return raw?normalizePrefs(JSON.parse(raw)).preferences:defaultPrefs();
+  }catch(error){return defaultPrefs();}
+}
+function savePrefs(){try{prefs.schemaVersion=PREFS_SCHEMA_VERSION;prefs.updatedAt=new Date().toISOString();localStorage.setItem(PREFS_KEY,JSON.stringify(prefs));return true;}catch(error){toast('快捷设置保存失败：'+error.message);return false;}}
+function hasPreferenceData(preferences=prefs){return !!(preferences.recent.expense||preferences.recent.income||preferences.favorites.expense.length||preferences.favorites.income.length||preferences.templates.length);}
 function backupStatus(){
-  if(!state.records.length)return {warn:false,text:'数据只保存在当前浏览器。开始记账后请定期导出 JSON 备份。'};
-  if(!backupMeta.lastBackupAt)return {warn:true,text:`当前有 ${state.records.length} 笔记录尚未备份，建议现在导出。`};
+  const hasSettings=hasPreferenceData();
+  if(!state.records.length&&!hasSettings)return {warn:false,text:'数据只保存在当前浏览器。开始记账后请定期导出 JSON 备份。'};
+  if(!backupMeta.lastBackupAt)return {warn:true,text:`当前有 ${state.records.length} 笔记录${hasSettings?'和快捷设置':''}尚未备份，建议现在导出。`};
   const days=Math.max(0,Math.floor((Date.now()-Date.parse(backupMeta.lastBackupAt))/86400000));
-  const added=Math.max(0,state.records.length-(backupMeta.recordCount||0)),warn=days>=14||added>=30;
+  const added=Math.max(0,state.records.length-(backupMeta.recordCount||0)),settingsChanged=!!prefs.updatedAt&&prefs.updatedAt!==backupMeta.prefsUpdatedAt,warn=days>=14||added>=30||settingsChanged;
   const date=new Date(backupMeta.lastBackupAt).toLocaleDateString('zh-CN');
-  return {warn,text:`上次备份：${date}${added?`，之后新增 ${added} 笔`:''}${warn?'，建议重新导出。':'。'}`};
+  return {warn,text:`上次完整备份：${date}${added?`，之后新增 ${added} 笔`:''}${settingsChanged?'，快捷设置有变更':''}${warn?'，建议重新导出。':'。'}`};
 }
 
 /* ============ 状态 ============ */
@@ -478,10 +508,10 @@ function render(){
 
   html+=`
   <div class="card" style="margin-top:4px;">
-    <h3>☁️ 数据备份 <span class="sub">换设备 / 防丢失</span></h3>
+    <h3>☁️ 完整备份 <span class="sub">账目 + 快捷设置</span></h3>
     <p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>
     ${storageLocked?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}
-    <div class="backup">${storageLocked?`<button data-action="open-recovery">🛟 数据救援</button>`:`<button data-action="export">⬇️ 导出备份</button>`}<button data-action="import-trigger">⬆️ 导入数据</button></div>
+    <div class="backup">${storageLocked?`<button data-action="open-recovery">🛟 数据救援</button>`:`<button data-action="export">⬇️ 导出完整备份</button>`}<button data-action="import-trigger">⬆️ 导入备份</button></div>
   </div>`;
 
   html+=`<div class="fab"><button class="inc" data-action="open-add" data-value="income">＋ 收入</button><button class="exp" data-action="open-add" data-value="expense">＋ 记一笔</button></div>`;
@@ -803,14 +833,14 @@ function downloadText(content,filename,type='application/json'){
   const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);
 }
-function exportData(prefix='账本备份',showToast=true,mark=true){
-  downloadText(JSON.stringify(envelope(state.records,true),null,2),`${prefix}_${todayStr()}.json`);
+function exportData(prefix='完整账本备份',showToast=true,mark=true){
+  downloadText(JSON.stringify(backupEnvelope(state.records,prefs),null,2),`${prefix}_${todayStr()}.json`);
   if(mark){
-    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length};
+    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,prefsUpdatedAt:prefs.updatedAt};
     try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份已下载，但备份时间记录失败');return;}
     render();
   }
-  if(showToast)toast('已导出备份文件');
+  if(showToast)toast('已导出完整备份');
 }
 function openRecovery(){
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据救援"><div class="sheet-head"><div class="r1"><h3>🛟 数据救援</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="rescue">检测结果：${esc(recoveryError)}。当前成功读取 ${state.records.length} 笔有效记录。</div><p style="font-size:13px;color:#64748b;line-height:1.7">请先下载未经处理的原始内容。确认文件已经保存后，才能用当前有效记录重建本地账本。</p></div><div class="sheet-foot"><div class="backup"><button data-action="download-recovery">⬇️ 下载原始数据</button><button data-action="accept-recovery">保留有效记录</button></div></div></div></div>`;
@@ -827,14 +857,22 @@ function acceptRecovery(){
   storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;closeModals();render();toast('已用有效记录重建账本');
 }
 let pendingImport=null;
+function parseBackup(parsed,name=''){
+  const legacy=Array.isArray(parsed),raw=legacy?parsed:parsed&&parsed.records;
+  if(!Array.isArray(raw))throw new Error('备份中没有记录数组');
+  if(!legacy&&parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('账目版本不受支持');
+  if(!legacy&&parsed.backupVersion!==undefined&&parsed.backupVersion!==BACKUP_VERSION)throw new Error('完整备份版本不受支持');
+  const result=normalizeRecords(raw);if(result.errors.length)throw new Error(`${result.errors[0]}，共 ${result.errors.length} 条异常`);
+  const hasSettingsField=!legacy&&Object.prototype.hasOwnProperty.call(parsed,'preferences');
+  const normalized=hasSettingsField?normalizePrefs(parsed.preferences):{preferences:defaultPrefs(),ignored:0,supported:false};
+  const format=legacy?'旧版数组':parsed.backupVersion===BACKUP_VERSION?'完整备份 v1':`账目备份 v${parsed.schemaVersion}`;
+  return {records:result.records,preferences:normalized.preferences,hasPreferences:hasSettingsField&&normalized.supported,preferenceWarnings:normalized.ignored,
+    source:{name,format,exportedAt:legacy?'':parsed.exportedAt||''}};
+}
 document.getElementById('importFile').addEventListener('change',function(e){
   const file=e.target.files[0];if(!file)return;const reader=new FileReader();
   reader.onload=ev=>{try{
-    const parsed=JSON.parse(ev.target.result),legacy=Array.isArray(parsed),raw=legacy?parsed:parsed&&parsed.records;
-    if(!Array.isArray(raw))throw new Error('备份中没有记录数组');
-    if(!legacy&&parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('备份版本不受支持');
-    const result=normalizeRecords(raw);if(result.errors.length)throw new Error(`${result.errors[0]}，共 ${result.errors.length} 条异常`);
-    pendingImport={records:result.records,source:{name:file.name,version:legacy?'旧版':parsed.schemaVersion,exportedAt:legacy?'':parsed.exportedAt||''}};openImportPreview();
+    pendingImport=parseBackup(JSON.parse(ev.target.result),file.name);openImportPreview();
   }catch(error){toast('导入失败：'+error.message);}};
   reader.readAsText(file);e.target.value='';
 });
@@ -843,12 +881,14 @@ function openImportPreview(){
   const income=sumType(records,'income'),expense=sumType(records,'expense'),currentIds=new Set(state.records.map(r=>r.id));
   const duplicates=records.filter(r=>currentIds.has(r.id)).length;
   const exportedAt=pendingImport.source.exportedAt&&Number.isFinite(Date.parse(pendingImport.source.exportedAt))?new Date(pendingImport.source.exportedAt).toLocaleString('zh-CN'):'未提供';
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div><p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">导入前会自动下载当前账本；如本地数据异常，则下载未经处理的原始内容。</p></div><div class="sheet-foot"><div class="backup"><button data-action="apply-import" data-value="merge">合并并去重</button><button data-action="apply-import" data-value="replace">覆盖当前数据</button></div></div></div></div>`;
+  const importedPrefs=pendingImport.preferences,favorites=importedPrefs.favorites.expense.length+importedPrefs.favorites.income.length,recent=Number(!!importedPrefs.recent.expense)+Number(!!importedPrefs.recent.income);
+  const settingsInfo=pendingImport.hasPreferences?`<div class="summary-grid"><div>最近分类<b>${recent} 个</b></div><div>收藏分类<b>${favorites} 个</b></div><div>快速模板<b>${importedPrefs.templates.length} 个</b></div><div>设置校验<b>${pendingImport.preferenceWarnings?`忽略 ${pendingImport.preferenceWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.preferenceWarnings?'快捷设置版本无法识别，将只导入账目。':'这是旧版账目备份，不包含快捷设置。'}</p>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${esc(pendingImport.source.format)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div>${settingsInfo}<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">操作前会自动下载当前完整备份；“完整恢复”会覆盖当前账目和快捷设置。</p></div><div class="sheet-foot"><div class="import-actions"><button data-action="apply-import" data-value="merge">合并账目</button><button data-action="apply-import" data-value="replace">覆盖账目</button>${pendingImport.hasPreferences?`<button class="full" data-action="apply-import" data-value="full">完整恢复账目与设置</button>`:''}</div></div></div></div>`;
   document.body.style.overflow='hidden';
 }
 function applyImport(mode){
   if(!pendingImport)return;
-  if(storageLocked)downloadRecovery(false);else exportData('导入前备份',false,false);
+  if(storageLocked)downloadRecovery(false);else exportData('导入前完整备份',false,false);
   const incoming=pendingImport.records;
   let next=incoming;
   if(mode==='merge'){
@@ -856,10 +896,12 @@ function applyImport(mode){
     incoming.forEach(r=>{const old=map.get(r.id);if(!old||r.updatedAt>old.updatedAt)map.set(r.id,r);});
     next=[...map.values()];
   }
-  if(!persist(next,storageLocked))return;
-  const count=next.length;state.records=next;pendingImport=null;
+  if(mode==='full'&&!pendingImport.hasPreferences){toast('这个备份不包含可恢复的快捷设置');return;}
+  const restoredPrefs=mode==='full'?pendingImport.preferences:null;
+  if(restoredPrefs?!persistFullRestore(next,restoredPrefs,storageLocked):!persist(next,storageLocked))return;
+  const count=next.length;state.records=next;if(restoredPrefs)prefs=restoredPrefs;pendingImport=null;
   if(storageLocked){storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;}
-  closeModals();render();toast(`导入成功，共 ${count} 笔`);
+  closeModals();render();toast(restoredPrefs?`完整恢复成功，共 ${count} 笔`:`账目导入成功，共 ${count} 笔`);
 }
 let toastTimer;
 function toast(msg,undo=false){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.classList.toggle('undo',undo);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undo?8000:1800);}
