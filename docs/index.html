@@ -5,11 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#6366f1">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
 <title>我的小账本 🐷</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700;800&display=swap');
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-body{font-family:'Baloo 2',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
   background:linear-gradient(180deg,#eef2ff 0%,#fdf2f8 50%,#ecfeff 100%);min-height:100vh;color:#334155;}
 .wrap{max-width:640px;margin:0 auto;padding:16px 16px 120px;}
 /* header */
@@ -189,6 +193,12 @@ body{font-family:'Baloo 2',-apple-system,BlinkMacSystemFont,'PingFang SC','Micro
 .backup{display:flex;gap:8px;margin-top:4px;}
 .backup button{flex:1;background:#fff;border:2px solid #e2e8f0;color:#64748b;border-radius:14px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;}
 .backup button:hover{background:#f8fafc;}
+.backup-status{font-size:12px;color:#94a3b8;font-weight:500;margin-bottom:10px;line-height:1.5;}
+.backup-status.warn{color:#d97706;background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:8px 10px;}
+.rescue{background:#fef2f2;border:2px solid #fecaca;border-radius:16px;padding:12px;margin-bottom:10px;color:#b91c1c;font-size:12px;line-height:1.6;}
+.summary-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px;}
+.summary-grid div{background:#f8fafc;border-radius:12px;padding:10px;color:#64748b;font-size:12px;}
+.summary-grid b{display:block;color:#475569;font-size:14px;margin-top:2px;}
 .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#334155;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:10px;white-space:nowrap;}
 .toast.show{opacity:1;pointer-events:auto;}
 .toast button{display:none;border:none;background:#fff;color:#4f46e5;border-radius:99px;padding:4px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;}
@@ -228,6 +238,8 @@ const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'
 const SCHEMA_VERSION=2;
 const KEY='myBudgetBook_v2';
 const LEGACY_KEY='myBudgetBook_v1';
+const META_KEY='myBudgetBook_meta_v1';
+let recoveryRaw='',recoveryError='',recoveryDownloaded=false;
 
 function uuid(){
   if(globalThis.crypto&&typeof globalThis.crypto.randomUUID==='function')return globalThis.crypto.randomUUID();
@@ -269,23 +281,39 @@ function normalizeRecords(input){
   input.forEach((raw,index)=>{try{const record=normalizeRecord(raw);if(ids.has(record.id))record.id=uuid();ids.add(record.id);records.push(record);}catch(error){errors.push(`第 ${index+1} 条：${error.message}`);}});
   return {records,errors};
 }
-function envelope(records){return {schemaVersion:SCHEMA_VERSION,exportedAt:new Date().toISOString(),records};}
+function envelope(records,forExport=false){
+  const data={schemaVersion:SCHEMA_VERSION,records};
+  return forExport?{...data,appName:'CassieProject',exportedAt:new Date().toISOString(),recordCount:records.length}:data;
+}
 function readStoredData(){
+  let raw='';
   try{
     const current=localStorage.getItem(KEY);
-    if(current){const parsed=JSON.parse(current);if(!parsed||parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('数据版本不受支持');const result=normalizeRecords(parsed.records);return {records:result.records,notice:result.errors.length?`有 ${result.errors.length} 条异常记录未加载`:''};}
+    if(current){raw=current;const parsed=JSON.parse(current);if(!parsed||parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('数据版本不受支持');const result=normalizeRecords(parsed.records);if(result.errors.length){recoveryRaw=current;recoveryError=`${result.errors.length} 条记录校验失败`;return {records:result.records,notice:'发现异常记录，保存功能已暂停',locked:true};}return {records:result.records,notice:'',locked:false};}
     const legacy=localStorage.getItem(LEGACY_KEY);
-    if(legacy){const result=normalizeRecords(JSON.parse(legacy));if(result.errors.length)throw new Error(result.errors[0]);localStorage.setItem(KEY,JSON.stringify(envelope(result.records)));return {records:result.records,notice:'旧版数据已升级'};}
-  }catch(error){return {records:[],notice:'账本数据读取失败：'+error.message};}
-  return {records:[],notice:''};
+    if(legacy){raw=legacy;const result=normalizeRecords(JSON.parse(legacy));if(result.errors.length)throw new Error(result.errors[0]);localStorage.setItem(KEY,JSON.stringify(envelope(result.records)));return {records:result.records,notice:'旧版数据已升级',locked:false};}
+  }catch(error){recoveryRaw=raw;recoveryError=error.message;return {records:[],notice:'账本数据读取异常，原始内容已保留',locked:true};}
+  return {records:[],notice:'',locked:false};
 }
-function persist(records){
+function persist(records,force=false){
+  if(storageLocked&&!force){toast('请先处理数据救援，再继续记账');return false;}
   try{localStorage.setItem(KEY,JSON.stringify(envelope(records)));return true;}
   catch(error){toast('保存失败：'+error.message);return false;}
+}
+function readBackupMeta(){try{const raw=localStorage.getItem(META_KEY);return raw?JSON.parse(raw):{};}catch(error){return {};}}
+function backupStatus(){
+  if(!state.records.length)return {warn:false,text:'数据只保存在当前浏览器。开始记账后请定期导出 JSON 备份。'};
+  if(!backupMeta.lastBackupAt)return {warn:true,text:`当前有 ${state.records.length} 笔记录尚未备份，建议现在导出。`};
+  const days=Math.max(0,Math.floor((Date.now()-Date.parse(backupMeta.lastBackupAt))/86400000));
+  const added=Math.max(0,state.records.length-(backupMeta.recordCount||0)),warn=days>=14||added>=30;
+  const date=new Date(backupMeta.lastBackupAt).toLocaleDateString('zh-CN');
+  return {warn,text:`上次备份：${date}${added?`，之后新增 ${added} 笔`:''}${warn?'，建议重新导出。':'。'}`};
 }
 
 /* ============ 状态 ============ */
 const loaded=readStoredData();
+let storageLocked=loaded.locked;
+let backupMeta=readBackupMeta();
 const now=new Date();
 let state={records:loaded.records,view:'month',tab:'overview',year:now.getFullYear(),month:now.getMonth(),
   calMode:'expense',selectedDay:null,openYears:{[now.getFullYear()]:true},
@@ -338,6 +366,7 @@ function render(){
   const iDiff=totalInc-pInc, iPct=pInc>0?iDiff/pInc*100:null;
   const prevLbl=state.view==='year'?'年':'月';
   const periodLabel=state.view==='year'?`${state.year}年`:`${state.year}年${state.month+1}月`;
+  const backup=backupStatus();
 
   let html=`
   <div class="top">
@@ -367,8 +396,9 @@ function render(){
   html+=`
   <div class="card" style="margin-top:4px;">
     <h3>☁️ 数据备份 <span class="sub">换设备 / 防丢失</span></h3>
-    <p style="font-size:12px;color:#94a3b8;font-weight:500;margin-bottom:10px;line-height:1.5;">数据存在本浏览器里。建议偶尔导出备份;换手机/电脑时导入即可搬家。</p>
-    <div class="backup"><button data-action="export">⬇️ 导出备份</button><button data-action="import-trigger">⬆️ 导入数据</button></div>
+    <p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>
+    ${storageLocked?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}
+    <div class="backup">${storageLocked?`<button data-action="open-recovery">🛟 数据救援</button>`:`<button data-action="export">⬇️ 导出备份</button>`}<button data-action="import-trigger">⬆️ 导入数据</button></div>
   </div>`;
 
   html+=`<div class="fab"><button class="inc" data-action="open-add" data-value="income">＋ 收入</button><button class="exp" data-action="open-add" data-value="expense">＋ 记一笔</button></div>`;
@@ -578,40 +608,67 @@ function doSave(){
 function closeModals(){document.getElementById('modals').innerHTML='';document.body.style.overflow='';}
 
 /* ============ 备份 ============ */
-function exportData(prefix='账本备份',showToast=true){
-  const blob=new Blob([JSON.stringify(envelope(state.records),null,2)],{type:'application/json'});
-  const url=URL.createObjectURL(blob);const a=document.createElement('a');
-  a.href=url;a.download=`${prefix}_${todayStr()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);
+function downloadText(content,filename,type='application/json'){
+  const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);
+}
+function exportData(prefix='账本备份',showToast=true,mark=true){
+  downloadText(JSON.stringify(envelope(state.records,true),null,2),`${prefix}_${todayStr()}.json`);
+  if(mark){
+    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length};
+    try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份已下载，但备份时间记录失败');return;}
+    render();
+  }
   if(showToast)toast('已导出备份文件');
+}
+function openRecovery(){
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据救援"><div class="sheet-head"><div class="r1"><h3>🛟 数据救援</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="rescue">检测结果：${esc(recoveryError)}。当前成功读取 ${state.records.length} 笔有效记录。</div><p style="font-size:13px;color:#64748b;line-height:1.7">请先下载未经处理的原始内容。确认文件已经保存后，才能用当前有效记录重建本地账本。</p></div><div class="sheet-foot"><div class="backup"><button data-action="download-recovery">⬇️ 下载原始数据</button><button data-action="accept-recovery">保留有效记录</button></div></div></div></div>`;
+  document.body.style.overflow='hidden';
+}
+function downloadRecovery(showToast=true){
+  downloadText(recoveryRaw||'',`账本原始数据_${todayStr()}.json`,'text/plain');recoveryDownloaded=true;
+  if(showToast)toast('原始数据已下载，请妥善保存');
+}
+function acceptRecovery(){
+  if(!recoveryDownloaded){toast('请先下载原始数据');return;}
+  try{localStorage.setItem(KEY,JSON.stringify(envelope(state.records)));}
+  catch(error){toast('重建失败：'+error.message);return;}
+  storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;closeModals();render();toast('已用有效记录重建账本');
 }
 let pendingImport=null;
 document.getElementById('importFile').addEventListener('change',function(e){
   const file=e.target.files[0];if(!file)return;const reader=new FileReader();
   reader.onload=ev=>{try{
-    const parsed=JSON.parse(ev.target.result),raw=Array.isArray(parsed)?parsed:parsed&&parsed.records;
+    const parsed=JSON.parse(ev.target.result),legacy=Array.isArray(parsed),raw=legacy?parsed:parsed&&parsed.records;
     if(!Array.isArray(raw))throw new Error('备份中没有记录数组');
-    if(!Array.isArray(parsed)&&parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('备份版本不受支持');
+    if(!legacy&&parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('备份版本不受支持');
     const result=normalizeRecords(raw);if(result.errors.length)throw new Error(`${result.errors[0]}，共 ${result.errors.length} 条异常`);
-    pendingImport=result.records;openImportPreview();
+    pendingImport={records:result.records,source:{name:file.name,version:legacy?'旧版':parsed.schemaVersion,exportedAt:legacy?'':parsed.exportedAt||''}};openImportPreview();
   }catch(error){toast('导入失败：'+error.message);}};
   reader.readAsText(file);e.target.value='';
 });
 function openImportPreview(){
-  const dates=pendingImport.map(r=>r.date).sort(),span=dates.length?`${dates[0]} 至 ${dates[dates.length-1]}`:'无记录';
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:14px;color:#64748b;line-height:1.7">备份包含 <b>${pendingImport.length}</b> 笔记录，日期范围：${span}。导入前会自动下载当前账本备份。</p></div><div class="sheet-foot"><div class="backup"><button data-action="apply-import" data-value="merge">合并并去重</button><button data-action="apply-import" data-value="replace">覆盖当前数据</button></div></div></div></div>`;
+  const records=pendingImport.records,dates=records.map(r=>r.date).sort(),span=dates.length?`${dates[0]} 至 ${dates[dates.length-1]}`:'无记录';
+  const income=sumType(records,'income'),expense=sumType(records,'expense'),currentIds=new Set(state.records.map(r=>r.id));
+  const duplicates=records.filter(r=>currentIds.has(r.id)).length;
+  const exportedAt=pendingImport.source.exportedAt&&Number.isFinite(Date.parse(pendingImport.source.exportedAt))?new Date(pendingImport.source.exportedAt).toLocaleString('zh-CN'):'未提供';
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div><p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">导入前会自动下载当前账本；如本地数据异常，则下载未经处理的原始内容。</p></div><div class="sheet-foot"><div class="backup"><button data-action="apply-import" data-value="merge">合并并去重</button><button data-action="apply-import" data-value="replace">覆盖当前数据</button></div></div></div></div>`;
   document.body.style.overflow='hidden';
 }
 function applyImport(mode){
   if(!pendingImport)return;
-  exportData('导入前备份',false);
-  let next=pendingImport;
+  if(storageLocked)downloadRecovery(false);else exportData('导入前备份',false,false);
+  const incoming=pendingImport.records;
+  let next=incoming;
   if(mode==='merge'){
     const map=new Map(state.records.map(r=>[r.id,r]));
-    pendingImport.forEach(r=>{const old=map.get(r.id);if(!old||r.updatedAt>old.updatedAt)map.set(r.id,r);});
+    incoming.forEach(r=>{const old=map.get(r.id);if(!old||r.updatedAt>old.updatedAt)map.set(r.id,r);});
     next=[...map.values()];
   }
-  if(!persist(next))return;
-  const count=next.length;state.records=next;pendingImport=null;closeModals();render();toast(`导入成功，共 ${count} 笔`);
+  if(!persist(next,storageLocked))return;
+  const count=next.length;state.records=next;pendingImport=null;
+  if(storageLocked){storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;}
+  closeModals();render();toast(`导入成功，共 ${count} 笔`);
 }
 let toastTimer;
 function toast(msg,undo=false){const t=document.getElementById('toast');document.getElementById('toastMsg').textContent=msg;t.classList.toggle('undo',undo);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undo?8000:1800);}
@@ -628,7 +685,8 @@ document.addEventListener('click',event=>{
     'undo-delete':undoDelete,'close-modal':closeModals,'close-overlay':closeModals,
     'switch-type':()=>switchType(value),'select-category':()=>selCat(value),'select-subcategory':()=>selSub(value),
     'save-record':doSave,'export':()=>exportData(),'import-trigger':()=>document.getElementById('importFile').click(),
-    'apply-import':()=>applyImport(value)
+    'apply-import':()=>applyImport(value),'open-recovery':openRecovery,'download-recovery':()=>downloadRecovery(),
+    'accept-recovery':acceptRecovery
   };
   if(actions[action])actions[action]();
 });
@@ -636,6 +694,7 @@ document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.ge
 
 render();
 if(loaded.notice)setTimeout(()=>toast(loaded.notice),0);
+if('serviceWorker' in navigator&&location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
 </script>
 </body>
 </html>

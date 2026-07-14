@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 2,
+  "exportedAt": "2026-07-14T14:30:00.000Z",
+  "records": [
+    {"id":"11111111-1111-4111-8111-000000000001","type":"income","date":"2026-01-05","cat":"salary","sub":"base","amountCents":1800000,"note":"一月工资","tag":"","createdAt":"2026-01-05T02:00:00.000Z","updatedAt":"2026-01-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000002","type":"expense","date":"2026-01-06","cat":"living","sub":"rent","amountCents":520000,"note":"一月房租","tag":"","createdAt":"2026-01-06T02:00:00.000Z","updatedAt":"2026-01-06T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000003","type":"expense","date":"2026-01-10","cat":"food","sub":"vegetable","amountCents":18650,"note":"周末买菜","tag":"","createdAt":"2026-01-10T03:00:00.000Z","updatedAt":"2026-01-10T03:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000004","type":"expense","date":"2026-01-18","cat":"dining","sub":"restaurant","amountCents":32800,"note":"家庭聚餐","tag":"","createdAt":"2026-01-18T11:00:00.000Z","updatedAt":"2026-01-18T11:00:00.000Z"},
+
+    {"id":"11111111-1111-4111-8111-000000000005","type":"income","date":"2026-02-05","cat":"salary","sub":"base","amountCents":1800000,"note":"二月工资","tag":"","createdAt":"2026-02-05T02:00:00.000Z","updatedAt":"2026-02-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000006","type":"income","date":"2026-02-08","cat":"redpacket","sub":"gift","amountCents":168800,"note":"春节红包","tag":"","createdAt":"2026-02-08T04:00:00.000Z","updatedAt":"2026-02-08T04:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000007","type":"expense","date":"2026-02-09","cat":"social","sub":"gift","amountCents":88000,"note":"春节红包","tag":"","createdAt":"2026-02-09T04:00:00.000Z","updatedAt":"2026-02-09T04:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000008","type":"expense","date":"2026-02-15","cat":"transport","sub":"ticket","amountCents":236000,"note":"春节往返车票","tag":"春节返乡","createdAt":"2026-02-15T05:00:00.000Z","updatedAt":"2026-02-15T05:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000009","type":"expense","date":"2026-02-16","cat":"living","sub":"hotel","amountCents":69900,"note":"返程住宿","tag":"春节返乡","createdAt":"2026-02-16T05:00:00.000Z","updatedAt":"2026-02-16T05:00:00.000Z"},
+
+    {"id":"11111111-1111-4111-8111-000000000010","type":"income","date":"2026-03-05","cat":"salary","sub":"base","amountCents":1800000,"note":"三月工资","tag":"","createdAt":"2026-03-05T02:00:00.000Z","updatedAt":"2026-03-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000011","type":"income","date":"2026-03-20","cat":"bonus","sub":"perf","amountCents":320000,"note":"季度奖金","tag":"","createdAt":"2026-03-20T02:00:00.000Z","updatedAt":"2026-03-20T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000012","type":"expense","date":"2026-03-08","cat":"shopping","sub":"daily","amountCents":45900,"note":"家庭日用品","tag":"","createdAt":"2026-03-08T06:00:00.000Z","updatedAt":"2026-03-08T06:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000013","type":"expense","date":"2026-03-12","cat":"health","sub":"checkup","amountCents":68000,"note":"年度体检","tag":"","createdAt":"2026-03-12T01:00:00.000Z","updatedAt":"2026-03-12T01:00:00.000Z"},
+
+    {"id":"11111111-1111-4111-8111-000000000014","type":"income","date":"2026-04-05","cat":"salary","sub":"base","amountCents":1800000,"note":"四月工资","tag":"","createdAt":"2026-04-05T02:00:00.000Z","updatedAt":"2026-04-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000015","type":"expense","date":"2026-04-04","cat":"transport","sub":"fuel","amountCents":42000,"note":"自驾加油","tag":"杭州周末","createdAt":"2026-04-04T01:00:00.000Z","updatedAt":"2026-04-04T01:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000016","type":"expense","date":"2026-04-04","cat":"living","sub":"hotel","amountCents":75800,"note":"湖边酒店","tag":"杭州周末","createdAt":"2026-04-04T13:00:00.000Z","updatedAt":"2026-04-04T13:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000017","type":"expense","date":"2026-04-05","cat":"entertainment","sub":"scenic","amountCents":26000,"note":"景区门票","tag":"杭州周末","createdAt":"2026-04-05T03:00:00.000Z","updatedAt":"2026-04-05T03:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000018","type":"expense","date":"2026-04-05","cat":"dining","sub":"restaurant","amountCents":46800,"note":"杭帮菜","tag":"杭州周末","createdAt":"2026-04-05T10:00:00.000Z","updatedAt":"2026-04-05T10:00:00.000Z"},
+
+    {"id":"11111111-1111-4111-8111-000000000019","type":"income","date":"2026-05-05","cat":"salary","sub":"base","amountCents":1800000,"note":"五月工资","tag":"","createdAt":"2026-05-05T02:00:00.000Z","updatedAt":"2026-05-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000020","type":"expense","date":"2026-05-02","cat":"kids","sub":"toy","amountCents":19900,"note":"儿童积木","tag":"","createdAt":"2026-05-02T07:00:00.000Z","updatedAt":"2026-05-02T07:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000021","type":"expense","date":"2026-05-11","cat":"shopping","sub":"digital","amountCents":89900,"note":"家庭路由器","tag":"家庭装修","createdAt":"2026-05-11T07:00:00.000Z","updatedAt":"2026-05-11T07:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000022","type":"expense","date":"2026-05-18","cat":"living","sub":"utility","amountCents":35680,"note":"水电燃气","tag":"","createdAt":"2026-05-18T02:00:00.000Z","updatedAt":"2026-05-18T02:00:00.000Z"},
+
+    {"id":"11111111-1111-4111-8111-000000000023","type":"income","date":"2026-06-05","cat":"salary","sub":"base","amountCents":1800000,"note":"六月工资","tag":"","createdAt":"2026-06-05T02:00:00.000Z","updatedAt":"2026-06-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000024","type":"income","date":"2026-06-18","cat":"finance","sub":"invest","amountCents":28600,"note":"基金收益","tag":"","createdAt":"2026-06-18T02:00:00.000Z","updatedAt":"2026-06-18T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000025","type":"expense","date":"2026-06-07","cat":"shopping","sub":"clothes","amountCents":36800,"note":"夏季衣物","tag":"","createdAt":"2026-06-07T08:00:00.000Z","updatedAt":"2026-06-07T08:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000026","type":"expense","date":"2026-06-14","cat":"health","sub":"medicine","amountCents":12650,"note":"常用药品","tag":"","createdAt":"2026-06-14T03:00:00.000Z","updatedAt":"2026-06-14T03:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000027","type":"expense","date":"2026-06-22","cat":"entertainment","sub":"fitness","amountCents":98000,"note":"季度健身卡","tag":"","createdAt":"2026-06-22T07:00:00.000Z","updatedAt":"2026-06-22T07:00:00.000Z"},
+
+    {"id":"11111111-1111-4111-8111-000000000028","type":"income","date":"2026-07-05","cat":"salary","sub":"base","amountCents":1800000,"note":"七月工资","tag":"","createdAt":"2026-07-05T02:00:00.000Z","updatedAt":"2026-07-05T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000029","type":"income","date":"2026-07-12","cat":"parttime","sub":"side","amountCents":120000,"note":"周末咨询项目","tag":"","createdAt":"2026-07-12T02:00:00.000Z","updatedAt":"2026-07-12T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000030","type":"expense","date":"2026-07-01","cat":"food","sub":"vegetable","amountCents":12860,"note":"超市蔬菜","tag":"","createdAt":"2026-07-01T10:00:00.000Z","updatedAt":"2026-07-01T10:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000031","type":"expense","date":"2026-07-02","cat":"food","sub":"meat","amountCents":23680,"note":"肉类海鲜","tag":"","createdAt":"2026-07-02T10:00:00.000Z","updatedAt":"2026-07-02T10:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000032","type":"expense","date":"2026-07-03","cat":"transport","sub":"transit","amountCents":1200,"note":"地铁通勤","tag":"","createdAt":"2026-07-03T00:30:00.000Z","updatedAt":"2026-07-03T00:30:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000033","type":"expense","date":"2026-07-04","cat":"dining","sub":"takeout","amountCents":3260,"note":"午餐外卖","tag":"","createdAt":"2026-07-04T04:00:00.000Z","updatedAt":"2026-07-04T04:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000034","type":"expense","date":"2026-07-05","cat":"shopping","sub":"daily","amountCents":25800,"note":"清洁用品","tag":"家庭装修","createdAt":"2026-07-05T08:00:00.000Z","updatedAt":"2026-07-05T08:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000035","type":"expense","date":"2026-07-06","cat":"kids","sub":"study","amountCents":16800,"note":"学习文具","tag":"","createdAt":"2026-07-06T08:00:00.000Z","updatedAt":"2026-07-06T08:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000036","type":"expense","date":"2026-07-07","cat":"entertainment","sub":"movie","amountCents":9800,"note":"家庭电影夜","tag":"","createdAt":"2026-07-07T11:00:00.000Z","updatedAt":"2026-07-07T11:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000037","type":"expense","date":"2026-07-08","cat":"transport","sub":"taxi","amountCents":4860,"note":"雨天打车","tag":"Allen's Trip","createdAt":"2026-07-08T09:00:00.000Z","updatedAt":"2026-07-08T09:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000038","type":"expense","date":"2026-07-08","cat":"living","sub":"hotel","amountCents":68800,"note":"商务酒店","tag":"Allen's Trip","createdAt":"2026-07-08T13:00:00.000Z","updatedAt":"2026-07-08T13:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000039","type":"expense","date":"2026-07-09","cat":"dining","sub":"restaurant","amountCents":36800,"note":"出差晚餐","tag":"Allen's Trip","createdAt":"2026-07-09T11:00:00.000Z","updatedAt":"2026-07-09T11:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000040","type":"expense","date":"2026-07-10","cat":"food","sub":"fruit","amountCents":15800,"note":"当季水果","tag":"","createdAt":"2026-07-10T10:00:00.000Z","updatedAt":"2026-07-10T10:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000041","type":"expense","date":"2026-07-11","cat":"social","sub":"gift","amountCents":50000,"note":"朋友婚礼红包","tag":"","createdAt":"2026-07-11T04:00:00.000Z","updatedAt":"2026-07-11T04:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000042","type":"expense","date":"2026-07-12","cat":"living","sub":"utility","amountCents":31240,"note":"本月水电燃气","tag":"","createdAt":"2026-07-12T02:00:00.000Z","updatedAt":"2026-07-12T02:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000043","type":"expense","date":"2026-07-13","cat":"food","sub":"snack","amountCents":6800,"note":"周末零食","tag":"","createdAt":"2026-07-13T08:00:00.000Z","updatedAt":"2026-07-13T08:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000044","type":"expense","date":"2026-07-14","cat":"food","sub":"drink","amountCents":3600,"note":"咖啡饮料","tag":"","createdAt":"2026-07-14T03:00:00.000Z","updatedAt":"2026-07-14T03:00:00.000Z"},
+    {"id":"11111111-1111-4111-8111-000000000045","type":"expense","date":"2026-07-14","cat":"shopping","sub":"sports","amountCents":12900,"note":"羽毛球拍","tag":"","createdAt":"2026-07-14T05:00:00.000Z","updatedAt":"2026-07-14T05:00:00.000Z"}
+  ]
+}
