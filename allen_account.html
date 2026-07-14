@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>奇奇的玩具钱包</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(to bottom, #f0f9ff, #eef2ff);
+    min-height:100vh; padding:16px; color:#334155;
+  }
+  .wrap { max-width:440px; margin:0 auto; }
+  .title { text-align:center; padding-top:8px; margin-bottom:16px; }
+  .title h1 { color:#4338ca; font-size:24px; }
+  .title p { color:#64748b; font-size:13px; margin-top:4px; }
+  .card { background:#fff; border-radius:24px; box-shadow:0 4px 12px rgba(0,0,0,.06); padding:20px; margin-bottom:16px; }
+
+  .carrybox { font-size:13px; border-radius:14px; padding:10px 14px; margin-bottom:14px; text-align:center; font-weight:600; line-height:1.4; }
+  .carrybox b { font-size:15px; }
+  .carrybox.plus { background:#ecfdf5; color:#059669; }
+  .carrybox.minus { background:#fef2f2; color:#dc2626; }
+  .carrybox.zero { background:#eef2ff; color:#4338ca; }
+
+  .row { display:flex; justify-content:space-between; align-items:flex-end; margin-bottom:12px; }
+  .label { font-size:12px; color:#94a3b8; }
+  .remain { font-size:38px; font-weight:800; color:#059669; }
+  .remain.zero { color:#ef4444; }
+  .remain span { font-size:16px; }
+  .spent { font-size:22px; font-weight:700; color:#475569; }
+  .barbg { width:100%; height:24px; background:#f1f5f9; border-radius:999px; overflow:hidden; }
+  .bar { height:100%; border-radius:999px; transition:width .5s, background-color .3s;
+         display:flex; align-items:center; justify-content:flex-end; padding-right:8px; }
+  .bar span { font-size:12px; font-weight:700; color:#fff; }
+  .hint { text-align:center; font-size:13px; margin-top:12px; font-weight:600; }
+  .hint.red { color:#ef4444; } .hint.amber { color:#d97706; }
+  h2 { font-size:16px; color:#334155; margin-bottom:12px; }
+  label.fld { display:block; font-size:12px; color:#94a3b8; margin:0 0 4px 4px; }
+  input {
+    width:100%; padding:12px 16px; border-radius:16px; background:#f8fafc;
+    border:1px solid #e2e8f0; font-size:15px; color:#334155; outline:none; margin-bottom:10px;
+  }
+  input:focus { border-color:#818cf8; }
+  input[type=date] { color:#334155; }
+  .flex { display:flex; gap:8px; }
+  .flex input { margin-bottom:0; }
+  .btn-buy { padding:12px 22px; border-radius:16px; background:#6366f1; color:#fff; font-weight:700; font-size:15px; white-space:nowrap; }
+  .btn-buy:active { background:#4f46e5; }
+  .btn-add { padding:12px 18px; border-radius:16px; background:#f472b6; color:#fff; font-weight:700; }
+  button { border:none; cursor:pointer; font-family:inherit; }
+  .note { font-size:12px; color:#94a3b8; margin-top:8px; }
+  .item { display:flex; justify-content:space-between; align-items:center; background:#f8fafc; border-radius:16px; padding:12px 16px; margin-bottom:8px; }
+  .item.wish { background:#fdf2f8; }
+  .item .nm { font-weight:500; flex:1; min-width:0; }
+  .item .nm .dt { font-size:11px; color:#94a3b8; font-weight:400; margin-left:6px; }
+  .item .actions { display:flex; align-items:center; flex-shrink:0; }
+  .item .pr { color:#4f46e5; font-weight:700; margin-right:8px; }
+  .item .pr.wish { color:#db2777; }
+  .edit { background:none; color:#a5b4fc; font-size:16px; padding:0 4px; }
+  .edit:active { color:#6366f1; }
+  .del { background:none; color:#cbd5e1; font-size:18px; padding:0 4px; }
+  .del:active { color:#f87171; }
+  .empty { text-align:center; color:#cbd5e1; padding:16px 0; }
+  .btn-reset { width:100%; padding:14px; border-radius:16px; background:#fff;
+    border:2px solid #c7d2fe; color:#4f46e5; font-weight:700; font-size:15px; }
+
+  .overlay { position:fixed; inset:0; background:rgba(15,23,42,.45); display:flex;
+    align-items:center; justify-content:center; padding:20px; z-index:50; }
+  .dialog { background:#fff; border-radius:24px; padding:24px; max-width:380px; width:100%;
+    box-shadow:0 20px 50px rgba(0,0,0,.25); animation:pop .2s ease; }
+  @keyframes pop { from{transform:scale(.9);opacity:0;} to{transform:scale(1);opacity:1;} }
+  .dialog.center { text-align:center; }
+  .dialog .bigicon { font-size:44px; margin-bottom:8px; }
+  .dialog h3 { font-size:19px; color:#1e293b; margin-bottom:6px; }
+  .dialog h3.left { text-align:center; margin-bottom:16px; }
+  .dialog .month-name { color:#4338ca; }
+  .dialog .desc { font-size:13px; color:#64748b; margin-bottom:16px; }
+  .warnbox { background:#fff7ed; border:2px solid #fdba74; border-radius:16px;
+    padding:14px; margin-bottom:18px; text-align:left; }
+  .warnbox .wt { display:flex; align-items:center; gap:6px; font-weight:800; color:#ea580c; font-size:14px; margin-bottom:8px; }
+  .warnbox ul { list-style:none; }
+  .warnbox li { font-size:13px; color:#9a3412; padding:4px 0 4px 20px; position:relative; line-height:1.5; }
+  .warnbox li::before { content:'•'; position:absolute; left:6px; color:#fb923c; font-weight:bold; }
+  .warnbox .keep { color:#15803d; }
+  .warnbox .keep::before { content:'✓'; color:#22c55e; left:4px; }
+  .warnbox .over { color:#dc2626; }
+  .warnbox .over::before { content:'!'; color:#ef4444; left:8px; }
+  .btn-cancel { flex:1; padding:14px; border-radius:16px; background:#f1f5f9; color:#334155; font-weight:800; font-size:15px; }
+  .btn-cancel:active { background:#e2e8f0; }
+  .btn-ok { flex:1; padding:14px; border-radius:16px; background:#ea580c; color:#fff; font-weight:800; font-size:15px; }
+  .btn-ok:active { background:#c2410c; }
+  .btn-save { flex:1; padding:14px; border-radius:16px; background:#6366f1; color:#fff; font-weight:800; font-size:15px; }
+  .btn-save:active { background:#4f46e5; }
+
+  .yearbox { background:#eef2ff; border-radius:16px; padding:14px 16px; margin-bottom:12px; }
+  .yearbox .yh { display:flex; justify-content:space-between; font-weight:800; color:#4338ca; font-size:15px; margin-bottom:4px; }
+  .yearbox .ys { font-size:12px; color:#6366f1; }
+  .month { background:#f8fafc; border-radius:14px; padding:10px 14px; margin-top:8px; }
+  .month .mh { display:flex; justify-content:space-between; align-items:center; cursor:pointer; }
+  .month .mh .mn { font-weight:600; color:#475569; }
+  .month .mh .mt { font-size:13px; color:#059669; font-weight:700; }
+  .month .detail { margin-top:8px; padding-top:8px; border-top:1px dashed #e2e8f0; }
+  .month .detail .d { display:flex; justify-content:space-between; font-size:13px; color:#64748b; padding:3px 0; }
+  .month .detail .d .dd { font-size:11px; color:#94a3b8; margin-right:8px; }
+  .month .detail .sum { border-top:1px dashed #e2e8f0; margin-top:6px; padding-top:6px; }
+  .month .detail .sum .d { font-weight:600; color:#475569; }
+  .pos { color:#059669; } .neg { color:#dc2626; }
+  .arrow { font-size:12px; color:#94a3b8; margin-left:6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="title">
+    <h1>🐱 奇奇的玩具钱包</h1>
+    <p>每月基础额度 <b id="budgetText">160.00</b> 元 · <b id="curMonth"></b></p>
+  </div>
+
+  <div class="card">
+    <div class="carrybox zero" id="carrybox"></div>
+    <div class="row">
+      <div>
+        <div class="label">本月还能花</div>
+        <div class="remain" id="remain">160.00 <span>元</span></div>
+      </div>
+      <div style="text-align:right">
+        <div class="label">已经花了</div>
+        <div class="spent" id="spent">0.00 元</div>
+      </div>
+    </div>
+    <div class="barbg"><div class="bar" id="bar" style="width:0%;background:#10b981"></div></div>
+    <div id="hint"></div>
+  </div>
+
+  <div class="card">
+    <h2>🚗 买了新玩具</h2>
+    <input type="text" id="name" placeholder="玩具名字，比如：小汽车">
+    <div class="flex" style="margin-bottom:10px">
+      <input type="number" id="price" step="0.01" placeholder="价格（元）" style="flex:1">
+      <input type="date" id="date" style="flex:1">
+    </div>
+    <button class="btn-buy" onclick="addItem()" style="width:100%">🛍️ 记下来</button>
+    <p class="note">忘记当天记？把日期改成买玩具那天就行。超过本月可用额度的会自动进愿望清单。</p>
+  </div>
+
+  <div class="card">
+    <h2>本月买的玩具</h2>
+    <div id="itemList"></div>
+  </div>
+
+  <div class="card">
+    <h2>🎁 愿望清单（节日时选）</h2>
+    <input type="text" id="wishName" placeholder="想要的大玩具…">
+    <div class="flex">
+      <input type="number" id="wishPrice" step="0.01" placeholder="价格（元，不知道可留空）" style="flex:1">
+      <button class="btn-add" onclick="addWish()">加</button>
+    </div>
+    <div id="wishList" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>📅 历史记录</h2>
+    <div id="history"></div>
+  </div>
+
+  <div style="padding-bottom:24px">
+    <button class="btn-reset" onclick="askReset()">🔄 开始新的一个月（存档本月）</button>
+  </div>
+</div>
+
+<div id="dialogArea"></div>
+
+<script>
+  const BUDGET = 160;
+  let items = [];
+  let wishlist = [];
+  let history = [];
+  let carryover = 0;
+  let openMonths = {};
+  let storageOK = true;
+
+  function load() {
+    try {
+      const raw = window.localStorage.getItem('toyWallet');
+      const d = raw ? JSON.parse(raw) : {};
+      items = Array.isArray(d.items) ? d.items : [];
+      wishlist = Array.isArray(d.wishlist) ? d.wishlist : [];
+      history = Array.isArray(d.history) ? d.history : [];
+      carryover = typeof d.carryover === 'number' ? d.carryover : 0;
+    } catch (e) {
+      storageOK = false;
+      items = []; wishlist = []; history = []; carryover = 0;
+    }
+  }
+  function save() {
+    if (!storageOK) return;
+    try {
+      window.localStorage.setItem('toyWallet', JSON.stringify({items, wishlist, history, carryover}));
+    } catch (e) { storageOK = false; }
+  }
+
+  function todayStr() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  }
+  function dayLabel(date) {
+    if (!date) return '';
+    const p = date.split('-');
+    if (p.length<3) return '';
+    return parseInt(p[1]) + '月' + parseInt(p[2]) + '日';
+  }
+  function curYM() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+  }
+  function ymLabel(ym) {
+    const [y,m] = ym.split('-');
+    return y + '年' + parseInt(m) + '月';
+  }
+
+  function sortItems() {
+    items.sort((a,b)=>{
+      const d = (a.date||'').localeCompare(b.date||'');
+      return d !== 0 ? d : a.id - b.id;
+    });
+  }
+
+  function render() {
+    const budgetThisMonth = BUDGET + carryover;
+    const spent = items.reduce((s,i)=>s+i.price,0);
+    const remain = budgetThisMonth - spent;
+    const pct = budgetThisMonth > 0 ? Math.min(100, Math.max(0, spent/budgetThisMonth*100)) : 100;
+
+    const cb = document.getElementById('carrybox');
+    if (carryover > 0) {
+      cb.className = 'carrybox plus';
+      cb.innerHTML = '🎉 上月结余 +'+carryover.toFixed(2)+' 元 · 本月可用 <b>'+budgetThisMonth.toFixed(2)+' 元</b>';
+    } else if (carryover < 0) {
+      cb.className = 'carrybox minus';
+      cb.innerHTML = '⚠️ 上月透支 '+Math.abs(carryover).toFixed(2)+' 元 · 本月只有 <b>'+budgetThisMonth.toFixed(2)+' 元</b> 可用';
+    } else {
+      cb.className = 'carrybox zero';
+      cb.innerHTML = '本月可用 <b>'+budgetThisMonth.toFixed(2)+' 元</b>（基础额度）';
+    }
+
+    const remEl = document.getElementById('remain');
+    remEl.innerHTML = remain.toFixed(2) + ' <span>元</span>';
+    remEl.className = 'remain' + (remain<=0?' zero':'');
+    document.getElementById('spent').textContent = spent.toFixed(2) + ' 元';
+
+    const bar = document.getElementById('bar');
+    bar.style.width = pct + '%';
+    bar.style.background = remain<=0 ? '#ef4444' : (remain<=40 ? '#f59e0b' : '#10b981');
+    bar.innerHTML = pct>15 ? '<span>'+Math.round(pct)+'%</span>' : '';
+
+    const hint = document.getElementById('hint');
+    if (remain<0) hint.innerHTML = '<div class="hint red">已经超支啦！超出的部分下个月会补上哦 🎈</div>';
+    else if (remain===0) hint.innerHTML = '<div class="hint red">这个月的钱刚好花完啦 🎈</div>';
+    else if (remain<=40) hint.innerHTML = '<div class="hint amber">额度不多啦，要想清楚再买哦 ~</div>';
+    else hint.innerHTML = '';
+
+    sortItems();
+    const il = document.getElementById('itemList');
+    if (items.length===0) il.innerHTML = '<div class="empty">还没买东西~</div>';
+    else il.innerHTML = items.map(i=>
+      '<div class="item"><span class="nm">'+esc(i.name)+'<span class="dt">'+dayLabel(i.date)+'</span></span>'+
+      '<div class="actions"><span class="pr">'+i.price.toFixed(2)+' 元</span>'+
+      '<button class="edit" onclick="editItem('+i.id+')">✏️</button>'+
+      '<button class="del" onclick="delItem('+i.id+')">🗑️</button></div></div>'
+    ).join('');
+
+    const wl = document.getElementById('wishList');
+    if (wishlist.length===0) wl.innerHTML = '<div class="empty">还没有心愿~</div>';
+    else wl.innerHTML = wishlist.map(i=>
+      '<div class="item wish"><span class="nm">'+esc(i.name)+'</span>'+
+      '<div class="actions">'+(i.price!=null?'<span class="pr wish">'+i.price.toFixed(2)+' 元</span>':'<span class="pr wish" style="color:#cbd5e1">未知</span>')+
+      '<button class="edit" onclick="editWish('+i.id+')">✏️</button>'+
+      '<button class="del" onclick="delWish('+i.id+')">🗑️</button></div></div>'
+    ).join('');
+
+    renderHistory();
+    save();
+  }
+
+  function renderHistory() {
+    const h = document.getElementById('history');
+    if (history.length===0) { h.innerHTML='<div class="empty">还没有存档的月份~</div>'; return; }
+
+    const byYear = {};
+    history.forEach(m=>{
+      const y = m.ym.split('-')[0];
+      if(!byYear[y]) byYear[y]=[];
+      byYear[y].push(m);
+    });
+    const years = Object.keys(byYear).sort().reverse();
+
+    h.innerHTML = years.map(y=>{
+      const months = byYear[y].sort((a,b)=>b.ym.localeCompare(a.ym));
+      const yTotal = months.reduce((s,m)=>s+m.total,0);
+      const yCount = months.reduce((s,m)=>s+m.items.length,0);
+      const monthsHtml = months.map(m=>{
+        const open = openMonths[m.ym];
+        const carryIn = m.carryIn || 0;
+        const base = m.base || BUDGET;
+        const carryOut = (m.carryOut!=null) ? m.carryOut : (base + carryIn - m.total);
+        let detail = '';
+        if (open) {
+          let inner = '';
+          if (carryIn !== 0) {
+            inner += '<div class="d"><span>上月结转</span><span class="'+(carryIn>0?'pos':'neg')+'">'+(carryIn>0?'+':'')+carryIn.toFixed(2)+' 元</span></div>';
+          }
+          inner += m.items.length ? m.items.map(i=>
+            '<div class="d"><span><span class="dd">'+dayLabel(i.date)+'</span>'+esc(i.name)+'</span><span>'+i.price.toFixed(2)+' 元</span></div>').join('')
+            : '<div class="d">这个月没买玩具</div>';
+          inner += '<div class="sum">'+
+            '<div class="d"><span>本月可用</span><span>'+(base+carryIn).toFixed(2)+' 元</span></div>'+
+            '<div class="d"><span>共花了</span><span>'+m.total.toFixed(2)+' 元</span></div>'+
+            '<div class="d"><span>'+(carryOut>=0?'结转下月':'从下月扣')+'</span><span class="'+(carryOut>=0?'pos':'neg')+'">'+(carryOut>=0?'+':'')+carryOut.toFixed(2)+' 元</span></div>'+
+          '</div>';
+          detail = '<div class="detail">'+inner+'</div>';
+        }
+        return '<div class="month"><div class="mh" onclick="toggleMonth(\''+m.ym+'\')">'+
+          '<span class="mn">'+ymLabel(m.ym)+' <span class="arrow">'+(open?'▲':'▼')+'</span></span>'+
+          '<span class="mt">花 '+m.total.toFixed(2)+' 元 · '+m.items.length+'件</span></div>'+detail+'</div>';
+      }).join('');
+      return '<div class="yearbox"><div class="yh"><span>'+y+'年</span><span>共花 '+yTotal.toFixed(2)+' 元</span></div>'+
+        '<div class="ys">全年买了 '+yCount+' 件玩具</div>'+monthsHtml+'</div>';
+    }).join('');
+  }
+
+  function toggleMonth(ym){ openMonths[ym] = !openMonths[ym]; renderHistory(); }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+  function addItem() {
+    const name = document.getElementById('name').value.trim();
+    const price = parseFloat(document.getElementById('price').value);
+    let date = document.getElementById('date').value;
+    if (!date) date = todayStr();
+    if (!name || isNaN(price) || price<=0) return;
+    const budgetThisMonth = BUDGET + carryover;
+    if (price > budgetThisMonth) wishlist.push({id:Date.now(), name, price});
+    else items.push({id:Date.now(), name, price, date});
+    document.getElementById('name').value='';
+    document.getElementById('price').value='';
+    document.getElementById('date').value = todayStr();
+    render();
+  }
+  function delItem(id){ items = items.filter(i=>i.id!==id); render(); }
+
+  function addWish() {
+    const name = document.getElementById('wishName').value.trim();
+    if (!name) return;
+    const raw = document.getElementById('wishPrice').value;
+    const p = parseFloat(raw);
+    const price = (raw.trim()!=='' && !isNaN(p) && p>0) ? p : null;
+    wishlist.push({id:Date.now(), name, price});
+    document.getElementById('wishName').value='';
+    document.getElementById('wishPrice').value='';
+    render();
+  }
+  function delWish(id){ wishlist = wishlist.filter(i=>i.id!==id); render(); }
+
+  // ===== 编辑已买玩具 =====
+  function editItem(id) {
+    const it = items.find(i=>i.id===id);
+    if (!it) return;
+    document.getElementById('dialogArea').innerHTML =
+      '<div class="overlay" onclick="if(event.target===this)closeDialog()">'+
+        '<div class="dialog">'+
+          '<h3 class="left">✏️ 修改玩具</h3>'+
+          '<label class="fld">玩具名字</label>'+
+          '<input type="text" id="e_name" value="'+esc(it.name)+'">'+
+          '<label class="fld">价格（元）</label>'+
+          '<input type="number" id="e_price" step="0.01" value="'+it.price+'">'+
+          '<label class="fld">购买日期</label>'+
+          '<input type="date" id="e_date" value="'+(it.date||todayStr())+'">'+
+          '<div class="flex" style="margin-top:6px">'+
+            '<button class="btn-cancel" onclick="closeDialog()">取消</button>'+
+            '<button class="btn-save" onclick="saveItem('+id+')">保存</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  }
+  function saveItem(id) {
+    const it = items.find(i=>i.id===id);
+    if (!it) return;
+    const name = document.getElementById('e_name').value.trim();
+    const price = parseFloat(document.getElementById('e_price').value);
+    const date = document.getElementById('e_date').value || it.date;
+    if (!name || isNaN(price) || price<=0) return;
+    it.name = name; it.price = price; it.date = date;
+    render();
+    closeDialog();
+  }
+
+  // ===== 编辑愿望清单 =====
+  function editWish(id) {
+    const it = wishlist.find(i=>i.id===id);
+    if (!it) return;
+    document.getElementById('dialogArea').innerHTML =
+      '<div class="overlay" onclick="if(event.target===this)closeDialog()">'+
+        '<div class="dialog">'+
+          '<h3 class="left">✏️ 修改心愿</h3>'+
+          '<label class="fld">玩具名字</label>'+
+          '<input type="text" id="w_name" value="'+esc(it.name)+'">'+
+          '<label class="fld">价格（元，不知道可留空）</label>'+
+          '<input type="number" id="w_price" step="0.01" value="'+(it.price!=null?it.price:'')+'">'+
+          '<div class="flex" style="margin-top:6px">'+
+            '<button class="btn-cancel" onclick="closeDialog()">取消</button>'+
+            '<button class="btn-save" onclick="saveWish('+id+')">保存</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  }
+  function saveWish(id) {
+    const it = wishlist.find(i=>i.id===id);
+    if (!it) return;
+    const name = document.getElementById('w_name').value.trim();
+    if (!name) return;
+    const raw = document.getElementById('w_price').value;
+    const p = parseFloat(raw);
+    it.name = name;
+    it.price = (raw.trim()!=='' && !isNaN(p) && p>0) ? p : null;
+    render();
+    closeDialog();
+  }
+
+  function closeDialog() {
+    document.getElementById('dialogArea').innerHTML = '';
+  }
+
+  function askReset() {
+    const ym = curYM();
+    const carryIn = carryover;
+    const budgetThisMonth = BUDGET + carryIn;
+    const spent = items.reduce((s,i)=>s+i.price,0);
+    const count = items.length;
+    const remain = budgetThisMonth - spent;
+    const nextBudget = BUDGET + remain;
+
+    let carryLine;
+    if (remain >= 0) {
+      carryLine = '<li class="keep">本月还剩 <b>'+remain.toFixed(2)+'</b> 元，会结转到下月 → 下月可用 <b>'+nextBudget.toFixed(2)+'</b> 元</li>';
+    } else {
+      carryLine = '<li class="over">本月超支 <b>'+Math.abs(remain).toFixed(2)+'</b> 元，会从下月扣除 → 下月只有 <b>'+nextBudget.toFixed(2)+'</b> 元</li>';
+    }
+
+    document.getElementById('dialogArea').innerHTML =
+      '<div class="overlay" onclick="if(event.target===this)closeDialog()">'+
+        '<div class="dialog center">'+
+          '<div class="bigicon">📦</div>'+
+          '<h3>存档「<span class="month-name">'+ymLabel(ym)+'</span>」？</h3>'+
+          '<p class="desc">本月已买 '+count+' 件玩具，共花了 '+spent.toFixed(2)+' 元</p>'+
+          '<div class="warnbox">'+
+            '<div class="wt">⚠️ 请先确认</div>'+
+            '<ul>'+
+              carryLine +
+              '<li>本月的玩具列表会被清空</li>'+
+              '<li class="keep">已买的记录会保存进历史，不会丢失</li>'+
+              '<li class="keep">愿望清单保持不变</li>'+
+            '</ul>'+
+          '</div>'+
+          '<div class="flex">'+
+            '<button class="btn-cancel" onclick="closeDialog()">先不要</button>'+
+            '<button class="btn-ok" onclick="doReset()">确定存档</button>'+
+          '</div>'+
+        '</div>'+
+      '</div>';
+  }
+  function doReset() {
+    const ym = curYM();
+    const carryIn = carryover;
+    const total = items.reduce((s,i)=>s+i.price,0);
+    const snapshot = items.map(i=>({name:i.name,price:i.price,date:i.date}));
+
+    const exist = history.find(m=>m.ym===ym);
+    if (exist) {
+      exist.items = exist.items.concat(snapshot);
+      exist.total += total;
+      if (exist.carryIn == null) exist.carryIn = carryIn;
+      if (exist.base == null) exist.base = BUDGET;
+      exist.carryOut = exist.base + exist.carryIn - exist.total;
+      carryover = exist.carryOut;
+    } else {
+      const carryOut = (BUDGET + carryIn) - total;
+      history.push({ym, base:BUDGET, carryIn, total, carryOut, items: snapshot});
+      carryover = carryOut;
+    }
+
+    items = [];
+    render();
+    closeDialog();
+  }
+
+  document.getElementById('price').addEventListener('keydown', e=>{ if(e.key==='Enter') addItem(); });
+  document.getElementById('wishPrice').addEventListener('keydown', e=>{ if(e.key==='Enter') addWish(); });
+
+  load();
+  document.getElementById('budgetText').textContent = BUDGET.toFixed(2);
+  document.getElementById('curMonth').textContent = ymLabel(curYM());
+  document.getElementById('date').value = todayStr();
+  render();
+</script>
+</body>
+</html>
+
