@@ -120,6 +120,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .goal-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px;}
 .goal-actions button{min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:7px 4px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
 .goal-actions .primary{background:#6366f1;border-color:#6366f1;color:#fff;}
+.goal-history{border:none;background:none;color:#6366f1;font-size:11px;font-weight:800;font-family:inherit;cursor:pointer;padding:2px 0;}
+.contribution-summary{background:#eef2ff;border:2px solid #e0e7ff;border-radius:16px;padding:14px;margin-bottom:14px;text-align:center;color:#818cf8;font-size:12px;font-weight:700;}
+.contribution-summary b{display:block;color:#4f46e5;font-size:24px;margin-top:3px;}
+.contribution-list{display:flex;flex-direction:column;gap:8px;}
+.contribution-row{display:flex;align-items:center;gap:9px;border:2px solid #f1f5f9;background:#f8fafc;border-radius:14px;padding:10px;}
+.contribution-row .info{flex:1;min-width:0;}.contribution-row .date{color:#475569;font-size:13px;font-weight:800;}.contribution-row .note{color:#94a3b8;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+.contribution-row .amount{color:#475569;font-size:14px;font-weight:800;white-space:nowrap;}
+.contribution-row button{width:44px;height:44px;flex:none;border:2px solid #e2e8f0;background:#fff;border-radius:12px;color:#64748b;font-size:14px;cursor:pointer;}
+.danger-btn{width:100%;min-height:44px;border:none;background:#ef4444;color:#fff;border-radius:16px;padding:12px;font-size:15px;font-weight:800;font-family:inherit;cursor:pointer;}
 .review-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
 .review-summary div{background:#f8fafc;border:2px solid #f1f5f9;border-radius:14px;padding:10px 6px;text-align:center;color:#94a3b8;font-size:11px;font-weight:700;}
 .review-summary b{display:block;color:#475569;font-size:14px;margin-top:3px;}.review-summary b.negative{color:#e11d48;}
@@ -721,7 +730,7 @@ function renderGoalsPlanning(){
     const advice=goal.status==='completed'?'目标已手动完成，投入记录仍会保留。':goal.status==='paused'?'目标已暂停，恢复后再继续安排投入。':metrics.remainingCents===0?'目标金额已经达成，可以标记完成。':`距离目标月还有 ${metrics.months} 个月，建议每月投入 ¥${fmt(metrics.recommendedCents)}。`;
     const statusAction=goal.status==='completed'?`<button data-action="set-goal-status" data-value="${goal.id}/active">重新启用</button>`:goal.status==='paused'?`<button data-action="set-goal-status" data-value="${goal.id}/active">恢复目标</button>`:metrics.remainingCents===0?`<button data-action="set-goal-status" data-value="${goal.id}/completed">标记完成</button>`:`<button data-action="set-goal-status" data-value="${goal.id}/paused">暂停目标</button>`;
     const mainAction=goal.status==='active'?`<button class="primary" data-action="open-contribution" data-value="${goal.id}">记录投入</button>`:goal.status==='paused'?`<button data-action="set-goal-status" data-value="${goal.id}/completed">标记完成</button>`:'';
-    h+=`<div class="goal-card"><div class="goal-title"><div class="name">${type.emoji} ${esc(goal.name)}<span class="meta">${type.name} · 目标日期 ${goal.targetDate}</span></div><span class="goal-status ${level}">${GOAL_STATUSES[goal.status]}</span></div><div class="goal-money"><span>已投入<b>¥${fmt(metrics.savedCents)}</b></span><span style="text-align:right">目标 ¥${fmt(goal.targetCents)}<br>还差 ¥${fmt(metrics.remainingCents)}</span></div><div class="budget-progress"><div class="fill ${metrics.percent>=100?'':'warn'}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>${goal.contributions.length} 次投入</span><span>${Math.min(999,metrics.percent).toFixed(1)}%</span></div><div class="goal-advice">${advice}</div><div class="goal-actions"><button data-action="edit-goal" data-value="${goal.id}">编辑目标</button>${statusAction}${mainAction}</div></div>`;
+    h+=`<div class="goal-card"><div class="goal-title"><div class="name">${type.emoji} ${esc(goal.name)}<span class="meta">${type.name} · 目标日期 ${goal.targetDate}</span></div><span class="goal-status ${level}">${GOAL_STATUSES[goal.status]}</span></div><div class="goal-money"><span>已投入<b>¥${fmt(metrics.savedCents)}</b></span><span style="text-align:right">目标 ¥${fmt(goal.targetCents)}<br>还差 ¥${fmt(metrics.remainingCents)}</span></div><div class="budget-progress"><div class="fill ${metrics.percent>=100?'':'warn'}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption">${goal.contributions.length?`<button class="goal-history" data-action="open-contribution-history" data-value="${goal.id}">查看 ${goal.contributions.length} 次投入</button>`:'<span>暂无投入</span>'}<span>${Math.min(999,metrics.percent).toFixed(1)}%</span></div><div class="goal-advice">${advice}</div><div class="goal-actions"><button data-action="edit-goal" data-value="${goal.id}">编辑目标</button>${statusAction}${mainAction}</div></div>`;
   });
   return h+`</div>`;
 }
@@ -956,20 +965,39 @@ function saveGoal(){
   if(!saveDecisions()){if(index>=0)decisions.goals[index]=old;else decisions.goals.pop();return;}
   closeModals();render();toast(old?'目标已更新':'目标已创建');
 }
-function openContribution(goalId){
-  const goal=decisions.goals.find(item=>item.id===goalId);if(!goal||goal.status!=='active')return;
-  const metrics=calculateGoal(goal);
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="记录目标投入"><div class="sheet-head"><div class="r1"><div><h3>💰 记录目标投入</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${esc(goal.name)} · 还差 ¥${fmt(metrics.remainingCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="contributionAmount">本次已留出金额（元）</label><input id="contributionAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00"></div><div class="two"><div class="field"><label for="contributionDate">投入日期</label><input id="contributionDate" type="date" value="${todayStr()}"></div><div class="field"><label for="contributionNote">备注</label><input id="contributionNote" type="text" maxlength="20" placeholder="选填"></div></div><p class="planning-note" style="margin:0">这是一条独立的目标投入确认，不会自动新增收入或支出记录。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-contribution" data-value="${goal.id}">确认已投入</button></div></div></div>`;
+let contributionForm={goalId:null,id:null};
+function splitContributionValue(value){const slash=value.lastIndexOf('/');return slash>0?[value.slice(0,slash),value.slice(slash+1)]:[value,''];}
+function openContribution(goalId,contributionId=null){
+  const goal=decisions.goals.find(item=>item.id===goalId),contribution=goal&&contributionId?goal.contributions.find(item=>item.id===contributionId):null;if(!goal||contributionId&&!contribution||!contribution&&goal.status!=='active')return;
+  contributionForm={goalId:goal.id,id:contribution?contribution.id:null};const metrics=calculateGoal(goal);
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${contribution?'编辑目标投入':'记录目标投入'}"><div class="sheet-head"><div class="r1"><div><h3>💰 ${contribution?'编辑目标投入':'记录目标投入'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${esc(goal.name)} · 还差 ¥${fmt(metrics.remainingCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="contributionAmount">本次已留出金额（元）</label><input id="contributionAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${contribution?(contribution.amountCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="contributionDate">投入日期</label><input id="contributionDate" type="date" value="${contribution?contribution.date:todayStr()}"></div><div class="field"><label for="contributionNote">备注</label><input id="contributionNote" type="text" maxlength="20" placeholder="选填" value="${contribution?esc(contribution.note):''}"></div></div><p class="planning-note" style="margin:0">${contribution?'修改后会同步更新目标进度和对应月份复盘。':'这是一条独立的目标投入确认，不会自动新增收入或支出记录。'}</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-contribution">${contribution?'保存修改':'确认已投入'}</button></div></div></div>`;
   document.body.style.overflow='hidden';document.getElementById('contributionAmount').focus();
 }
-function saveContribution(goalId){
-  const index=decisions.goals.findIndex(item=>item.id===goalId);if(index<0||decisions.goals[index].status!=='active')return;
+function saveContribution(){
+  const index=decisions.goals.findIndex(item=>item.id===contributionForm.goalId);if(index<0)return;
+  const existingIndex=contributionForm.id?decisions.goals[index].contributions.findIndex(item=>item.id===contributionForm.id):-1;if(contributionForm.id&&existingIndex<0||!contributionForm.id&&decisions.goals[index].status!=='active')return;
   const amountCents=readBudgetInput(document.getElementById('contributionAmount')),date=document.getElementById('contributionDate').value,note=document.getElementById('contributionNote').value.trim().slice(0,20);
   if(amountCents===null||amountCents===false){toast('请输入正确的投入金额');return;}if(!validDate(date)){toast('请选择正确的投入日期');return;}
-  const old=decisions.goals[index],nowIso=new Date().toISOString(),item={id:uuid(),date,amountCents,note,createdAt:nowIso};
-  decisions.goals[index]={...old,contributions:[...old.contributions,item],updatedAt:nowIso};
+  const old=decisions.goals[index],nowIso=new Date().toISOString(),contributions=[...old.contributions],existing=existingIndex>=0?contributions[existingIndex]:null,item=existing?{...existing,date,amountCents,note}:{id:uuid(),date,amountCents,note,createdAt:nowIso};
+  if(existing)contributions[existingIndex]=item;else contributions.push(item);
+  decisions.goals[index]={...old,contributions,updatedAt:nowIso};
   if(!saveDecisions()){decisions.goals[index]=old;return;}
-  closeModals();render();toast('目标投入已记录');
+  render();if(existing)openContributionHistory(old.id);else closeModals();toast(existing?'投入记录已更新':'目标投入已记录');
+}
+function openContributionHistory(goalId){
+  const goal=decisions.goals.find(item=>item.id===goalId);if(!goal)return;const metrics=calculateGoal(goal),items=[...goal.contributions].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt.localeCompare(a.createdAt));
+  const rows=items.map(item=>`<div class="contribution-row"><div class="info"><div class="date">${item.date}</div><div class="note">${item.note?esc(item.note):'无备注'}</div></div><div class="amount">¥${fmt(item.amountCents)}</div><button data-action="edit-contribution" data-value="${goal.id}/${item.id}" aria-label="编辑 ${item.date} 的投入">✎</button><button data-action="confirm-delete-contribution" data-value="${goal.id}/${item.id}" aria-label="撤销 ${item.date} 的投入">🗑</button></div>`).join('');
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="目标投入明细"><div class="sheet-head"><div class="r1"><div><h3>📒 投入明细</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${esc(goal.name)} · ${items.length} 次</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="contribution-summary">累计已投入<b>¥${fmt(metrics.savedCents)}</b></div>${items.length?`<div class="contribution-list">${rows}</div>`:'<div class="empty" style="padding:14px 0">还没有投入记录</div>'}</div></div></div>`;
+  document.body.style.overflow='hidden';
+}
+function confirmDeleteContribution(value){
+  const[goalId,id]=splitContributionValue(value),goal=decisions.goals.find(item=>item.id===goalId),item=goal&&goal.contributions.find(entry=>entry.id===id);if(!goal||!item)return;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认撤销目标投入"><div class="sheet-head"><div class="r1"><h3>撤销这笔投入？</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:14px;color:#64748b;line-height:1.7">${esc(goal.name)}<br>${item.date} · ¥${fmt(item.amountCents)}${item.note?` · ${esc(item.note)}`:''}</p><p class="planning-note" style="margin:12px 0 0">撤销后会同步减少目标进度和对应月份的投入汇总。</p></div><div class="sheet-foot"><button class="danger-btn" data-action="delete-contribution" data-value="${goal.id}/${item.id}">确认撤销投入</button></div></div></div>`;
+}
+function deleteContribution(value){
+  const[goalId,id]=splitContributionValue(value),index=decisions.goals.findIndex(item=>item.id===goalId);if(index<0)return;const old=decisions.goals[index],next=old.contributions.filter(item=>item.id!==id);if(next.length===old.contributions.length)return;
+  decisions.goals[index]={...old,contributions:next,updatedAt:new Date().toISOString()};if(!saveDecisions()){decisions.goals[index]=old;return;}
+  render();if(next.length)openContributionHistory(goalId);else closeModals();toast('投入记录已撤销');
 }
 function setGoalStatus(value){
   const slash=value.lastIndexOf('/'),id=value.slice(0,slash),status=value.slice(slash+1),index=decisions.goals.findIndex(item=>item.id===id);if(index<0||!GOAL_STATUSES[status])return;
@@ -1210,7 +1238,8 @@ document.addEventListener('click',event=>{
   const actions={
     'set-view':()=>setView(value),'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,
     'set-planning-view':()=>setPlanningView(value),'open-goal-form':()=>openGoalForm(),'edit-goal':()=>openGoalForm(value),'save-goal':saveGoal,
-    'open-contribution':()=>openContribution(value),'save-contribution':()=>saveContribution(value),'set-goal-status':()=>setGoalStatus(value),
+    'open-contribution':()=>openContribution(value),'open-contribution-history':()=>openContributionHistory(value),'edit-contribution':()=>{const ids=splitContributionValue(value);openContribution(ids[0],ids[1]);},
+    'save-contribution':saveContribution,'confirm-delete-contribution':()=>confirmDeleteContribution(value),'delete-contribution':()=>deleteContribution(value),'set-goal-status':()=>setGoalStatus(value),
     'save-review':saveReview,'toggle-review-action':()=>toggleReviewAction(value),
     'set-calendar-mode':()=>setCalMode(value),'calendar-shift':()=>calShift(Number(value)),'select-day':()=>selDay(value),
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),'open-tag':()=>openTag(value),
