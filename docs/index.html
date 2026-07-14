@@ -112,6 +112,21 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .tagmini{font-size:10px;padding:2px 6px;border-radius:8px;background:#eef2ff;color:#6366f1;font-weight:700;}
 /* list */
 .hint{font-size:12px;color:#94a3b8;padding:0 4px;font-weight:500;margin-bottom:12px;}
+.period-today{border:1px solid rgba(255,255,255,.5)!important;background:rgba(255,255,255,.18)!important;color:#fff!important;padding:4px 7px!important;border-radius:9px!important;font-size:11px!important;font-weight:700;font-family:inherit;}
+.filter-card{padding:16px;}
+.filter-card h3{margin-bottom:10px;}
+.filter-search{display:flex;gap:8px;margin-bottom:12px;}
+.filter-search input{flex:1;min-width:0;min-height:45px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:14px;padding:10px 12px;font-size:14px;color:#475569;outline:none;font-family:inherit;}
+.filter-search button,.filter-actions button{min-height:44px;border:none;background:#6366f1;color:#fff;border-radius:14px;padding:11px 14px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
+.filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.filter-field label{display:block;font-size:11px;color:#94a3b8;font-weight:700;margin:0 0 5px 2px;}
+.filter-field input,.filter-field select{width:100%;height:44px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:0 9px;color:#475569;font-size:13px;font-weight:600;outline:none;font-family:inherit;}
+.filter-dates,.filter-amounts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.filter-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
+.filter-actions .clear{background:#fff;color:#64748b;border:2px solid #e2e8f0;}
+.filter-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 12px;}
+.filter-summary div{background:#fff;border:2px solid #f1f5f9;border-radius:14px;padding:9px;text-align:center;color:#94a3b8;font-size:11px;font-weight:600;}
+.filter-summary b{display:block;color:#475569;font-size:14px;margin-top:2px;}
 .acc{background:#fff;border-radius:24px;border:2px solid #f1f5f9;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04);margin-bottom:12px;}
 .acc-head{width:100%;display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:none;border:none;cursor:pointer;font-family:inherit;}
 .acc-head:hover{background:#f8fafc;}
@@ -358,9 +373,10 @@ let storageLocked=loaded.locked;
 let backupMeta=readBackupMeta();
 let prefs=readPrefs();
 const now=new Date();
+function defaultFilters(){return {keyword:'',type:'all',cat:'all',sub:'all',range:'all',start:'',end:'',minCents:null,maxCents:null};}
 let state={records:loaded.records,view:'month',tab:'overview',year:now.getFullYear(),month:now.getMonth(),
   calMode:'expense',selectedDay:null,openYears:{[now.getFullYear()]:true},
-  openMonths:{[now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')]:true}};
+  openMonths:{[now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')]:true},filters:defaultFilters()};
 
 /* ============ 计算辅助 ============ */
 function inPeriod(r){const[y,m]=r.date.split('-').map(Number);return state.view==='year'?y===state.year:y===state.year&&m-1===state.month;}
@@ -370,6 +386,28 @@ function prevSum(type){
   if(state.view==='year')return state.records.filter(r=>r.type===type&&+r.date.split('-')[0]===state.year-1).reduce((s,r)=>s+r.amountCents,0);
   let py=state.year,pm=state.month-1;if(pm<0){pm=11;py--;}
   return state.records.filter(r=>{const[y,m]=r.date.split('-').map(Number);return r.type===type&&y===py&&m-1===pm;}).reduce((s,r)=>s+r.amountCents,0);
+}
+function filterDateBounds(range,today){
+  const[y,m]=today.split('-').map(Number),lastDay=(year,month)=>String(new Date(year,month,0).getDate()).padStart(2,'0');
+  if(range==='month')return [`${y}-${String(m).padStart(2,'0')}-01`,`${y}-${String(m).padStart(2,'0')}-${lastDay(y,m)}`];
+  if(range==='lastMonth'){const d=new Date(y,m-2,1),ly=d.getFullYear(),lm=d.getMonth()+1;return[`${ly}-${String(lm).padStart(2,'0')}-01`,`${ly}-${String(lm).padStart(2,'0')}-${lastDay(ly,lm)}`];}
+  if(range==='year')return[`${y}-01-01`,`${y}-12-31`];
+  return ['', ''];
+}
+function hasActiveFilters(filters=state.filters){return Object.entries(filters).some(([key,value])=>key==='type'||key==='cat'||key==='sub'||key==='range'?value!=='all':value!==''&&value!==null);}
+function filterRecords(records,filters,today=todayStr()){
+  const keyword=filters.keyword.toLocaleLowerCase('zh-CN'),bounds=filterDateBounds(filters.range,today);
+  const start=filters.range==='custom'?filters.start:bounds[0],end=filters.range==='custom'?filters.end:bounds[1];
+  return records.filter(record=>{
+    const cat=getCat(record.type,record.cat),haystack=`${record.note} ${record.tag} ${cat.name} ${cat.subs[record.sub]}`.toLocaleLowerCase('zh-CN');
+    if(keyword&&!haystack.includes(keyword))return false;
+    if(filters.type!=='all'&&record.type!==filters.type)return false;
+    if(filters.cat!=='all'&&`${record.type}/${record.cat}`!==filters.cat)return false;
+    if(filters.sub!=='all'&&`${record.type}/${record.cat}/${record.sub}`!==filters.sub)return false;
+    if(start&&record.date<start||end&&record.date>end)return false;
+    if(filters.minCents!==null&&record.amountCents<filters.minCents||filters.maxCents!==null&&record.amountCents>filters.maxCents)return false;
+    return true;
+  });
 }
 
 /* ============ 图表(纯SVG) ============ */
@@ -409,6 +447,7 @@ function render(){
   const iDiff=totalInc-pInc, iPct=pInc>0?iDiff/pInc*100:null;
   const prevLbl=state.view==='year'?'年':'月';
   const periodLabel=state.view==='year'?`${state.year}年`:`${state.year}年${state.month+1}月`;
+  const showToday=state.view==='year'||state.year!==now.getFullYear()||state.month!==now.getMonth();
   const backup=backupStatus();
 
   let html=`
@@ -419,7 +458,7 @@ function render(){
   <div class="card-sum">
     <div class="blob" style="width:112px;height:112px;right:-24px;top:-24px;"></div>
     <div class="blob" style="width:64px;height:64px;right:-8px;top:64px;"></div>
-    <div class="nav"><button data-action="shift" data-value="-1" aria-label="上一${state.view==='year'?'年':'月'}">‹</button><span class="lbl">📅 ${periodLabel}</span><button data-action="shift" data-value="1" aria-label="下一${state.view==='year'?'年':'月'}">›</button></div>
+    <div class="nav"><button data-action="shift" data-value="-1" aria-label="上一${state.view==='year'?'年':'月'}">‹</button><span class="lbl">📅 ${periodLabel}${showToday?`<button class="period-today" data-action="go-today">回到本月</button>`:''}</span><button data-action="shift" data-value="1" aria-label="下一${state.view==='year'?'年':'月'}">›</button></div>
     <div class="big"><div class="t">${state.view==='year'?'本年支出':'当月支出'} 💸</div><div class="n">¥${fmt(totalExp)}</div></div>
     <div class="duo">
       <div class="mini"><div class="h"><span>↙ 收入</span>${iPct!==null?`<span class="pill sm ${iDiff>0?'up-in':iDiff<0?'down-in':'flat'}">${iDiff>0?'▲':iDiff<0?'▼':'–'}${Math.abs(iPct).toFixed(1)}%</span>`:''}</div><div class="v lg">¥${fmt(totalInc)}</div></div>
@@ -529,21 +568,48 @@ function renderCalendar(){
   h+=`</div>`;return h;
 }
 
+function renderFilterPanel(){
+  const filters=state.filters,selected=(value,current)=>value===current?' selected':'',active=hasActiveFilters();
+  let catOptions='',subOptions='';
+  [['expense',EXPENSE_CATS,'支出'],['income',INCOME_CATS,'收入']].forEach(([type,cats,typeName])=>{
+    Object.entries(cats).forEach(([catKey,cat])=>{
+      catOptions+=`<option value="${type}/${catKey}"${selected(`${type}/${catKey}`,filters.cat)}>${typeName} · ${cat.name}</option>`;
+      Object.entries(cat.subs).forEach(([subKey,subName])=>{subOptions+=`<option value="${type}/${catKey}/${subKey}"${selected(`${type}/${catKey}/${subKey}`,filters.sub)}>${typeName} · ${cat.name} · ${subName}</option>`;});
+    });
+  });
+  const min=filters.minCents===null?'':(filters.minCents/100).toFixed(2),max=filters.maxCents===null?'':(filters.maxCents/100).toFixed(2);
+  return `<div class="card filter-card"><h3>🔎 查找明细 ${active?`<span class="sub">筛选已生效</span>`:''}</h3><form id="filterForm">
+    <div class="filter-search"><input id="filterKeyword" type="search" maxlength="40" placeholder="搜索备注、专项或分类" value="${esc(filters.keyword)}"><button type="button" data-action="apply-filters">搜索</button></div>
+    <div class="filter-grid">
+      <div class="filter-field"><label for="filterType">收支类型</label><select id="filterType"><option value="all"${selected('all',filters.type)}>全部收支</option><option value="expense"${selected('expense',filters.type)}>只看支出</option><option value="income"${selected('income',filters.type)}>只看收入</option></select></div>
+      <div class="filter-field"><label for="filterRange">日期范围</label><select id="filterRange"><option value="all"${selected('all',filters.range)}>全部日期</option><option value="month"${selected('month',filters.range)}>本月</option><option value="lastMonth"${selected('lastMonth',filters.range)}>上月</option><option value="year"${selected('year',filters.range)}>今年</option><option value="custom"${selected('custom',filters.range)}>自定义</option></select></div>
+      <div class="filter-field"><label for="filterCat">主分类</label><select id="filterCat"><option value="all"${selected('all',filters.cat)}>全部主分类</option>${catOptions}</select></div>
+      <div class="filter-field"><label for="filterSub">子分类</label><select id="filterSub"><option value="all"${selected('all',filters.sub)}>全部子分类</option>${subOptions}</select></div>
+      <div class="filter-field"><label>自定义日期</label><div class="filter-dates"><input id="filterStart" type="date" aria-label="开始日期" value="${filters.start}"><input id="filterEnd" type="date" aria-label="结束日期" value="${filters.end}"></div></div>
+      <div class="filter-field"><label>金额范围（元）</label><div class="filter-amounts"><input id="filterMin" type="number" inputmode="decimal" min="0" step="0.01" aria-label="最低金额" placeholder="最低" value="${min}"><input id="filterMax" type="number" inputmode="decimal" min="0" step="0.01" aria-label="最高金额" placeholder="最高" value="${max}"></div></div>
+    </div><div class="filter-actions">${active?`<button type="button" class="clear" data-action="clear-filters">清空筛选</button>`:''}<button type="button" data-action="apply-filters">应用筛选</button></div>
+  </form></div>`;
+}
+
 function renderList(){
   if(!state.records.length)return `<div class="card"><div class="empty">还没有任何记录<br><span style="font-size:13px;font-weight:500">点右下角「记一笔」开始吧 ✨</span></div></div>`;
+  const active=hasActiveFilters(),records=filterRecords(state.records,state.filters);
+  let h=renderFilterPanel();
+  if(active){const income=sumType(records,'income'),expense=sumType(records,'expense');h+=`<div class="filter-summary"><div>结果<b>${records.length} 笔</b></div><div>收入<b class="in-c">+${fmt(income)}</b></div><div>支出<b class="ex-c">-${fmt(expense)}</b></div></div>`;}
+  if(!records.length)return h+`<div class="card"><div class="empty">没有找到符合条件的记录<br><span style="font-size:13px;font-weight:500">可以调整或清空筛选条件</span></div></div>`;
   const yMap={};
-  state.records.forEach(r=>{const y=r.date.slice(0,4),ym=r.date.slice(0,7);
+  records.forEach(r=>{const y=r.date.slice(0,4),ym=r.date.slice(0,7);
     if(!yMap[y])yMap[y]={year:y,exp:0,inc:0,count:0,months:{}};
     yMap[y][r.type==='income'?'inc':'exp']+=r.amountCents;yMap[y].count++;
     if(!yMap[y].months[ym])yMap[y].months[ym]={ym,exp:0,inc:0,items:[]};
     yMap[y].months[ym][r.type==='income'?'inc':'exp']+=r.amountCents;yMap[y].months[ym].items.push(r);});
   const groups=Object.values(yMap).map(g=>({...g,
     months:Object.values(g.months).map(m=>({...m,items:m.items.sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt))})).sort((a,b)=>b.ym.localeCompare(a.ym))})).sort((a,b)=>b.year.localeCompare(a.year));
-  let h=`<div class="hint">默认按年折叠,点年展开月份、再点月份看明细 👇</div>`;
-  groups.forEach(yg=>{const yo=!!state.openYears[yg.year];
+  h+=`<div class="hint">${active?'筛选结果已自动展开，可直接查看明细':'默认按年折叠，点年展开月份、再点月份看明细 👇'}</div>`;
+  groups.forEach(yg=>{const yo=active||!!state.openYears[yg.year];
     h+=`<div class="acc"><button class="acc-head" data-action="toggle-year" data-value="${yg.year}"><span class="l"><span class="chev ${yo?'':'closed'}">▾</span>${yg.year}年<span class="c">(${yg.count}笔 · ${yg.months.length}个月)</span></span><span class="r"><div class="in">收 +${fmt(yg.inc)}</div><div class="ex">支 -${fmt(yg.exp)}</div></span></button>`;
     if(yo){h+=`<div class="months">`;
-      yg.months.forEach(g=>{const gm=+g.ym.split('-')[1],mo=!!state.openMonths[g.ym];
+      yg.months.forEach(g=>{const gm=+g.ym.split('-')[1],mo=active||!!state.openMonths[g.ym];
         h+=`<div class="macc"><button class="macc-head" data-action="toggle-month" data-value="${g.ym}"><span class="l"><span class="chev ${mo?'':'closed'}">▾</span>${gm}月<span class="c">(${g.items.length}笔)</span></span><span class="r"><span class="in" style="font-size:12px;font-weight:700">+${fmt(g.inc)}</span> · <span class="ex" style="font-size:12px;font-weight:700">-${fmt(g.exp)}</span></span></button>`;
         if(mo){h+=`<div class="items">`;
           g.items.forEach(r=>{const c=getCat(r.type,r.cat),inc=r.type==='income';
@@ -560,10 +626,34 @@ function setView(v){state.view=v;state.selectedDay=null;render();}
 function setTab(t){state.tab=t;if(t==='calendar')state.view='month';render();}
 function setCalMode(m){state.calMode=m;state.selectedDay=null;render();}
 function shift(d){state.selectedDay=null;if(state.view==='year'){state.year+=d;render();return;}let m=state.month+d,y=state.year;if(m>11){m=0;y++;}if(m<0){m=11;y--;}state.month=m;state.year=y;render();}
+function goToday(){const date=new Date();state.view='month';state.year=date.getFullYear();state.month=date.getMonth();state.selectedDay=null;render();}
 function calShift(d){if(state.view==='year')state.view='month';shift(d);}
 function selDay(ds){state.selectedDay=state.selectedDay===ds?null:ds;render();}
 function togY(y){state.openYears[y]=!state.openYears[y];render();}
 function togM(ym){state.openMonths[ym]=!state.openMonths[ym];render();}
+function readFilterAmount(id){
+  const raw=document.getElementById(id).value.trim();if(!raw)return null;
+  if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return false;
+  const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>=0?cents:false;
+}
+function applyFilters(){
+  const keyword=document.getElementById('filterKeyword').value.trim().slice(0,40);
+  let type=document.getElementById('filterType').value,cat=document.getElementById('filterCat').value,sub=document.getElementById('filterSub').value;
+  const range=document.getElementById('filterRange').value;
+  let start=document.getElementById('filterStart').value,end=document.getElementById('filterEnd').value;
+  const minCents=readFilterAmount('filterMin'),maxCents=readFilterAmount('filterMax');
+  if(minCents===false||maxCents===false){toast('金额最多保留两位小数');return;}
+  if(minCents!==null&&maxCents!==null&&minCents>maxCents){toast('最低金额不能高于最高金额');return;}
+  if(range==='custom'){
+    if(!start&&!end){toast('请至少选择一个自定义日期');return;}
+    if(start&&!validDate(start)||end&&!validDate(end)){toast('请输入正确的日期');return;}
+    if(start&&end&&start>end){toast('开始日期不能晚于结束日期');return;}
+  }else{start='';end='';}
+  if(sub!=='all'){const parts=sub.split('/');type=parts[0];cat=`${parts[0]}/${parts[1]}`;}
+  else if(cat!=='all')type=cat.split('/')[0];
+  state.filters={keyword,type,cat,sub,range,start,end,minCents,maxCents};render();
+}
+function clearFilters(){state.filters=defaultFilters();render();}
 let deletedUndo=null;
 function delRec(id){
   const index=state.records.findIndex(r=>r.id===id);if(index<0)return;
@@ -779,9 +869,10 @@ document.addEventListener('click',event=>{
   const action=el.dataset.action,value=el.dataset.value;
   if(action==='close-overlay'&&event.target!==el)return;
   const actions={
-    'set-view':()=>setView(value),'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),
+    'set-view':()=>setView(value),'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,
     'set-calendar-mode':()=>setCalMode(value),'calendar-shift':()=>calShift(Number(value)),'select-day':()=>selDay(value),
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),'open-tag':()=>openTag(value),
+    'apply-filters':applyFilters,'clear-filters':clearFilters,
     'open-add':()=>openRecordForm(value),'edit-record':()=>openRecordForm(null,value),'copy-record':()=>copyRecord(value),'delete-record':()=>delRec(value),
     'undo-delete':undoDelete,'close-modal':closeModals,'close-overlay':closeModals,
     'switch-type':()=>switchType(value),'select-category':()=>selCat(value),'select-subcategory':()=>selSub(value),'select-quick':()=>selQuick(value),
@@ -793,6 +884,7 @@ document.addEventListener('click',event=>{
   };
   if(actions[action])actions[action]();
 });
+document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
 document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('modals').innerHTML)closeModals();});
 
 render();
