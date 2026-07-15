@@ -326,6 +326,10 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .toast.show{opacity:1;pointer-events:auto;}
 .toast button{display:none;min-width:44px;min-height:44px;border:none;background:#fff;color:#4f46e5;border-radius:99px;padding:4px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;}
 .toast.undo button{display:block;}
+@media(max-width:639px){
+  input,select,textarea{font-size:16px!important;}
+  .amount-box input{font-size:26px!important;}
+}
 </style>
 </head>
 <body>
@@ -362,6 +366,18 @@ const PROJECT_STATUSES={active:'进行中',completed:'已完成',archived:'已�
 const FIXED_EXPENSE_KEYS=new Set(['living/rent','living/utility']);
 const getCat=(t,k)=>(t==='income'?INCOME_CATS:EXPENSE_CATS)[k];
 const fmt=cents=>(Number(cents)/100).toLocaleString('zh-CN',{minimumFractionDigits:2,maximumFractionDigits:2});
+function calendarAmountLabel(cents){
+  const yuan=Number(cents)/100;
+  if(yuan>=10000)return`${(yuan/10000).toFixed(1).replace(/\.0$/,'')}万`;
+  if(yuan>=1000)return`${(yuan/1000).toFixed(1).replace(/\.0$/,'')}k`;
+  const decimals=cents%100===0?0:2,text=yuan.toFixed(decimals);
+  return decimals?text.replace(/0$/,''):text;
+}
+function calendarDayTotals(records,year,month){
+  const totals={income:{},expense:{}},prefix=`${year}-${String(month+1).padStart(2,'0')}-`;
+  records.forEach(record=>{if(!record.date.startsWith(prefix))return;const values=totals[record.type];values[record.date]=(values[record.date]||0)+record.amountCents;});
+  return totals;
+}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SCHEMA_VERSION=2;
 const BACKUP_VERSION=2;
@@ -856,7 +872,7 @@ function renderOverview(recs){
 
 function renderCalendar(){
   const recs=state.records.filter(r=>{const[y,m]=r.date.split('-').map(Number);return y===state.year&&m-1===state.month;});
-  const dInc={},dExp={};recs.forEach(r=>{const o=r.type==='income'?dInc:dExp;o[r.date]=(o[r.date]||0)+r.amountCents;});
+  const totals=calendarDayTotals(recs,state.year,state.month),dInc=totals.income,dExp=totals.expense;
   const map=state.calMode==='income'?dInc:dExp, other=state.calMode==='income'?dExp:dInc;
   const mx=Math.max(1,...Object.values(map));
   const accent=state.calMode==='income'?'#10b981':'#6366f1';
@@ -869,8 +885,8 @@ function renderCalendar(){
     const amt=map[ds]||0, active=state.selectedDay===ds, has=amt>0, hasOther=(other[ds]||0)>0;
     const intensity=has?Math.min(1,amt/mx):0;
     const bg=has?`rgba(${rgb},${0.08+intensity*0.4})`:'#f8fafc';
-    cells+=`<button class="day ${has?'has':''}" style="border-color:${active?accent:'transparent'};background:${bg}" data-action="select-day" data-value="${ds}" aria-label="${d}日${has?'，'+fmt(amt)+'元':''}">
-      <span class="dn">${d}</span>${has?`<span class="amt" style="color:${accent}">${amt>=1000?(amt/1000).toFixed(1)+'k':Math.round(amt)}</span>`:''}
+    cells+=`<button class="day ${has?'has':''}" style="border-color:${active?accent:'transparent'};background:${bg}" data-action="select-day" data-value="${ds}" aria-label="${d}日${has?'，'+fmt(amt)+'元':''}"${has?` title="${state.calMode==='income'?'收入':'支出'} ¥${fmt(amt)}"`:''}>
+      <span class="dn">${d}</span>${has?`<span class="amt" style="color:${accent}">${calendarAmountLabel(amt)}</span>`:''}
       ${hasOther?`<span class="flag" style="background:${state.calMode==='income'?'#6366f1':'#10b981'}"></span>`:''}</button>`;
   }
   let h=`<div class="card calendar-card"><div class="cal-nav"><button data-action="calendar-shift" data-value="-1" aria-label="上个月">‹</button><span>${state.year}年${state.month+1}月</span><button data-action="calendar-shift" data-value="1" aria-label="下个月">›</button></div>
@@ -1159,7 +1175,7 @@ function openRecordForm(type,id=null,preset=null){
     <div class="sheet-foot"><button id="saveBtn" class="save-btn" data-action="save-record">${record?'保存修改':'保存'} ✨</button>${record?'':`<button class="secondary-toggle" data-action="toggle-record-section" data-value="secondary">更多保存方式</button><div id="secondaryActions" class="sheet-actions secondary-actions hidden"><button data-action="save-template">存为模板</button><button data-action="save-and-continue">保存并再记</button></div>`}</div>
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
-  refreshType();document.getElementById('fAmt').focus();
+  refreshType();document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function switchType(t){form.type=t;const obj=t==='income'?INCOME_CATS:EXPENSE_CATS,recent=prefs.recent[t];form.cat=recent?recent.cat:Object.keys(obj)[0];form.sub=recent?recent.sub:Object.keys(obj[form.cat].subs)[0];refreshType();}
 function refreshType(){
