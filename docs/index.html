@@ -19,7 +19,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 /* header */
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .top-actions{display:flex;align-items:center;gap:8px;}
-.data-button{width:44px;height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:14px;font-size:17px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);}
+.data-button{min-width:58px;height:44px;padding:0 9px;display:flex;align-items:center;justify-content:center;gap:4px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:14px;font-size:16px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.04);font-family:inherit;}
+.data-button span{font-size:11px;font-weight:800;}
 .logo{display:flex;align-items:center;gap:10px;}
 .logo .pig{background:#fff;color:#6366f1;padding:8px;border-radius:16px;border:2px solid #c7d2fe;font-size:18px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
 .logo h1{font-size:20px;font-weight:800;color:#475569;}
@@ -123,7 +124,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .goal-money{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin-bottom:7px;color:#94a3b8;font-size:11px;font-weight:700;}
 .goal-money b{display:block;color:#475569;font-size:18px;}
 .goal-advice{background:#f8fafc;border-radius:12px;padding:9px 10px;margin-top:9px;color:#64748b;font-size:12px;line-height:1.5;}
-.goal-actions{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:10px;}
+.goal-actions{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;margin-top:10px;}
 .goal-actions button{min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:7px 4px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;}
 .goal-actions .primary{background:#6366f1;border-color:#6366f1;color:#fff;}
 .project-card{border:2px solid #f1f5f9;border-radius:18px;padding:14px;margin-bottom:10px;}.project-card:last-child{margin-bottom:0;}
@@ -158,9 +159,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .follow-action{width:100%;min-height:44px;display:flex;align-items:center;gap:9px;text-align:left;border:2px solid #e2e8f0;background:#fff;border-radius:14px;padding:9px 11px;color:#475569;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;}
 .follow-action .check{width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex:none;border:2px solid #c7d2fe;border-radius:7px;color:#fff;}
 .follow-action.done{color:#94a3b8;text-decoration:line-through;background:#f8fafc;}.follow-action.done .check{background:#6366f1;border-color:#6366f1;text-decoration:none;}
-.cashflow-split{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px;}
-.cashflow-split div{border:2px solid #f1f5f9;border-radius:14px;padding:11px;color:#94a3b8;font-size:11px;font-weight:700;}
-.cashflow-split b{display:block;color:#475569;font-size:16px;margin-top:3px;}
 .cashflow-plan{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .cashflow-plan div{background:#f8fafc;border-radius:14px;padding:10px;color:#94a3b8;font-size:11px;font-weight:700;}
 .cashflow-plan b{display:block;color:#475569;font-size:14px;margin-top:3px;}
@@ -187,7 +185,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .cal-hint span{display:flex;align-items:center;gap:4px;}
 .day-detail{margin-top:16px;border-top:2px dashed #f1f5f9;padding-top:12px;}
 .day-detail .dt{font-weight:800;color:#475569;font-size:14px;margin-bottom:8px;}
-.drow{display:flex;align-items:center;gap:8px;font-size:14px;padding:2px 0;}
+.drow{width:100%;min-height:44px;display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 0;border:none;background:none;text-align:left;font-family:inherit;}
 .drow .ic{padding:6px;border-radius:12px;font-size:14px;line-height:1;}
 .drow .amt{margin-left:auto;font-weight:700;}
 .tagmini{font-size:10px;padding:2px 6px;border-radius:8px;background:#eef2ff;color:#6366f1;font-weight:700;}
@@ -202,8 +200,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .filter-search button,.filter-actions button{min-height:44px;border:none;background:#6366f1;color:#fff;border-radius:14px;padding:11px 14px;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;}
 .filter-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .filter-field label{display:block;font-size:11px;color:#94a3b8;font-weight:700;margin:0 0 5px 2px;}
+.filter-field.wide{grid-column:1/-1;}
 .filter-field input,.filter-field select{width:100%;height:44px;background:#f8fafc;border:2px solid #e2e8f0;border-radius:12px;padding:0 9px;color:#475569;font-size:13px;font-weight:600;outline:none;font-family:inherit;}
-.filter-dates,.filter-amounts{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.filter-dates{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .filter-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px;}
 .filter-actions .clear{background:#fff;color:#64748b;border:2px solid #e2e8f0;}
 .filter-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 12px;}
@@ -279,31 +278,34 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .save-btn.e{background:#6366f1;}.save-btn.e:hover{background:#4f46e5;}
 .save-btn.i{background:#10b981;}.save-btn.i:hover{background:#059669;}
 .sheet-foot{padding:0 24px 20px;}
-.sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px;}
-.sheet-actions button{min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:14px;padding:11px 8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
 .record-choice{display:flex;align-items:center;gap:8px;background:#f8fafc;border:2px solid #f1f5f9;border-radius:14px;padding:9px 10px;margin-top:8px;}
 .record-choice .value{flex:1;min-width:0;color:#475569;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .record-choice button,.record-toggle{min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:8px 11px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
 .record-toggle{width:100%;margin-top:8px;}
 .record-more{margin-top:12px;padding-top:12px;border-top:2px dashed #f1f5f9;}
-.record-more.hidden,.secondary-actions.hidden{display:none;}
+.record-more.hidden{display:none;}
 .project-chip{display:flex;align-items:center;gap:8px;background:#eef2ff;border:2px solid #e0e7ff;border-radius:14px;padding:9px 10px;margin-top:10px;color:#4f46e5;font-size:12px;font-weight:800;}
 .project-chip span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .project-chip button{min-width:44px;min-height:44px;border:none;background:#fff;color:#6366f1;border-radius:10px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
-.secondary-toggle{width:100%;min-height:44px;border:none;background:none;color:#94a3b8;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;margin-top:4px;}
+.record-summary{margin:0 0 10px;padding:10px 12px;background:#f8fafc;border-radius:12px;color:#64748b;font-size:12px;font-weight:800;line-height:1.5;text-align:center;}
+.secondary-save{width:100%;min-height:44px;margin-top:8px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:14px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;}
 .quick-picks{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;scrollbar-width:none;}
 .quick-picks::-webkit-scrollbar{display:none;}
 .quick-picks button{flex:none;min-height:44px;border:2px solid #e0e7ff;background:#eef2ff;color:#4f46e5;border-radius:12px;padding:7px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;}
 .quick-list{display:flex;flex-direction:column;gap:8px;}
+.home-shortcuts{margin-bottom:16px;}
 .quick-row{display:flex;align-items:stretch;gap:8px;}
 .quick-main{flex:1;min-width:0;border:2px solid #f1f5f9;background:#f8fafc;border-radius:14px;padding:10px 12px;text-align:left;cursor:pointer;font-family:inherit;}
 .quick-main .name{display:block;color:#475569;font-size:14px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .quick-main .meta{display:block;color:#94a3b8;font-size:12px;font-weight:600;margin-top:2px;}
-.quick-remove{width:44px;min-height:44px;border:2px solid #f1f5f9;background:#fff;color:#cbd5e1;border-radius:14px;font-size:16px;cursor:pointer;}
+.analysis-card>summary{min-height:44px;display:flex;align-items:center;color:#475569;font-size:15px;font-weight:800;cursor:pointer;list-style:none;}
+.analysis-card>summary::-webkit-details-marker{display:none;}
+.analysis-card[open]>summary{margin-bottom:16px;}
 /* tag detail */
 .td-box{background:#eef2ff;border-radius:16px;padding:16px;text-align:center;border:2px solid #e0e7ff;margin-bottom:16px;}
 .td-box .l{font-size:12px;color:#818cf8;font-weight:700;}
 .td-box .n{font-size:30px;font-weight:800;color:#4f46e5;}
+.td-box .n.ex-c{color:#e11d48;}
 /* backup bar */
 .backup{display:flex;gap:8px;margin-top:4px;}
 .backup button{flex:1;min-height:44px;background:#fff;border:2px solid #e2e8f0;color:#64748b;border-radius:14px;padding:8px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;}
@@ -549,7 +551,7 @@ function normalizeDecisions(source){
   const projectIds=new Set();
   (Array.isArray(source.projects)?source.projects:[]).slice(0,30).forEach(raw=>{
     if(!raw||typeof raw!=='object'||!validId(raw.id)||projectIds.has(raw.id)||!PROJECT_TYPES[raw.type]||!PROJECT_STATUSES[raw.status]||!validDate(String(raw.startDate||''))||!validDate(String(raw.endDate||''))||raw.startDate>raw.endDate){ignored++;return;}
-    const name=typeof raw.name==='string'?raw.name.trim().slice(0,20):'',budgetCents=Number.isSafeInteger(raw.budgetCents)&&raw.budgetCents>0?raw.budgetCents:null,people=Number.isInteger(raw.people)&&raw.people>=1&&raw.people<=20?raw.people:null;if(!name||budgetCents===null){ignored++;return;}
+    const name=typeof raw.name==='string'?raw.name.trim().slice(0,20):'',budgetCents=Number.isSafeInteger(raw.budgetCents)&&raw.budgetCents>=0?raw.budgetCents:null,people=raw.type==='travel'&&Number.isInteger(raw.people)&&raw.people>=1&&raw.people<=20?raw.people:null;if(!name||budgetCents===null){ignored++;return;}
     projectIds.add(raw.id);decisionData.projects.push({id:raw.id,name,type:raw.type,budgetCents,startDate:raw.startDate,endDate:raw.endDate,people,status:raw.status,createdAt:validIso(raw.createdAt)?new Date(raw.createdAt).toISOString():'',updatedAt:validIso(raw.updatedAt)?new Date(raw.updatedAt).toISOString():''});
   });
   if(Array.isArray(source.projects)&&source.projects.length>30)ignored+=source.projects.length-30;
@@ -622,16 +624,17 @@ function filterRecords(records,filters,today=todayStr()){
 function monthKey(year=state.year,month=state.month){return `${year}-${String(month+1).padStart(2,'0')}`;}
 function previousMonthKey(value){const[y,m]=value.split('-').map(Number),date=new Date(y,m-2,1);return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`;}
 function projectForId(id,decisionData=decisions){return id?decisionData.projects.find(project=>project.id===id)||null:null;}
+function projectAppliesOn(project,date){return !!(project&&project.status==='active'&&validDate(date)&&project.startDate<=date&&date<=project.endDate);}
 function calculateProject(project,records=state.records){
   const items=records.filter(record=>record.type==='expense'&&record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
-  return {items,actualCents,remainingCents:project.budgetCents-actualCents,percent:project.budgetCents?actualCents/project.budgetCents*100:0,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};
+  return {items,actualCents,remainingCents:project.budgetCents?project.budgetCents-actualCents:null,percent:project.budgetCents?actualCents/project.budgetCents*100:null,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};
 }
 function projectBudgetForMonth(value,decisionData=decisions){return decisionData.projects.filter(project=>project.status!=='archived'&&project.startDate.slice(0,7)===value).reduce((sum,project)=>sum+project.budgetCents,0);}
 function calculateBudget(value,records=state.records,decisionData=decisions){
   const budget=decisionData.budgets[value]||null,actualByCat={};let spentCents=0;
   records.forEach(record=>{if(record.type!=='expense'||record.date.slice(0,7)!==value||projectForId(record.projectId,decisionData))return;spentCents+=record.amountCents;actualByCat[record.cat]=(actualByCat[record.cat]||0)+record.amountCents;});
   const categories=budget?Object.entries(budget.categories).map(([cat,limitCents])=>{const actualCents=actualByCat[cat]||0;return {cat,limitCents,actualCents,percent:limitCents?actualCents/limitCents*100:0};}).sort((a,b)=>b.percent-a.percent):[];
-  return {configured:!!budget,budget,totalCents:budget?budget.totalCents:null,spentCents,remainingCents:budget&&budget.totalCents!==null?budget.totalCents-spentCents:null,percent:budget&&budget.totalCents?spentCents/budget.totalCents*100:null,categories};
+  return {configured:!!(budget&&budget.totalCents!==null),budget,totalCents:budget?budget.totalCents:null,spentCents,remainingCents:budget&&budget.totalCents!==null?budget.totalCents-spentCents:null,percent:budget&&budget.totalCents?spentCents/budget.totalCents*100:null,categories};
 }
 function budgetLevel(percent){return percent===null?'':percent>=100?'over':percent>=80?'warn':'';}
 function monthsUntil(targetDate,baseDate=todayStr()){
@@ -658,8 +661,6 @@ function reviewObservations(metrics,decisionData=decisions){
   if(!metrics.budget.configured)items.push({warn:true,text:'本月没有预算，无法判断支出是否符合月初计划。'});
   else if(metrics.budget.percent!==null&&metrics.budget.percent>=100)items.push({warn:true,text:`总预算已超出 ¥${fmt(Math.abs(metrics.budget.remainingCents))}。`});
   else if(metrics.budget.percent!==null)items.push({warn:metrics.budget.percent>=80,text:`总预算执行率为 ${metrics.budget.percent.toFixed(1)}%，剩余 ¥${fmt(Math.max(0,metrics.budget.remainingCents))}。`});
-  const overCats=metrics.budget.categories.filter(item=>item.percent>=100).map(item=>EXPENSE_CATS[item.cat].name);
-  if(overCats.length)items.push({warn:true,text:`分类超支：${overCats.join('、')}。`});
   if(decisionData.goals.some(goal=>goal.status==='active'))items.push({warn:metrics.goalContributionCents===0,text:metrics.goalContributionCents?`本月完成 ${metrics.goalContributionCount} 次目标投入，共 ¥${fmt(metrics.goalContributionCents)}。`:'本月还没有目标投入记录。'});
   return items;
 }
@@ -673,21 +674,16 @@ function calculateCashflow(records=state.records,decisionData=decisions,baseDate
   const keys=recentCompleteMonthKeys(baseDate),periods=keys.map(key=>{const items=records.filter(record=>record.date.slice(0,7)===key),incomeCents=sumType(items,'income'),expenseCents=sumType(items,'expense'),fixedCents=items.filter(isFixedExpense).reduce((sum,item)=>sum+item.amountCents,0);return {key,recordCount:items.length,incomeCents,expenseCents,fixedCents,adjustableCents:expenseCents-fixedCents,balanceCents:incomeCents-expenseCents};}).filter(item=>item.recordCount>0);
   const average=field=>periods.length?Math.round(periods.reduce((sum,item)=>sum+item[field],0)/periods.length):0;
   const averageIncomeCents=average('incomeCents'),averageExpenseCents=average('expenseCents'),averageFixedCents=average('fixedCents'),averageAdjustableCents=average('adjustableCents'),averageBalanceCents=averageIncomeCents-averageExpenseCents;
-  const activeGoals=decisionData.goals.filter(goal=>goal.status==='active'),requiredGoalCents=activeGoals.reduce((sum,goal)=>sum+calculateGoal(goal,baseDate).recommendedCents,0),positiveBalance=Math.max(0,averageBalanceCents),goalScenarios={conservativeCents:Math.floor(positiveBalance/2),balancedCents:Math.floor(positiveBalance*7/10),stretchCents:Math.floor(positiveBalance*9/10)};
+  const activeGoals=decisionData.goals.filter(goal=>goal.status==='active'),requiredGoalCents=activeGoals.reduce((sum,goal)=>sum+calculateGoal(goal,baseDate).recommendedCents,0);
   const projectBudgetCents=projectBudgetForMonth(baseDate.slice(0,7),decisionData),currentBudget=decisionData.budgets[baseDate.slice(0,7)]||null,dailyPlanCents=currentBudget&&currentBudget.totalCents!==null?currentBudget.totalCents:periods.length?averageExpenseCents:null,plannedExpenseCents=dailyPlanCents===null?null:dailyPlanCents+projectBudgetCents;
   const planBalanceCents=plannedExpenseCents===null||!periods.length?null:averageIncomeCents-plannedExpenseCents-requiredGoalCents;
-  return {keys,periods,sampleCount:periods.length,averageIncomeCents,averageExpenseCents,averageFixedCents,averageAdjustableCents,averageBalanceCents,activeGoalCount:activeGoals.length,requiredGoalCents,goalScenarios,currentBudget,projectBudgetCents,plannedExpenseCents,planBalanceCents};
+  return {keys,periods,sampleCount:periods.length,averageIncomeCents,averageExpenseCents,averageFixedCents,averageAdjustableCents,averageBalanceCents,activeGoalCount:activeGoals.length,requiredGoalCents,currentBudget,projectBudgetCents,plannedExpenseCents,planBalanceCents};
 }
 function cashflowObservations(metrics){
   const items=[];
-  if(!metrics.sampleCount)return [{warn:true,text:'最近三个完整月份没有收支记录，暂时无法判断现金流能力。'}];
-  if(metrics.sampleCount<3)items.push({warn:true,text:`当前只有 ${metrics.sampleCount} 个月有效样本，结论仅供参考。`});
-  if(metrics.averageBalanceCents<=0)items.push({warn:true,text:`历史月均${metrics.averageBalanceCents<0?'缺口':'结余'}为 ¥${fmt(Math.abs(metrics.averageBalanceCents))}，暂不建议增加目标月投入。`});
-  else items.push({warn:false,text:`历史月均结余 ¥${fmt(metrics.averageBalanceCents)}，按不同缓冲比例可安排 ¥${fmt(metrics.goalScenarios.conservativeCents)} 至 ¥${fmt(metrics.goalScenarios.stretchCents)}。`});
-  if(metrics.activeGoalCount&&metrics.requiredGoalCents>metrics.goalScenarios.stretchCents)items.push({warn:true,text:`进行中目标每月建议投入 ¥${fmt(metrics.requiredGoalCents)}，高于当前历史结余的激进情景。`});
-  else if(metrics.activeGoalCount&&metrics.requiredGoalCents>metrics.goalScenarios.conservativeCents)items.push({warn:true,text:`目标建议投入高于保守情景，需要确认家庭愿意减少多少现金缓冲。`});
-  else if(metrics.activeGoalCount)items.push({warn:false,text:`进行中目标的建议月投入处于保守情景范围内。`});
-  if(metrics.planBalanceCents!==null&&metrics.planBalanceCents<0)items.push({warn:true,text:`按${metrics.currentBudget&&metrics.currentBudget.totalCents!==null?'日常预算':'历史平均支出'}${metrics.projectBudgetCents?'、当月专项预算':''}和目标投入估算，每月仍缺口 ¥${fmt(Math.abs(metrics.planBalanceCents))}。`});
+  if(!metrics.sampleCount)return [{warn:true,text:'最近三个完整月份没有收支记录，暂时无法估算计划后结余。'}];
+  if(metrics.sampleCount<3)items.push({warn:true,text:`当前只有 ${metrics.sampleCount} 个月有效样本，估算可信度较低。`});
+  if(metrics.planBalanceCents!==null)items.push({warn:metrics.planBalanceCents<0,text:`按${metrics.currentBudget&&metrics.currentBudget.totalCents!==null?'本月日常预算':'历史平均支出'}${metrics.projectBudgetCents?'、当月专项预算':''}${metrics.activeGoalCount?'和目标建议投入':''}估算，计划后${metrics.planBalanceCents<0?'缺口':'结余'} ¥${fmt(Math.abs(metrics.planBalanceCents))}。`});
   return items;
 }
 
@@ -725,7 +721,7 @@ function render(){
   let html=`
   <div class="top">
     <div class="logo"><div class="pig">🐷</div><h1>我的小账本</h1></div>
-    <div class="top-actions">${state.tab==='home'?`<div class="seg"><button class="${state.view==='month'?'on':''}" data-action="set-view" data-value="month">月</button><button class="${state.view==='year'?'on':''}" data-action="set-view" data-value="year">年</button></div>`:''}<button class="data-button" data-action="open-data-management" aria-label="数据管理">☁️</button></div>
+    <div class="top-actions">${state.tab==='home'?`<div class="seg"><button class="${state.view==='month'?'on':''}" data-action="set-view" data-value="month">月</button><button class="${state.view==='year'?'on':''}" data-action="set-view" data-value="year">年</button></div>`:''}<button class="data-button" data-action="open-data-management" aria-label="数据与备份">☁️<span>数据</span></button></div>
   </div>`;
   if(state.tab==='home')html+=`<div class="card-sum">
     <div class="blob" style="width:112px;height:112px;right:-24px;top:-24px;"></div>
@@ -755,16 +751,10 @@ function render(){
 
 function renderQuickActions(){
   const latest=[...state.records].sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt))[0];
-  if(!latest&&!prefs.templates.length)return '';
-  let h=`<div class="card"><h3>⚡ 快速记账 <span class="sub">少点几步</span></h3><div class="quick-list">`;
-  if(latest){
-    const cat=getCat(latest.type,latest.cat);
-    h+=`<div class="quick-row"><button class="quick-main" data-action="copy-record" data-value="${latest.id}"><span class="name">⧉ 复制最近一笔</span><span class="meta">${cat.emoji} ${cat.subs[latest.sub]} · ¥${fmt(latest.amountCents)}</span></button></div>`;
-  }
-  prefs.templates.forEach(template=>{
-    const cat=getCat(template.type,template.cat),amount=template.amountCents?` · ¥${fmt(template.amountCents)}`:'';
-    h+=`<div class="quick-row"><button class="quick-main" data-action="apply-template" data-value="${template.id}"><span class="name">${cat.emoji} ${esc(template.name)}</span><span class="meta">${template.type==='income'?'收入':'支出'} · ${cat.subs[template.sub]}${amount}</span></button><button class="quick-remove" data-action="delete-template" data-value="${template.id}" aria-label="删除模板 ${esc(template.name)}">🗑</button></div>`;
-  });
+  if(!latest)return '';
+  let h=`<div class="home-shortcuts"><div class="quick-list">`;
+  const cat=getCat(latest.type,latest.cat);
+  h+=`<div class="quick-row"><button class="quick-main" data-action="copy-record" data-value="${latest.id}"><span class="name">⧉ 复制最近一笔</span><span class="meta">${cat.emoji} ${cat.subs[latest.sub]} · ¥${fmt(latest.amountCents)}</span></button></div>`;
   return h+`</div></div>`;
 }
 
@@ -775,44 +765,43 @@ function renderBudgetCard(showAction=true){
   let h=`<div class="card"><h3>🎯 本月日常预算 <span class="sub">${label}</span></h3>`;
   if(metrics.totalCents!==null){const level=budgetLevel(metrics.percent),remaining=metrics.remainingCents;
     h+=`<div class="budget-hero"><div class="budget-head"><div><div class="label">日常预算总额</div><div class="value">¥${fmt(metrics.totalCents)}</div></div><div class="remain">${remaining>=0?'剩余':'已超出'}<b class="${remaining<0?'ex-c':''}">¥${fmt(Math.abs(remaining))}</b></div></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>日常已用 ¥${fmt(metrics.spentCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div></div>`;
-  }else h+=`<div class="budget-hero"><div class="budget-head"><div><div class="label">本月已支出</div><div class="value">¥${fmt(metrics.spentCents)}</div></div><div class="remain">已设置<b>${metrics.categories.length} 项分类预算</b></div></div></div>`;
-  metrics.categories.slice(0,5).forEach(item=>{const cat=EXPENSE_CATS[item.cat],level=budgetLevel(item.percent);h+=`<div class="budget-row"><div class="topline"><span>${cat.emoji} ${cat.name}</span><span class="amount">¥${fmt(item.actualCents)} / ${fmt(item.limitCents)}</span></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,item.percent)}%"></div></div></div>`;});
+  }
   if(showAction)h+=`<div class="budget-actions"><button data-action="open-planning">管理本月预算</button></div>`;
   return h+`</div>`;
 }
 
 function renderBudgetPlanning(){
   const key=monthKey(),metrics=calculateBudget(key),budget=metrics.budget||{totalCents:null,categories:{}},previous=decisions.budgets[previousMonthKey(key)];
-  let h=`<div class="card"><h3>🧭 制定月度计划 <span class="sub">${state.year}年${state.month+1}月</span></h3><p class="planning-note">先设置日常总预算；只有真正需要重点控制的分类，才单独设置分类预算。正式专项使用各自预算。</p>
-    <div class="budget-form-row"><div class="name">本月日常预算<span>不含已关联正式专项的支出</span></div><div class="money">¥<input id="budgetTotal" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月日常预算" placeholder="未设置" value="${budget.totalCents?(budget.totalCents/100).toFixed(2):''}"></div></div><details class="advanced-import"><summary>设置重点分类预算（可选）</summary>`;
-  Object.entries(EXPENSE_CATS).forEach(([catKey,cat])=>{const value=budget.categories[catKey],actual=metrics.categories.find(item=>item.cat===catKey)?.actualCents||state.records.filter(record=>record.type==='expense'&&record.cat===catKey&&record.date.slice(0,7)===key&&!projectForId(record.projectId)).reduce((sum,record)=>sum+record.amountCents,0);h+=`<div class="budget-form-row"><div class="name">${cat.emoji} ${cat.name}<span>日常已用 ¥${fmt(actual)}</span></div><div class="money">¥<input class="category-budget" data-cat="${catKey}" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="${cat.name}预算" placeholder="未设置" value="${value?(value/100).toFixed(2):''}"></div></div>`;});
-  h+=`</details><div class="budget-actions">${previous&&!metrics.configured?`<button data-action="copy-previous-budget">复制上月预算</button>`:''}<button class="primary" data-action="save-budget">保存本月预算</button></div></div>`;
+  return `<div class="card"><h3>🧭 制定月度计划 <span class="sub">${state.year}年${state.month+1}月</span></h3><p class="planning-note">日常只设置一个总预算；旅行、装修等生活事件使用各自的专项预算。</p>
+    <div class="budget-form-row"><div class="name">本月日常预算<span>不含已关联正式专项的支出</span></div><div class="money">¥<input id="budgetTotal" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月日常预算" placeholder="未设置" value="${budget.totalCents?(budget.totalCents/100).toFixed(2):''}"></div></div><div class="budget-actions">${previous&&previous.totalCents&&!metrics.configured?`<button data-action="copy-previous-budget">复制上月预算</button>`:''}<button class="primary" data-action="save-budget">保存本月预算</button></div></div>`;
+}
+
+function projectCardMarkup(project){
+  const type=PROJECT_TYPES[project.type],metrics=calculateProject(project),current=project.id===decisions.currentProjectId,level=budgetLevel(metrics.percent),budget=project.budgetCents?`<div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ¥${fmt(project.budgetCents)} · ${metrics.percent.toFixed(1)}%</span></div>`:`<div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>未设置预算</span></div>`,stats=project.type==='travel'?`<div>记录<b>${metrics.items.length} 笔</b></div><div>人均<b>¥${fmt(metrics.perPersonCents)}</b></div><div>人均每天<b>¥${fmt(metrics.perPersonDayCents)}</b></div>`:`<div>记录<b>${metrics.items.length} 笔</b></div><div>周期<b>${metrics.days} 天</b></div><div>${project.budgetCents?'剩余':'预算'}<b>${project.budgetCents?`¥${fmt(Math.max(0,metrics.remainingCents))}`:'未设置'}</b></div>`;
+  return `<div class="project-card ${current?'current':''}"><div class="goal-title"><div class="name">${type.emoji} ${esc(project.name)}${current?'<span class="project-current">当前</span>':''}<span class="meta">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</span></div></div>${budget}<div class="project-stats">${stats}</div><div class="project-actions"><button class="primary" data-action="open-project" data-value="${project.id}">查看详情</button><button data-action="open-project-actions" data-value="${project.id}">管理</button></div></div>`;
+}
+function renderProjectsPlanning(){
+  const projects=[...decisions.projects].filter(project=>project.status!=='archived'),active=projects.filter(project=>project.status==='active').sort((a,b)=>a.startDate.localeCompare(b.startDate)),completed=projects.filter(project=>project.status==='completed').sort((a,b)=>b.endDate.localeCompare(a.endDate));
+  let h=`<div class="card"><h3>🧳 专项计划 <span class="sub">生活事件单独归集</span></h3><p class="planning-note">专项支出保留住宿、交通、餐饮等分类，但不占用日常总预算。</p><div class="budget-actions"><button class="primary" data-action="open-project-form">＋ 新建专项</button></div></div>`;
+  if(!projects.length)return h+`<div class="card"><div class="empty">还没有正式专项<br><span style="font-size:12px;font-weight:500">可以从下一次旅行、装修或节日计划开始</span></div></div>`;
+  if(active.length)h+=`<div class="card"><h3>📍 进行中的专项 <span class="sub">${active.length} 个</span></h3>${active.map(projectCardMarkup).join('')}</div>`;
+  else h+=`<div class="card"><div class="empty" style="padding:14px 0">当前没有进行中的专项</div></div>`;
+  if(completed.length)h+=`<details class="card analysis-card"><summary>✅ 已完成专项（${completed.length}）</summary>${completed.map(projectCardMarkup).join('')}</details>`;
   return h;
 }
 
-function renderProjectsPlanning(){
-  const projects=[...decisions.projects].filter(project=>project.status!=='archived').sort((a,b)=>({active:0,completed:1}[a.status]-{active:0,completed:1}[b.status])||b.startDate.localeCompare(a.startDate));
-  let h=`<div class="card"><h3>🧳 专项计划 <span class="sub">生活事件单独预算</span></h3><p class="planning-note">专项支出保留住宿、交通、餐饮等分类，但不占用日常分类预算。</p><div class="budget-actions"><button class="primary" data-action="open-project-form">＋ 新建专项</button></div></div>`;
-  if(!projects.length)return h+`<div class="card"><div class="empty">还没有正式专项<br><span style="font-size:12px;font-weight:500">可以从下一次旅行、装修或节日计划开始</span></div></div>`;
-  h+=`<div class="card"><h3>📍 专项进度 <span class="sub">${projects.length} 个</span></h3>`;
-  projects.forEach(project=>{const type=PROJECT_TYPES[project.type],metrics=calculateProject(project),current=project.id===decisions.currentProjectId,level=budgetLevel(metrics.percent),stats=project.type==='travel'?`<div>记录<b>${metrics.items.length} 笔</b></div><div>人均<b>¥${fmt(metrics.perPersonCents)}</b></div><div>人均每天<b>¥${fmt(metrics.perPersonDayCents)}</b></div>`:`<div>记录<b>${metrics.items.length} 笔</b></div><div>周期<b>${metrics.days} 天</b></div><div>剩余<b>¥${fmt(Math.max(0,metrics.remainingCents))}</b></div>`;h+=`<div class="project-card ${current?'current':''}"><div class="goal-title"><div class="name">${type.emoji} ${esc(project.name)}${current?'<span class="project-current">当前</span>':''}<span class="meta">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</span></div></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ¥${fmt(project.budgetCents)} · ${metrics.percent.toFixed(1)}%</span></div><div class="project-stats">${stats}</div><div class="project-actions"><button data-action="open-project" data-value="${project.id}">查看详情</button><button data-action="edit-project" data-value="${project.id}">编辑计划</button>${project.status==='active'?`<button class="${current?'':'primary'}" data-action="set-current-project" data-value="${current?'':project.id}">${current?'取消当前':'设为当前'}</button><button data-action="set-project-status" data-value="${project.id}/completed">完成专项</button>`:`<button data-action="set-project-status" data-value="${project.id}/active">重新启用</button>`}</div></div>`;});
-  return h+`</div>`;
+function goalCardMarkup(goal){
+  const type=GOAL_TYPES[goal.type],metrics=calculateGoal(goal),level=metrics.percent>=100?'completed':goal.status,advice=goal.status==='completed'?'目标已完成，历史投入仍会保留。':goal.status==='paused'?'目标已暂停。':metrics.remainingCents===0?'目标金额已经达成，可以标记完成。':`距离目标月还有 ${metrics.months} 个月，建议每月投入 ¥${fmt(metrics.recommendedCents)}。`;
+  return `<div class="goal-card"><div class="goal-title"><div class="name">${type.emoji} ${esc(goal.name)}<span class="meta">${type.name} · 目标日期 ${goal.targetDate}</span></div><span class="goal-status ${level}">${GOAL_STATUSES[goal.status]}</span></div><div class="goal-money"><span>已投入<b>¥${fmt(metrics.savedCents)}</b></span><span style="text-align:right">目标 ¥${fmt(goal.targetCents)}<br>还差 ¥${fmt(metrics.remainingCents)}</span></div><div class="budget-progress"><div class="fill ${metrics.percent>=100?'':'warn'}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>${goal.contributions.length} 次确认</span><span>${Math.min(999,metrics.percent).toFixed(1)}%</span></div><div class="goal-advice">${advice}</div><div class="goal-actions">${goal.status==='active'?`<button class="primary" data-action="open-contribution" data-value="${goal.id}">记录投入</button>`:''}<button data-action="open-goal-actions" data-value="${goal.id}">管理</button></div></div>`;
 }
-
 function renderGoalsPlanning(){
-  const goals=[...decisions.goals].sort((a,b)=>({active:0,paused:1,completed:2}[a.status]-{active:0,paused:1,completed:2}[b.status])||a.targetDate.localeCompare(b.targetDate));
-  const active=goals.filter(goal=>goal.status==='active'),saved=goals.reduce((sum,goal)=>sum+calculateGoal(goal).savedCents,0),target=goals.reduce((sum,goal)=>sum+goal.targetCents,0);
-  let h=`<div class="card"><h3>🏁 财务目标 <span class="sub">手动确认每次投入</span></h3><div class="goal-summary"><div>进行中<b>${active.length} 个</b></div><div>累计投入<b>¥${fmt(saved)}</b></div><div>目标合计<b>¥${fmt(target)}</b></div></div><p class="planning-note">目标投入独立于日常收支，只有你确认“这笔钱已留出”后才计入进度。</p><div class="budget-actions"><button class="primary" data-action="open-goal-form">＋ 新建财务目标</button></div></div>`;
-  if(!goals.length)return h+`<div class="card"><div class="empty">还没有财务目标<br><span style="font-size:12px;font-weight:500">可以先从应急储备或下一次旅行开始</span></div></div>`;
-  h+=`<div class="card"><h3>📍 目标进度 <span class="sub">${goals.length} 个</span></h3>`;
-  goals.forEach(goal=>{
-    const type=GOAL_TYPES[goal.type],metrics=calculateGoal(goal),level=metrics.percent>=100?'completed':goal.status;
-    const advice=goal.status==='completed'?'目标已手动完成，投入记录仍会保留。':goal.status==='paused'?'目标已暂停，恢复后再继续安排投入。':metrics.remainingCents===0?'目标金额已经达成，可以标记完成。':`距离目标月还有 ${metrics.months} 个月，建议每月投入 ¥${fmt(metrics.recommendedCents)}。`;
-    const statusAction=goal.status==='completed'?`<button data-action="set-goal-status" data-value="${goal.id}/active">重新启用</button>`:goal.status==='paused'?`<button data-action="set-goal-status" data-value="${goal.id}/active">恢复目标</button>`:metrics.remainingCents===0?`<button data-action="set-goal-status" data-value="${goal.id}/completed">标记完成</button>`:`<button data-action="set-goal-status" data-value="${goal.id}/paused">暂停目标</button>`;
-    const mainAction=goal.status==='active'?`<button class="primary" data-action="open-contribution" data-value="${goal.id}">记录投入</button>`:goal.status==='paused'?`<button data-action="set-goal-status" data-value="${goal.id}/completed">标记完成</button>`:'';
-    h+=`<div class="goal-card"><div class="goal-title"><div class="name">${type.emoji} ${esc(goal.name)}<span class="meta">${type.name} · 目标日期 ${goal.targetDate}</span></div><span class="goal-status ${level}">${GOAL_STATUSES[goal.status]}</span></div><div class="goal-money"><span>已投入<b>¥${fmt(metrics.savedCents)}</b></span><span style="text-align:right">目标 ¥${fmt(goal.targetCents)}<br>还差 ¥${fmt(metrics.remainingCents)}</span></div><div class="budget-progress"><div class="fill ${metrics.percent>=100?'':'warn'}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption">${goal.contributions.length?`<button class="goal-history" data-action="open-contribution-history" data-value="${goal.id}">查看 ${goal.contributions.length} 次投入</button>`:'<span>暂无投入</span>'}<span>${Math.min(999,metrics.percent).toFixed(1)}%</span></div><div class="goal-advice">${advice}</div><div class="goal-actions"><button data-action="edit-goal" data-value="${goal.id}">编辑目标</button>${statusAction}${mainAction}</div></div>`;
-  });
-  return h+`</div>`;
+  const goals=[...decisions.goals],active=goals.filter(goal=>goal.status==='active').sort((a,b)=>a.targetDate.localeCompare(b.targetDate)),paused=goals.filter(goal=>goal.status==='paused').sort((a,b)=>a.targetDate.localeCompare(b.targetDate)),completed=goals.filter(goal=>goal.status==='completed').sort((a,b)=>b.targetDate.localeCompare(a.targetDate)),saved=goals.reduce((sum,goal)=>sum+calculateGoal(goal).savedCents,0),target=goals.reduce((sum,goal)=>sum+goal.targetCents,0);
+  let h=`<div class="card"><h3>🏁 财务目标 <span class="sub">为未来留出资金</span></h3><div class="goal-summary"><div>进行中<b>${active.length} 个</b></div><div>累计投入<b>¥${fmt(saved)}</b></div><div>目标合计<b>¥${fmt(target)}</b></div></div><p class="planning-note">目标用于攒钱，实际发生旅行、装修等支出时请建立专项。目标投入不计入日常收支。</p><div class="budget-actions"><button class="primary" data-action="open-goal-form">＋ 新建财务目标</button></div></div>`;
+  if(!goals.length)return h+`<div class="card"><div class="empty">还没有财务目标<br><span style="font-size:12px;font-weight:500">可以先从应急储备开始</span></div></div>`;
+  if(active.length)h+=`<div class="card"><h3>📍 进行中的目标 <span class="sub">${active.length} 个</span></h3>${active.map(goalCardMarkup).join('')}</div>`;
+  if(paused.length)h+=`<details class="card analysis-card"><summary>⏸ 已暂停目标（${paused.length}）</summary>${paused.map(goalCardMarkup).join('')}</details>`;
+  if(completed.length)h+=`<details class="card analysis-card"><summary>✅ 已完成目标（${completed.length}）</summary>${completed.map(goalCardMarkup).join('')}</details>`;
+  return h;
 }
 
 function renderReviewPlanning(){
@@ -832,18 +821,14 @@ function renderReviewPlanning(){
 
 function renderCashflowPlanning(){
   const selected=monthKey(),current=todayStr().slice(0,7),baseDate=selected===current?todayStr():`${selected}-01`,metrics=calculateCashflow(state.records,decisions,baseDate),observations=cashflowObservations(metrics),periodLabel=metrics.periods.map(item=>item.key).reverse().join('、');
-  let h=`<div class="card"><h3>💧 家庭现金流能力 <span class="sub">最近三个完整月份</span></h3>`;
-  if(!metrics.sampleCount)h+=`<div class="empty" style="padding:18px 0">历史数据还不够<br><span style="font-size:12px;font-weight:500">至少记录一个完整月份后再进行判断</span></div>`;
-  else h+=`<div class="review-summary"><div>月均收入<b class="in-c">¥${fmt(metrics.averageIncomeCents)}</b></div><div>月均支出<b>¥${fmt(metrics.averageExpenseCents)}</b></div><div>月均结余<b class="${metrics.averageBalanceCents<0?'negative':''}">${metrics.averageBalanceCents<0?'-':''}¥${fmt(Math.abs(metrics.averageBalanceCents))}</b></div></div><p class="planning-note" style="margin:0">有效样本：${periodLabel}，共 ${metrics.sampleCount} 个月。</p><div class="cashflow-split"><div>固定承诺月均<b>¥${fmt(metrics.averageFixedCents)}</b></div><div>可调整支出月均<b>¥${fmt(metrics.averageAdjustableCents)}</b></div></div>`;
-  h+=`</div>`;
-  if(!metrics.sampleCount)return h;
-  if(metrics.sampleCount){h+=`<div class="card"><h3>🛟 目标投入情景</h3><div class="goal-summary"><div>保守 50％<b>¥${fmt(metrics.goalScenarios.conservativeCents)}</b></div><div>平衡 70％<b>¥${fmt(metrics.goalScenarios.balancedCents)}</b></div><div>激进 90％<b>¥${fmt(metrics.goalScenarios.stretchCents)}</b></div></div><p class="planning-note">按历史月均结余的不同比例估算，只用于比较现金缓冲取舍，不代表账户中的实际可用余额。</p><div class="cashflow-plan"><div>日常计划依据<b>${metrics.currentBudget&&metrics.currentBudget.totalCents!==null?'本月预算':'历史月均'}</b></div><div>当月专项预算<b>¥${fmt(metrics.projectBudgetCents)}</b></div><div>${metrics.activeGoalCount} 个进行中目标<b>¥${fmt(metrics.requiredGoalCents)}／月</b></div><div>计划后余额<b class="${metrics.planBalanceCents<0?'ex-c':''}">${metrics.planBalanceCents<0?'-':''}¥${fmt(Math.abs(metrics.planBalanceCents))}</b></div></div></div>`;}
-  h+=`<div class="card"><h3>🧭 可行性判断</h3><div class="review-observations">${observations.map(item=>`<div class="review-observation ${item.warn?'warn':''}">${item.warn?'⚠️':'✓'} ${item.text}</div>`).join('')}</div><p class="planning-note" style="margin:12px 0 0">当前只能识别“房租、水电燃气”为固定承诺，保险、教育、医疗等必要支出仍可能被归入可调整支出；以下判断应作为讨论线索，而不是确定结论。</p></div>`;
+  let h=`<div class="card"><h3>💧 计划后结余 <span class="sub">${metrics.sampleCount===3?'可信度较高':metrics.sampleCount?'可信度较低':'等待历史数据'}</span></h3>`;
+  if(!metrics.sampleCount)return h+`<div class="empty" style="padding:18px 0">历史数据还不够<br><span style="font-size:12px;font-weight:500">至少记录一个完整月份后再估算</span></div></div>`;
+  h+=`<div class="td-box"><div class="l">按当前预算、专项和目标估算</div><div class="n ${metrics.planBalanceCents<0?'ex-c':''}">${metrics.planBalanceCents<0?'-':''}¥${fmt(Math.abs(metrics.planBalanceCents))}</div><div class="planning-note" style="margin:4px 0 0">${metrics.planBalanceCents<0?'预计缺口':'预计结余'}</div></div><div class="review-observations">${observations.map(item=>`<div class="review-observation ${item.warn?'warn':''}">${item.warn?'⚠️':'✓'} ${item.text}</div>`).join('')}</div><details class="advanced-import"><summary>查看估算依据</summary><div class="cashflow-plan"><div>历史月均收入<b>¥${fmt(metrics.averageIncomeCents)}</b></div><div>日常支出依据<b>${metrics.currentBudget&&metrics.currentBudget.totalCents!==null?`预算 ¥${fmt(metrics.currentBudget.totalCents)}`:`月均 ¥${fmt(metrics.averageExpenseCents)}`}</b></div><div>本月开始的专项预算<b>¥${fmt(metrics.projectBudgetCents)}</b></div><div>目标建议投入<b>¥${fmt(metrics.requiredGoalCents)}／月</b></div></div><p class="planning-note" style="margin:10px 0 0">有效样本：${periodLabel}。该结果不读取账户余额，也不能完整识别固定支出，只用于发现明显缺口。</p></details></div>`;
   return h;
 }
 
 function renderPlanning(){
-  const content=state.planningView==='projects'?renderProjectsPlanning():state.planningView==='goals'?renderGoalsPlanning():state.planningView==='summary'?renderReviewPlanning()+renderCashflowPlanning():renderBudgetPlanning();
+  const content=state.planningView==='projects'?renderProjectsPlanning():state.planningView==='goals'?renderGoalsPlanning():state.planningView==='summary'?renderReviewPlanning():renderBudgetPlanning()+renderCashflowPlanning();
   return `<div class="planning-seg"><button class="${state.planningView==='budget'?'on':''}" data-action="set-planning-view" data-value="budget">🎯 预算</button><button class="${state.planningView==='projects'?'on':''}" data-action="set-planning-view" data-value="projects">🧳 专项</button><button class="${state.planningView==='goals'?'on':''}" data-action="set-planning-view" data-value="goals">🏁 目标</button><button class="${state.planningView==='summary'?'on':''}" data-action="set-planning-view" data-value="summary">📝 月结</button></div>${content}`;
 }
 
@@ -853,20 +838,21 @@ function renderDetails(){
 
 function renderOverview(recs){
   const exp=recs.filter(r=>r.type==='expense');
-  if(!state.records.length)return `<div class="card"><h3>👋 从第一笔开始</h3><p style="font-size:14px;color:#64748b;line-height:1.7">先记录今天的一笔支出。连续使用后，首页会逐步出现预算执行、消费排行和月度趋势。</p><div class="budget-actions"><button class="primary" data-action="open-add" data-value="expense">＋ 记录第一笔支出</button></div></div>`;
+  if(!state.records.length)return `<div class="card"><h3>👋 从第一笔开始</h3><p style="font-size:14px;color:#64748b;line-height:1.7">先记录今天的一笔支出，再设置本月日常预算。</p><div class="budget-actions"><button class="primary" data-action="open-add" data-value="expense">＋ 记录第一笔支出</button></div></div>`;
   let h=renderBudgetCard();
   const currentProject=projectForId(decisions.currentProjectId);
-  if(currentProject){const type=PROJECT_TYPES[currentProject.type],metrics=calculateProject(currentProject);h+=`<div class="card"><h3>📍 当前专项 <span class="sub">记账时自动带入</span></h3><div class="project-card current"><div class="goal-title"><div class="name">${type.emoji} ${esc(currentProject.name)}<span class="project-current">当前</span><span class="meta">${currentProject.startDate} 至 ${currentProject.endDate}</span></div></div><div class="budget-progress"><div class="fill ${budgetLevel(metrics.percent)}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ${metrics.percent.toFixed(1)}％</span></div><div class="budget-actions"><button data-action="open-project" data-value="${currentProject.id}">查看专项</button></div></div></div>`;}
+  if(currentProject){const type=PROJECT_TYPES[currentProject.type],metrics=calculateProject(currentProject),auto=projectAppliesOn(currentProject,todayStr()),budget=currentProject.budgetCents?`<div class="budget-progress"><div class="fill ${budgetLevel(metrics.percent)}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ${metrics.percent.toFixed(1)}％</span></div>`:`<div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>未设置预算</span></div>`;h+=`<div class="card"><h3>📍 当前专项 <span class="sub">${auto?'今天记账时自动带入':'当前不在专项日期内'}</span></h3><div class="project-card current"><div class="goal-title"><div class="name">${type.emoji} ${esc(currentProject.name)}<span class="project-current">当前</span><span class="meta">${currentProject.startDate} 至 ${currentProject.endDate}</span></div></div>${budget}<div class="budget-actions"><button data-action="open-project" data-value="${currentProject.id}">查看专项</button></div></div></div>`;}
   const budget=state.view==='month'?calculateBudget(monthKey()):null;
   let insight='继续记录一段时间后，这里会给出更有针对性的月度观察。',warn=false;
   if(budget&&budget.configured&&budget.percent!==null){warn=budget.percent>=80;insight=budget.percent>=100?`日常预算已经超出 ¥${fmt(Math.abs(budget.remainingCents))}，本月应优先检查可推迟的支出。`:`日常预算已使用 ${budget.percent.toFixed(1)}％，还可安排 ¥${fmt(Math.max(0,budget.remainingCents))}。`;}
   else if(exp.length){const catTotals={};exp.forEach(record=>{catTotals[record.cat]=(catTotals[record.cat]||0)+record.amountCents;});const top=Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0],total=sumType(exp,'expense');if(top)insight=`${EXPENSE_CATS[top[0]].name}是当前最大支出，占本期支出的 ${(top[1]/total*100).toFixed(1)}％。`;}
   h+=`<div class="card"><h3>💡 本期观察</h3><div class="review-observation ${warn?'warn':''}">${warn?'⚠️':'✓'} ${insight}</div></div>`;
-  const trendMonths=new Set(state.records.filter(record=>record.date.startsWith(String(state.year))).map(record=>record.date.slice(0,7)));
-  if(trendMonths.size>=2)h+=`<div class="card"><h3>📈 ${state.year}年 收支趋势</h3><div class="legend"><span><i class="dot" style="background:#10b981"></i>收入</span><span><i class="dot" style="background:#6366f1"></i>支出</span></div>${trendSVG()}</div>`;
+  let analysis='';const trendMonths=new Set(state.records.filter(record=>record.date.startsWith(String(state.year))).map(record=>record.date.slice(0,7)));
+  if(trendMonths.size>=2)analysis+=`<h3>📈 ${state.year}年 收支趋势</h3><div class="legend"><span><i class="dot" style="background:#10b981"></i>收入</span><span><i class="dot" style="background:#6366f1"></i>支出</span></div>${trendSVG()}`;
   const subMap={};exp.forEach(r=>{const k=r.cat+'/'+r.sub;subMap[k]=(subMap[k]||0)+r.amountCents;});
   const subs=Object.entries(subMap).map(([k,v])=>{const[c,s]=k.split('/');return{name:EXPENSE_CATS[c].subs[s],catName:EXPENSE_CATS[c].name,color:EXPENSE_CATS[c].color,value:v};}).sort((a,b)=>b.value-a.value).slice(0,5);
-  if(subs.length){h+=`<div class="card"><h3>🔥 支出排行 <span class="sub">前 ${subs.length} 项</span></h3>`;const mx=subs[0].value;subs.forEach(s=>{h+=`<div class="bar-item"><div class="row"><span class="l"><span class="cat">${s.catName}·</span>${s.name}</span><span class="r">¥${fmt(s.value)}</span></div><div class="track"><div class="fill" style="width:${s.value/mx*100}%;background:${s.color}"></div></div></div>`;});h+=`</div>`;}
+  if(subs.length){analysis+=`<h3 style="margin-top:${analysis?'18px':'0'}">🔥 支出排行 <span class="sub">前 ${subs.length} 项</span></h3>`;const mx=subs[0].value;subs.forEach(s=>{analysis+=`<div class="bar-item"><div class="row"><span class="l"><span class="cat">${s.catName}·</span>${s.name}</span><span class="r">¥${fmt(s.value)}</span></div><div class="track"><div class="fill" style="width:${s.value/mx*100}%;background:${s.color}"></div></div></div>`;});}
+  if(analysis)h+=`<details class="card analysis-card"><summary>📊 查看趋势和排行</summary>${analysis}</details>`;
   return h;
 }
 
@@ -899,7 +885,7 @@ function renderCalendar(){
     h+=`<div class="day-detail"><div class="dt">${state.selectedDay}</div>`;
     if(!dr.length)h+=`<div class="empty" style="padding:12px 0">这天没有记录</div>`;
     else dr.forEach(r=>{const c=getCat(r.type,r.cat),inc=r.type==='income',project=projectForId(r.projectId),scene=project?project.name:r.tag;
-      h+=`<div class="drow"><span class="ic" style="background:${c.color}24">${c.emoji}</span><span style="color:#475569;font-weight:600">${c.subs[r.sub]}</span>${scene?`<span class="tagmini">${esc(scene)}</span>`:''}<span class="amt ${inc?'in-c':'ex-c'}">${inc?'+':'-'}¥${fmt(r.amountCents)}</span></div>`;});
+      h+=`<button class="drow" data-action="open-record-actions" data-value="${r.id}"><span class="ic" style="background:${c.color}24">${c.emoji}</span><span style="color:#475569;font-weight:600">${c.subs[r.sub]}</span>${scene?`<span class="tagmini">${esc(scene)}</span>`:''}<span class="amt ${inc?'in-c':'ex-c'}">${inc?'+':'-'}¥${fmt(r.amountCents)}</span></button>`;});
     h+=`</div>`;
   }
   h+=`</div>`;return h;
@@ -907,23 +893,12 @@ function renderCalendar(){
 
 function renderFilterPanel(){
   const filters=state.filters,selected=(value,current)=>value===current?' selected':'',active=hasActiveFilters();
-  let catOptions='',subOptions='';
-  [['expense',EXPENSE_CATS,'支出'],['income',INCOME_CATS,'收入']].forEach(([type,cats,typeName])=>{
-    Object.entries(cats).forEach(([catKey,cat])=>{
-      catOptions+=`<option value="${type}/${catKey}"${selected(`${type}/${catKey}`,filters.cat)}>${typeName} · ${cat.name}</option>`;
-      Object.entries(cat.subs).forEach(([subKey,subName])=>{subOptions+=`<option value="${type}/${catKey}/${subKey}"${selected(`${type}/${catKey}/${subKey}`,filters.sub)}>${typeName} · ${cat.name} · ${subName}</option>`;});
-    });
-  });
-  const min=filters.minCents===null?'':(filters.minCents/100).toFixed(2),max=filters.maxCents===null?'':(filters.maxCents/100).toFixed(2);
   return `<div class="card filter-card"><h3>🔎 查找明细 ${active?`<span class="sub">筛选已生效</span>`:''}</h3><form id="filterForm">
     <div class="filter-search"><input id="filterKeyword" type="search" maxlength="40" placeholder="搜索备注、专项或分类" value="${esc(filters.keyword)}"><button type="button" data-action="apply-filters">搜索</button></div><button class="record-toggle" type="button" data-action="toggle-filters">${state.filtersExpanded||active?'收起筛选条件':'更多筛选条件'}</button>
     <div class="filter-advanced ${state.filtersExpanded||active?'':'hidden'}"><div class="filter-grid" style="margin-top:12px">
       <div class="filter-field"><label for="filterType">收支类型</label><select id="filterType"><option value="all"${selected('all',filters.type)}>全部收支</option><option value="expense"${selected('expense',filters.type)}>只看支出</option><option value="income"${selected('income',filters.type)}>只看收入</option></select></div>
       <div class="filter-field"><label for="filterRange">日期范围</label><select id="filterRange"><option value="all"${selected('all',filters.range)}>全部日期</option><option value="month"${selected('month',filters.range)}>本月</option><option value="lastMonth"${selected('lastMonth',filters.range)}>上月</option><option value="year"${selected('year',filters.range)}>今年</option><option value="custom"${selected('custom',filters.range)}>自定义</option></select></div>
-      <div class="filter-field"><label for="filterCat">主分类</label><select id="filterCat"><option value="all"${selected('all',filters.cat)}>全部主分类</option>${catOptions}</select></div>
-      <div class="filter-field"><label for="filterSub">子分类</label><select id="filterSub"><option value="all"${selected('all',filters.sub)}>全部子分类</option>${subOptions}</select></div>
-      <div class="filter-field"><label>自定义日期</label><div class="filter-dates"><input id="filterStart" type="date" aria-label="开始日期" value="${filters.start}"><input id="filterEnd" type="date" aria-label="结束日期" value="${filters.end}"></div></div>
-      <div class="filter-field"><label>金额范围（元）</label><div class="filter-amounts"><input id="filterMin" type="number" inputmode="decimal" min="0" step="0.01" aria-label="最低金额" placeholder="最低" value="${min}"><input id="filterMax" type="number" inputmode="decimal" min="0" step="0.01" aria-label="最高金额" placeholder="最高" value="${max}"></div></div>
+      <div class="filter-field wide"><label>自定义日期</label><div class="filter-dates"><input id="filterStart" type="date" aria-label="开始日期" value="${filters.start}"><input id="filterEnd" type="date" aria-label="结束日期" value="${filters.end}"></div></div>
     </div><div class="filter-actions">${active?`<button type="button" class="clear" data-action="clear-filters">清空筛选</button>`:''}<button type="button" data-action="apply-filters">应用筛选</button></div></div>
   </form></div>`;
 }
@@ -971,27 +946,17 @@ function calShift(d){if(state.view==='year')state.view='month';shift(d);}
 function selDay(ds){state.selectedDay=state.selectedDay===ds?null:ds;render();}
 function togY(y){state.openYears[y]=!state.openYears[y];render();}
 function togM(ym){state.openMonths[ym]=!state.openMonths[ym];render();}
-function readFilterAmount(id){
-  const raw=document.getElementById(id).value.trim();if(!raw)return null;
-  if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return false;
-  const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>=0?cents:false;
-}
 function applyFilters(){
   const keyword=document.getElementById('filterKeyword').value.trim().slice(0,40);
-  let type=document.getElementById('filterType').value,cat=document.getElementById('filterCat').value,sub=document.getElementById('filterSub').value;
+  const type=document.getElementById('filterType').value;
   const range=document.getElementById('filterRange').value;
   let start=document.getElementById('filterStart').value,end=document.getElementById('filterEnd').value;
-  const minCents=readFilterAmount('filterMin'),maxCents=readFilterAmount('filterMax');
-  if(minCents===false||maxCents===false){toast('金额最多保留两位小数');return;}
-  if(minCents!==null&&maxCents!==null&&minCents>maxCents){toast('最低金额不能高于最高金额');return;}
   if(range==='custom'){
     if(!start&&!end){toast('请至少选择一个自定义日期');return;}
     if(start&&!validDate(start)||end&&!validDate(end)){toast('请输入正确的日期');return;}
     if(start&&end&&start>end){toast('开始日期不能晚于结束日期');return;}
   }else{start='';end='';}
-  if(sub!=='all'){const parts=sub.split('/');type=parts[0];cat=`${parts[0]}/${parts[1]}`;}
-  else if(cat!=='all')type=cat.split('/')[0];
-  state.filters={keyword,type,cat,sub,range,start,end,minCents,maxCents};render();
+  state.filters={keyword,type,cat:'all',sub:'all',range,start,end,minCents:null,maxCents:null};render();
 }
 function toggleFilters(){const box=document.querySelector('.filter-advanced'),button=document.querySelector('[data-action="toggle-filters"]'),willOpen=box?box.classList.contains('hidden'):!state.filtersExpanded;state.filtersExpanded=willOpen;if(box)box.classList.toggle('hidden',!willOpen);if(button)button.textContent=willOpen?'收起筛选条件':'更多筛选条件';}
 function clearFilters(){state.filters=defaultFilters();state.filtersExpanded=false;render();}
@@ -1002,20 +967,15 @@ function readBudgetInput(element){
 }
 function saveBudget(){
   const totalCents=readBudgetInput(document.getElementById('budgetTotal'));if(totalCents===false){toast('总预算最多保留两位小数');return;}
-  const categories={};let invalid=false;
-  document.querySelectorAll('.category-budget').forEach(input=>{const value=readBudgetInput(input);if(value===false)invalid=true;else if(value!==null)categories[input.dataset.cat]=value;});
-  if(invalid){toast('分类预算最多保留两位小数');return;}
-  const categoryTotal=Object.values(categories).reduce((sum,value)=>sum+value,0);
-  if(totalCents===null&&!categoryTotal){toast('请至少设置一项预算');return;}
-  if(totalCents!==null&&categoryTotal>totalCents){toast('分类预算合计不能高于总预算');return;}
+  if(totalCents===null){toast('请输入本月日常预算');return;}
   const key=monthKey(),old=decisions.budgets[key],nowIso=new Date().toISOString();
-  decisions.budgets[key]={totalCents,categories,updatedAt:nowIso};
+  decisions.budgets[key]={totalCents,categories:old&&old.categories?old.categories:{},updatedAt:nowIso};
   if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
   render();toast('本月日常预算已保存');
 }
 function copyPreviousBudget(){
   const key=monthKey(),source=decisions.budgets[previousMonthKey(key)];if(!source){toast('上月没有可复制的预算');return;}
-  const old=decisions.budgets[key];decisions.budgets[key]={totalCents:source.totalCents,categories:{...source.categories},updatedAt:new Date().toISOString()};
+  const old=decisions.budgets[key];decisions.budgets[key]={totalCents:source.totalCents,categories:old&&old.categories?old.categories:{},updatedAt:new Date().toISOString()};
   if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
   render();toast('已复制上月预算');
 }
@@ -1038,11 +998,11 @@ function toggleReviewAction(value){
 let projectFormId=null;
 function openProjectForm(id=null){
   const project=id?decisions.projects.find(item=>item.id===id):null;projectFormId=project?project.id:null;const options=Object.entries(PROJECT_TYPES).map(([key,item])=>`<option value="${key}"${project&&project.type===key?' selected':''}>${item.emoji} ${item.name}</option>`).join('');
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${project?'编辑专项计划':'新建专项计划'}"><div class="sheet-head"><div class="r1"><h3>🧳 ${project?'编辑专项':'新建专项'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="projectName">专项名称</label><input id="projectName" type="text" maxlength="20" placeholder="如：2026 北京旅行" value="${project?esc(project.name):''}"></div><div class="two"><div class="field"><label for="projectType">专项类型</label><select id="projectType">${options}</select></div><div class="field"><label for="projectPeople">参与人数</label><input id="projectPeople" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="选填" value="${project&&project.people?project.people:''}"></div></div><div class="field"><label for="projectBudget">专项预算（元）</label><input id="projectBudget" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${project?(project.budgetCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="projectStart">开始日期</label><input id="projectStart" type="date" value="${project?project.startDate:todayStr()}"></div><div class="field"><label for="projectEnd">结束日期</label><input id="projectEnd" type="date" value="${project?project.endDate:todayStr()}"></div></div><p class="planning-note" style="margin:0">专项预算归入开始日期所在月份；参与人数用于计算人均和人均每天费用。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-project">保存专项计划</button></div></div></div>`;document.body.style.overflow='hidden';document.getElementById('projectName').focus();
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${project?'编辑专项计划':'新建专项计划'}"><div class="sheet-head"><div class="r1"><h3>🧳 ${project?'编辑专项':'新建专项'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="projectName">专项名称</label><input id="projectName" type="text" maxlength="20" placeholder="如：2026 北京旅行" value="${project?esc(project.name):''}"></div><div class="field"><label for="projectType">专项类型</label><select id="projectType">${options}</select></div><div class="field" id="projectPeopleField" style="display:${!project||project.type==='travel'?'block':'none'}"><label for="projectPeople">旅行参与人数</label><input id="projectPeople" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="选填" value="${project&&project.type==='travel'&&project.people?project.people:''}"></div><div class="field"><label for="projectBudget">专项预算（元） <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><input id="projectBudget" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="暂不设置" value="${project&&project.budgetCents?(project.budgetCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="projectStart">开始日期</label><input id="projectStart" type="date" value="${project?project.startDate:todayStr()}"></div><div class="field"><label for="projectEnd">结束日期</label><input id="projectEnd" type="date" value="${project?project.endDate:todayStr()}"></div></div><p class="planning-note" style="margin:0">只有旅行专项使用参与人数计算人均费用；未设置预算时仍可归集实际支出。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-project">保存专项计划</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function saveProject(){
-  const name=document.getElementById('projectName').value.trim().slice(0,20),type=document.getElementById('projectType').value,budgetCents=readBudgetInput(document.getElementById('projectBudget')),startDate=document.getElementById('projectStart').value,endDate=document.getElementById('projectEnd').value,peopleRaw=document.getElementById('projectPeople').value.trim(),people=peopleRaw?Number(peopleRaw):null;
-  if(!name){toast('请填写专项名称');return;}if(!PROJECT_TYPES[type]){toast('请选择专项类型');return;}if(budgetCents===null||budgetCents===false){toast('请输入正确的专项预算');return;}if(!validDate(startDate)||!validDate(endDate)||startDate>endDate){toast('请输入正确的专项日期范围');return;}if(people!==null&&(!Number.isInteger(people)||people<1||people>20)){toast('参与人数应为 1 至 20 人');return;}
+  const name=document.getElementById('projectName').value.trim().slice(0,20),type=document.getElementById('projectType').value,budgetInput=readBudgetInput(document.getElementById('projectBudget')),budgetCents=budgetInput===null?0:budgetInput,startDate=document.getElementById('projectStart').value,endDate=document.getElementById('projectEnd').value,peopleRaw=document.getElementById('projectPeople').value.trim(),people=type==='travel'&&peopleRaw?Number(peopleRaw):null;
+  if(!name){toast('请填写专项名称');return;}if(!PROJECT_TYPES[type]){toast('请选择专项类型');return;}if(budgetCents===false){toast('请输入正确的专项预算');return;}if(!validDate(startDate)||!validDate(endDate)||startDate>endDate){toast('请输入正确的专项日期范围');return;}if(people!==null&&(!Number.isInteger(people)||people<1||people>20)){toast('参与人数应为 1 至 20 人');return;}
   const index=projectFormId?decisions.projects.findIndex(item=>item.id===projectFormId):-1,old=index>=0?decisions.projects[index]:null,nowIso=new Date().toISOString(),next=old?{...old,name,type,budgetCents,startDate,endDate,people,updatedAt:nowIso}:{id:uuid(),name,type,budgetCents,startDate,endDate,people,status:'active',createdAt:nowIso,updatedAt:nowIso};
   if(index>=0)decisions.projects[index]=next;else decisions.projects.push(next);const oldCurrent=decisions.currentProjectId,madeCurrent=!old&&!oldCurrent&&next.status==='active';if(madeCurrent)decisions.currentProjectId=next.id;
   if(!saveDecisions()){if(index>=0)decisions.projects[index]=old;else decisions.projects.pop();decisions.currentProjectId=oldCurrent;return;}
@@ -1058,17 +1018,21 @@ function setProjectStatus(value){
 }
 function openProject(id){
   const project=decisions.projects.find(item=>item.id===id);if(!project)return;const type=PROJECT_TYPES[project.type],metrics=calculateProject(project),byCat={};metrics.items.forEach(item=>{byCat[item.cat]=(byCat[item.cat]||0)+item.amountCents;});const cats=Object.entries(byCat).map(([key,value])=>({cat:EXPENSE_CATS[key],value})).sort((a,b)=>b.value-a.value),items=[...metrics.items].sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt)),level=budgetLevel(metrics.percent);
-  const stats=project.type==='travel'?`<div>天数<b>${metrics.days} 天</b></div><div>人均<b>¥${fmt(metrics.perPersonCents)}</b></div><div>人均每天<b>¥${fmt(metrics.perPersonDayCents)}</b></div>`:`<div>周期<b>${metrics.days} 天</b></div><div>记录<b>${metrics.items.length} 笔</b></div><div>剩余<b>¥${fmt(Math.max(0,metrics.remainingCents))}</b></div>`;
-  let h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="专项详情"><div class="sheet-head"><div class="r1"><div><h3>${type.emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="td-box"><div class="l">专项总花费</div><div class="n">¥${fmt(metrics.actualCents)}</div></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>预算 ¥${fmt(project.budgetCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div><div class="project-stats">${stats}</div>`;
+  const stats=project.type==='travel'?`<div>天数<b>${metrics.days} 天</b></div><div>人均<b>¥${fmt(metrics.perPersonCents)}</b></div><div>人均每天<b>¥${fmt(metrics.perPersonDayCents)}</b></div>`:`<div>周期<b>${metrics.days} 天</b></div><div>记录<b>${metrics.items.length} 笔</b></div><div>${project.budgetCents?'剩余':'预算'}<b>${project.budgetCents?`¥${fmt(Math.max(0,metrics.remainingCents))}`:'未设置'}</b></div>`,budget=project.budgetCents?`<div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>预算 ¥${fmt(project.budgetCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div>`:`<div class="budget-caption"><span>未设置专项预算</span><span>只统计实际支出</span></div>`;
+  let h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="专项详情"><div class="sheet-head"><div class="r1"><div><h3>${type.emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="td-box"><div class="l">专项总花费</div><div class="n">¥${fmt(metrics.actualCents)}</div></div>${budget}<div class="project-stats">${stats}</div>`;
   if(cats.length){h+=`<div class="field"><label>费用构成</label>`;cats.forEach(item=>{h+=`<div class="bar-item"><div class="row"><span class="l">${item.cat.emoji} ${item.cat.name}</span><span class="r">¥${fmt(item.value)}</span></div><div class="track"><div class="fill" style="width:${item.value/metrics.actualCents*100}%;background:${item.cat.color}"></div></div></div>`;});h+=`</div>`;}
-  h+=`<div class="field"><label>支出明细（${items.length}）</label>`;if(!items.length)h+=`<div class="empty" style="padding:14px 0">还没有关联支出</div>`;items.forEach(item=>{const cat=EXPENSE_CATS[item.cat];h+=`<div class="drow"><span class="ic" style="background:${cat.color}24">${cat.emoji}</span><div><div style="color:#475569;font-weight:600">${cat.subs[item.sub]}${item.note?' · '+esc(item.note):''}</div><div style="font-size:12px;color:#cbd5e1">${item.date}</div></div><span class="amt" style="color:#475569">¥${fmt(item.amountCents)}</span></div>`;});h+=`</div></div></div></div>`;document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
+  h+=`<div class="field"><label>支出明细（${items.length}）</label>`;if(!items.length)h+=`<div class="empty" style="padding:14px 0">还没有关联支出</div>`;items.forEach(item=>{const cat=EXPENSE_CATS[item.cat];h+=`<button class="drow" data-action="open-record-actions" data-value="${item.id}"><span class="ic" style="background:${cat.color}24">${cat.emoji}</span><span><span style="display:block;color:#475569;font-weight:600">${cat.subs[item.sub]}${item.note?' · '+esc(item.note):''}</span><span style="font-size:12px;color:#cbd5e1">${item.date}</span></span><span class="amt" style="color:#475569">¥${fmt(item.amountCents)}</span></button>`;});h+=`</div></div></div></div>`;document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
+}
+function openProjectActions(id){
+  const project=decisions.projects.find(item=>item.id===id);if(!project)return;const current=project.id===decisions.currentProjectId;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理专项"><div class="sheet-head"><div class="r1"><div><h3>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="record-action-list"><button data-action="edit-project" data-value="${project.id}">编辑计划</button>${project.status==='active'?`<button data-action="set-current-project" data-value="${current?'':project.id}">${current?'取消当前专项':'设为当前专项'}</button><button data-action="set-project-status" data-value="${project.id}/completed">完成专项</button>`:`<button data-action="set-project-status" data-value="${project.id}/active">重新启用专项</button>`}</div></div></div></div>`;document.body.style.overflow='hidden';
 }
 let goalFormId=null;
 function openGoalForm(id=null){
   const goal=id?decisions.goals.find(item=>item.id===id):null;goalFormId=goal?goal.id:null;
   const options=Object.entries(GOAL_TYPES).map(([key,item])=>`<option value="${key}"${goal&&goal.type===key?' selected':''}>${item.emoji} ${item.name}</option>`).join('');
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${goal?'编辑财务目标':'新建财务目标'}"><div class="sheet-head"><div class="r1"><h3>🏁 ${goal?'编辑目标':'新建目标'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="goalName">目标名称</label><input id="goalName" type="text" maxlength="20" placeholder="如：家庭应急金" value="${goal?esc(goal.name):''}"></div><div class="field"><label for="goalType">目标类型</label><select id="goalType">${options}</select></div><div class="field"><label for="goalAmount">目标金额（元）</label><input id="goalAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${goal?(goal.targetCents/100).toFixed(2):''}"></div><div class="field"><label for="goalDate">目标日期</label><input id="goalDate" type="date" value="${goal?goal.targetDate:''}"></div><p class="planning-note" style="margin:0">保存后会根据剩余金额和目标日期计算建议月投入；已有投入记录不会因编辑目标而丢失。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-goal">保存目标</button></div></div></div>`;
-  document.body.style.overflow='hidden';document.getElementById('goalName').focus();
+  document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function saveGoal(){
   const name=document.getElementById('goalName').value.trim().slice(0,20),type=document.getElementById('goalType').value,targetCents=readBudgetInput(document.getElementById('goalAmount')),targetDate=document.getElementById('goalDate').value;
@@ -1079,13 +1043,17 @@ function saveGoal(){
   if(!saveDecisions()){if(index>=0)decisions.goals[index]=old;else decisions.goals.pop();return;}
   closeModals();render();toast(old?'目标已更新':'目标已创建');
 }
+function openGoalActions(id){
+  const goal=decisions.goals.find(item=>item.id===id);if(!goal)return;const metrics=calculateGoal(goal),statusAction=goal.status==='completed'?`<button data-action="set-goal-status" data-value="${goal.id}/active">重新启用目标</button>`:goal.status==='paused'?`<button data-action="set-goal-status" data-value="${goal.id}/active">恢复目标</button>`:metrics.remainingCents===0?`<button data-action="set-goal-status" data-value="${goal.id}/completed">标记目标完成</button>`:`<button data-action="set-goal-status" data-value="${goal.id}/paused">暂停目标</button>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理财务目标"><div class="sheet-head"><div class="r1"><div><h3>${GOAL_TYPES[goal.type].emoji} ${esc(goal.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${GOAL_STATUSES[goal.status]} · 已投入 ¥${fmt(metrics.savedCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="record-action-list"><button data-action="edit-goal" data-value="${goal.id}">编辑目标</button>${goal.contributions.length?`<button data-action="open-contribution-history" data-value="${goal.id}">查看和纠正投入记录</button>`:''}${statusAction}</div></div></div></div>`;document.body.style.overflow='hidden';
+}
 let contributionForm={goalId:null,id:null};
 function splitContributionValue(value){const slash=value.lastIndexOf('/');return slash>0?[value.slice(0,slash),value.slice(slash+1)]:[value,''];}
 function openContribution(goalId,contributionId=null){
   const goal=decisions.goals.find(item=>item.id===goalId),contribution=goal&&contributionId?goal.contributions.find(item=>item.id===contributionId):null;if(!goal||contributionId&&!contribution||!contribution&&goal.status!=='active')return;
   contributionForm={goalId:goal.id,id:contribution?contribution.id:null};const metrics=calculateGoal(goal);
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${contribution?'编辑目标投入':'记录目标投入'}"><div class="sheet-head"><div class="r1"><div><h3>💰 ${contribution?'编辑目标投入':'记录目标投入'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${esc(goal.name)} · 还差 ¥${fmt(metrics.remainingCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="contributionAmount">本次已留出金额（元）</label><input id="contributionAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${contribution?(contribution.amountCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="contributionDate">投入日期</label><input id="contributionDate" type="date" value="${contribution?contribution.date:todayStr()}"></div><div class="field"><label for="contributionNote">备注</label><input id="contributionNote" type="text" maxlength="20" placeholder="选填" value="${contribution?esc(contribution.note):''}"></div></div><p class="planning-note" style="margin:0">${contribution?'修改后会同步更新目标进度和对应月份复盘。':'这是一条独立的目标投入确认，不会自动新增收入或支出记录。'}</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-contribution">${contribution?'保存修改':'确认已投入'}</button></div></div></div>`;
-  document.body.style.overflow='hidden';document.getElementById('contributionAmount').focus();
+  document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function saveContribution(){
   const index=decisions.goals.findIndex(item=>item.id===contributionForm.goalId);if(index<0)return;
@@ -1140,7 +1108,7 @@ function undoDelete(){
 }
 
 /* ============ 记账弹窗 ============ */
-let form={mode:'add',id:null,type:'expense',cat:'food',sub:'vegetable',projectId:'',showCategories:false,showMore:false};
+let form={mode:'add',id:null,type:'expense',cat:'food',sub:'vegetable',projectId:'',projectAuto:false,projectTouched:false,showCategories:false,showMore:false};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function frequentChoices(type,limit=5){
   const counts=new Map();state.records.filter(record=>record.type===type).forEach(record=>{const key=`${record.cat}/${record.sub}`,old=counts.get(key)||{value:key,count:0,latest:''};old.count++;if(record.date>old.latest)old.latest=record.date;counts.set(key,old);});
@@ -1156,7 +1124,7 @@ function openRecordForm(type,id=null,preset=null){
   const recent=prefs.recent[form.type];
   form.cat=source&&validChoice(form.type,source.cat,source.sub)?source.cat:recent?recent.cat:Object.keys(obj)[0];
   form.sub=source&&validChoice(form.type,source.cat,source.sub)?source.sub:recent?recent.sub:Object.keys(obj[form.cat].subs)[0];
-  const sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId);form.projectId=sourceProject?sourceProject.id:!record&&currentProject&&currentProject.status==='active'?currentProject.id:'';
+  const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate);form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.projectAuto=autoProject;form.projectTouched=false;
   form.showCategories=!frequentChoices(form.type).length;form.showMore=!!record||!!(source&&(source.note||source.tag||source.date&&source.date!==todayStr()));
   const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
   const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
@@ -1170,9 +1138,9 @@ function openRecordForm(type,id=null,preset=null){
       <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起更多选项':'日期、备注与专项'}</button>
       <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field" id="projectField"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div>
         <div class="field" id="tagField"><label for="fTag">旧版专项标签 <span style="color:#cbd5e1;font-weight:500">（保留兼容）</span></label><input id="fTag" type="text" maxlength="12" value="${source?esc(source.tag||''):''}"></div>
-        <div class="two"><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${source&&validDate(source.date||'')?source.date:todayStr()}"></div><div class="field" style="margin:0"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div></div>
+        <div class="two"><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div><div class="field" style="margin:0"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div></div>
     </div>
-    <div class="sheet-foot"><button id="saveBtn" class="save-btn" data-action="save-record">${record?'保存修改':'保存'} ✨</button>${record?'':`<button class="secondary-toggle" data-action="toggle-record-section" data-value="secondary">更多保存方式</button><div id="secondaryActions" class="sheet-actions secondary-actions hidden"><button data-action="save-template">存为模板</button><button data-action="save-and-continue">保存并再记</button></div>`}</div>
+    <div class="sheet-foot"><div id="recordSummary" class="record-summary"></div><button id="saveBtn" class="save-btn" data-action="save-record">${record?'保存修改':'保存'} ✨</button>${record?'':`<button class="secondary-save" data-action="save-and-continue">保存并再记</button>`}</div>
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
   refreshType();document.querySelector('#modals .x').focus({preventScroll:true});
@@ -1208,23 +1176,27 @@ function renderSubList(){
   keys.forEach(k=>{const on=form.sub===k;h+=`<button class="${on?'on':''}" style="${on?'background:'+c.color:''}" data-action="select-subcategory" data-value="${k}">${c.subs[k]}</button>`;});
   document.getElementById('subList').innerHTML=h;
 }
-function refreshSelectedCategory(){const cat=getCat(form.type,form.cat);document.getElementById('selectedCategory').textContent=`${cat.emoji} ${cat.name} · ${cat.subs[form.sub]}`;}
+function refreshSelectedCategory(){const cat=getCat(form.type,form.cat);document.getElementById('selectedCategory').textContent=`${cat.emoji} ${cat.name} · ${cat.subs[form.sub]}`;refreshRecordSummary();}
 function refreshProjectSummary(){
-  const chip=document.getElementById('projectChip'),select=document.getElementById('fProject');if(form.type!=='expense'||!select.value){chip.style.display='none';chip.innerHTML='';return;}
-  chip.style.display='flex';chip.innerHTML=`<span>📍 ${esc(select.options[select.selectedIndex].textContent.replace(' · 当前',''))}</span><button data-action="clear-form-project">取消</button>`;
+  const chip=document.getElementById('projectChip'),select=document.getElementById('fProject');if(form.type!=='expense'||!select.value){chip.style.display='none';chip.innerHTML='';refreshRecordSummary();return;}
+  chip.style.display='flex';chip.innerHTML=`<span>📍 ${esc(select.options[select.selectedIndex].textContent.replace(' · 当前',''))}</span><button data-action="clear-form-project">取消</button>`;refreshRecordSummary();
 }
+function refreshRecordSummary(){const box=document.getElementById('recordSummary');if(!box)return;const cat=getCat(form.type,form.cat),select=document.getElementById('fProject'),project=form.type==='expense'&&select&&select.value?select.options[select.selectedIndex].textContent.replace(' · 当前',''):'';box.textContent=`本笔将记为：${cat.name} · ${cat.subs[form.sub]}${project?`，计入 ${project}`:''}`;}
 function toggleRecordSection(value){
   if(value==='categories'){form.showCategories=!form.showCategories;document.getElementById('categoryMore').classList.toggle('hidden',!form.showCategories);return;}
   if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起更多选项':'日期、备注与专项';return;}
-  if(value==='secondary'){const box=document.getElementById('secondaryActions');if(box)box.classList.toggle('hidden');}
 }
-function clearFormProject(){const select=document.getElementById('fProject');select.value='';form.projectId='';refreshProjectSummary();}
+function clearFormProject(){const select=document.getElementById('fProject');select.value='';form.projectId='';form.projectAuto=false;form.projectTouched=true;refreshProjectSummary();}
+function refreshProjectForDate(){
+  if(form.id||form.type!=='expense'||form.projectTouched)return;
+  const date=document.getElementById('fDate').value,current=projectForId(decisions.currentProjectId),select=document.getElementById('fProject'),applies=projectAppliesOn(current,date);
+  select.value=applies?current.id:'';form.projectId=select.value;form.projectAuto=applies;refreshProjectSummary();
+}
 function selCat(k){form.cat=k;const obj=form.type==='income'?INCOME_CATS:EXPENSE_CATS;form.sub=Object.keys(obj[k].subs)[0];renderCatGrid();renderSubList();refreshSelectedCategory();}
 function selSub(k){form.sub=k;renderSubList();refreshSelectedCategory();}
 function selQuick(value){const[cat,sub]=value.split('/');if(!validChoice(form.type,cat,sub))return;form.cat=cat;form.sub=sub;renderCatGrid();renderSubList();refreshSelectedCategory();}
-function readAmount(required=true){
+function readAmount(){
   const rawAmount=document.getElementById('fAmt').value.trim();
-  if(!rawAmount&&!required)return null;
   if(!/^\d+(?:\.\d{1,2})?$/.test(rawAmount)){toast('金额最多保留两位小数');return false;}
   const amountCents=Math.round(Number(rawAmount)*100);
   if(!Number.isSafeInteger(amountCents)||amountCents<=0){toast('请输入正确的金额');return false;}
@@ -1248,19 +1220,23 @@ function doSave(continueAfter=false){
   if(continueAfter&&!old){const preset={type:form.type,cat:form.cat,sub:form.sub,date,tag,projectId};closeModals();render();openRecordForm(form.type,null,preset);toast('已保存，可以继续记账');return;}
   closeModals();render();toast(old?'修改已保存':'已保存 ✨');
 }
-function saveTemplate(){
-  if(prefs.templates.length>=12){toast('最多保存 12 个模板');return;}
-  const amountCents=readAmount(false);if(amountCents===false)return;
-  const cat=getCat(form.type,form.cat),note=document.getElementById('fNote').value.trim();
-  const tag=form.type==='expense'?(document.getElementById('fTag').value||'').trim():'';
-  prefs.templates.unshift({id:uuid(),name:note||cat.subs[form.sub],type:form.type,cat:form.cat,sub:form.sub,amountCents,note,tag});
-  if(!savePrefs())return;
-  toast('模板已保存，可在首页快速使用');
-}
-function applyTemplate(id){const template=prefs.templates.find(item=>item.id===id);if(template)openRecordForm(template.type,null,{...template,date:todayStr()});}
-function deleteTemplate(id){prefs.templates=prefs.templates.filter(item=>item.id!==id);if(savePrefs()){render();toast('模板已删除');}}
 function copyRecord(id){const record=state.records.find(item=>item.id===id);if(record)openRecordForm(record.type,null,{...record,date:todayStr()});}
-function closeModals(){document.getElementById('modals').innerHTML='';document.body.style.overflow='';}
+let modalReturnFocus=null;
+function syncModalState(){
+  const modals=document.getElementById('modals'),app=document.getElementById('app'),dialog=modals.querySelector('[role="dialog"]'),hasModal=!!dialog;
+  app.inert=hasModal;document.body.style.overflow=hasModal?'hidden':'';
+  if(hasModal){
+    if(!modalReturnFocus&&document.activeElement instanceof HTMLElement&&!modals.contains(document.activeElement))modalReturnFocus=document.activeElement;
+    if(!dialog.contains(document.activeElement)){const initial=dialog.querySelector('.x,button,input,select,textarea');if(initial)initial.focus({preventScroll:true});}
+  }
+}
+function closeModals(){
+  const previous=modalReturnFocus,action=previous&&previous.dataset?previous.dataset.action:'',value=previous&&previous.dataset?previous.dataset.value:'';
+  document.getElementById('modals').innerHTML='';syncModalState();
+  const restore=()=>{const replacement=action?[...document.querySelectorAll(`[data-action="${action}"]`)].find(item=>(item.dataset.value||'')===(value||'')):null,target=replacement||previous;if(target&&document.contains(target))target.focus({preventScroll:true});};
+  restore();setTimeout(restore,0);
+  modalReturnFocus=null;
+}
 
 /* ============ 备份 ============ */
 function openDataManagement(){
@@ -1323,7 +1299,7 @@ function openImportPreview(){
   const importedPrefs=pendingImport.preferences,favorites=importedPrefs.favorites.expense.length+importedPrefs.favorites.income.length,recent=Number(!!importedPrefs.recent.expense)+Number(!!importedPrefs.recent.income);
   const settingsInfo=pendingImport.hasPreferences?`<div class="summary-grid"><div>最近分类<b>${recent} 个</b></div><div>收藏分类<b>${favorites} 个</b></div><div>快速模板<b>${importedPrefs.templates.length} 个</b></div><div>设置校验<b>${pendingImport.preferenceWarnings?`忽略 ${pendingImport.preferenceWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.preferenceWarnings?'快捷设置版本无法识别，将只导入账目。':'这是旧版账目备份，不包含快捷设置。'}</p>`;
   const planningInfo=pendingImport.hasDecisions?`<div class="summary-grid"><div>预算月份<b>${Object.keys(pendingImport.decisions.budgets).length} 个月</b></div><div>正式专项<b>${pendingImport.decisions.projects.length} 个</b></div><div>财务目标<b>${pendingImport.decisions.goals.length} 个</b></div><div>月度复盘<b>${Object.keys(pendingImport.decisions.reviews).length} 个月</b></div><div>规划校验<b>${pendingImport.decisionWarnings?`忽略 ${pendingImport.decisionWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.decisionWarnings?'规划数据版本无法识别，将保留当前规划。':'此备份不包含规划数据，完整恢复时会保留当前规划。'}</p>`;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${esc(pendingImport.source.format)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div>${settingsInfo}${planningInfo}<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">操作前会自动下载当前完整备份；默认完整恢复账目，并恢复文件中可识别的设置和规划。旧备份缺少的内容会保留当前数据。</p></div><div class="sheet-foot"><div class="import-actions"><button class="full" data-action="apply-import" data-value="full">完整恢复</button></div><details class="advanced-import"><summary>高级导入方式</summary><div class="import-actions"><button data-action="apply-import" data-value="merge">只合并账目</button><button data-action="apply-import" data-value="replace">只覆盖账目</button></div></details></div></div></div>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${esc(pendingImport.source.format)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>收入合计<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div>${settingsInfo}${planningInfo}<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">操作前会自动下载当前完整备份；默认完整恢复账目，并恢复文件中可识别的设置和规划。旧备份缺少的内容会保留当前数据。</p></div><div class="sheet-foot"><div class="import-actions"><button class="full" data-action="apply-import" data-value="full">完整恢复账目与设置</button></div><details class="advanced-import"><summary>高级导入方式</summary><div class="import-actions"><button data-action="apply-import" data-value="merge">合并账目<br>保留当前数据</button><button data-action="apply-import" data-value="replace">覆盖账目<br>设置保持不变</button></div></details></div></div></div>`;
   document.body.style.overflow='hidden';
 }
 function applyImport(mode){
@@ -1347,14 +1323,14 @@ function toast(msg,undo=false){const t=document.getElementById('toast');document
 
 document.addEventListener('click',event=>{
   const el=event.target.closest('[data-action]');if(!el)return;
-  const action=el.dataset.action,value=el.dataset.value;
+  const action=el.dataset.action,value=el.dataset.value,hadModal=!!document.querySelector('#modals [role="dialog"]');
   if(action==='close-overlay'&&event.target!==el)return;
   const actions={
     'set-view':()=>setView(value),'set-tab':()=>setTab(value),'set-detail-view':()=>setDetailView(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,
-    'open-project-form':()=>openProjectForm(),'edit-project':()=>openProjectForm(value),'save-project':saveProject,'open-project':()=>openProject(value),'set-current-project':()=>setCurrentProject(value),'set-project-status':()=>setProjectStatus(value),
-    'set-planning-view':()=>setPlanningView(value),'open-goal-form':()=>openGoalForm(),'edit-goal':()=>openGoalForm(value),'save-goal':saveGoal,
+    'open-project-form':()=>openProjectForm(),'edit-project':()=>openProjectForm(value),'save-project':saveProject,'open-project':()=>openProject(value),'open-project-actions':()=>openProjectActions(value),'set-current-project':()=>{closeModals();setCurrentProject(value);},'set-project-status':()=>{closeModals();setProjectStatus(value);},
+    'set-planning-view':()=>setPlanningView(value),'open-goal-form':()=>openGoalForm(),'edit-goal':()=>openGoalForm(value),'save-goal':saveGoal,'open-goal-actions':()=>openGoalActions(value),
     'open-contribution':()=>openContribution(value),'open-contribution-history':()=>openContributionHistory(value),'edit-contribution':()=>{const ids=splitContributionValue(value);openContribution(ids[0],ids[1]);},
-    'save-contribution':saveContribution,'confirm-delete-contribution':()=>confirmDeleteContribution(value),'delete-contribution':()=>deleteContribution(value),'set-goal-status':()=>setGoalStatus(value),
+    'save-contribution':saveContribution,'confirm-delete-contribution':()=>confirmDeleteContribution(value),'delete-contribution':()=>deleteContribution(value),'set-goal-status':()=>{closeModals();setGoalStatus(value);},
     'save-review':saveReview,'toggle-review-action':()=>toggleReviewAction(value),
     'set-calendar-mode':()=>setCalMode(value),'calendar-shift':()=>calShift(Number(value)),'select-day':()=>selDay(value),
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),
@@ -1362,17 +1338,26 @@ document.addEventListener('click',event=>{
     'open-add':()=>openRecordForm(value),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(null,value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
     'undo-delete':undoDelete,'close-modal':closeModals,'close-overlay':closeModals,
     'switch-type':()=>switchType(value),'select-category':()=>selCat(value),'select-subcategory':()=>selSub(value),'select-quick':()=>selQuick(value),
-    'toggle-record-section':()=>toggleRecordSection(value),'clear-form-project':clearFormProject,'save-record':()=>doSave(),'save-and-continue':()=>doSave(true),'save-template':saveTemplate,
-    'apply-template':()=>applyTemplate(value),'delete-template':()=>deleteTemplate(value),
+    'toggle-record-section':()=>toggleRecordSection(value),'clear-form-project':clearFormProject,'save-record':()=>doSave(),'save-and-continue':()=>doSave(true),
     'open-data-management':openDataManagement,'export':()=>exportData(),'import-trigger':()=>document.getElementById('importFile').click(),
     'apply-import':()=>applyImport(value),'open-recovery':openRecovery,'download-recovery':()=>downloadRecovery(),
     'accept-recovery':acceptRecovery
   };
-  if(actions[action])actions[action]();
+  if(actions[action]){actions[action]();if(!hadModal&&document.querySelector('#modals [role="dialog"]'))modalReturnFocus=el;}
 });
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
-document.addEventListener('change',event=>{if(event.target.id==='fProject'){form.projectId=event.target.value;refreshProjectSummary();}});
-document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.getElementById('modals').innerHTML)closeModals();});
+document.addEventListener('change',event=>{if(event.target.id==='fProject'){form.projectId=event.target.value;form.projectAuto=false;form.projectTouched=true;refreshProjectSummary();}if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';}});
+new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
+document.addEventListener('keydown',event=>{
+  const dialog=document.querySelector('#modals [role="dialog"]');if(!dialog)return;
+  if(event.key==='Escape'){closeModals();return;}
+  if(event.key!=='Tab')return;
+  const focusable=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')].filter(item=>item.getClientRects().length);
+  if(!focusable.length)return;
+  const first=focusable[0],last=focusable[focusable.length-1];
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+});
 
 render();
 if(loaded.notice)setTimeout(()=>toast(loaded.notice),0);
