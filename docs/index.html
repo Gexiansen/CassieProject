@@ -236,12 +236,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .amount-box.i{background:#ecfdf5;border-color:#a7f3d0;}
 .amount-box .y{font-size:18px;font-weight:700;margin-right:4px;}
 .amount-box.e .y{color:#818cf8;}.amount-box.i .y{color:#34d399;}
-.amount-box input{flex:1;border:none;background:none;padding:12px 0;font-size:26px;font-weight:800;color:#475569;outline:none;font-family:inherit;}
-.cat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
-.cat-grid button{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 4px;border-radius:16px;font-size:12px;font-weight:700;
-  border:2px solid #f1f5f9;background:#f8fafc;color:#64748b;cursor:pointer;font-family:inherit;}
-.cat-grid button .em{font-size:18px;line-height:1;}
-.cat-grid button.on{color:#fff;border-color:transparent;}
+.amount-box input{flex:1;min-width:0;width:100%;border:none;background:none;padding:12px 0;font-size:26px;font-weight:800;color:#475569;outline:none;font-family:inherit;}
+.record-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:10px;}
+.record-main .field{min-width:0;margin-bottom:12px;}
+.category-groups{display:grid;gap:12px;}
+.category-group+.category-group{border-top:2px solid #f8fafc;padding-top:12px;}
+.category-title{display:flex;align-items:center;gap:6px;margin-bottom:7px;color:#64748b;font-size:13px;font-weight:800;}
+.category-title .em{font-size:17px;line-height:1;}
 .sub-list{display:flex;flex-wrap:wrap;gap:8px;}
 .sub-list button{min-height:44px;padding:6px 12px;border-radius:12px;font-size:14px;font-weight:700;border:2px solid transparent;background:#f1f5f9;color:#64748b;cursor:pointer;font-family:inherit;}
 .sub-list button.on{color:#fff;}
@@ -262,7 +263,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .project-chip button{min-width:44px;min-height:44px;border:none;background:#fff;color:#6366f1;border-radius:10px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
 .quick-picks{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
 .quick-picks button{min-height:48px;border:2px solid #e0e7ff;background:#eef2ff;color:#4f46e5;border-radius:14px;padding:7px 4px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;}
-.quick-picks button span{display:block;font-size:10px;color:#818cf8;margin-top:2px;font-weight:600;}
+.quick-picks button span{display:block;font-size:10px;color:#818cf8;margin-top:2px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .quick-guidance{text-align:center;color:#94a3b8;font-size:11px;font-weight:700;margin:-5px 0 10px;}
 .no-spend-action{width:100%;min-height:44px;margin-top:8px;border:2px solid #d1fae5;background:#ecfdf5;color:#047857;border-radius:14px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;}
 .analysis-card>summary{min-height:44px;display:flex;align-items:center;color:#475569;font-size:15px;font-weight:800;cursor:pointer;list-style:none;}
@@ -314,7 +315,7 @@ const EXPENSE_CATS = {
   shopping:{name:'购物',emoji:'🛒',color:'#6366f1',subs:{daily:'日用品',clothes:'衣服',sports:'运动器材',digital:'数码电器'}},
   kids:{name:'育儿',emoji:'🧸',color:'#fb7185',subs:{toy:'玩具',kclothes:'衣服',shoes:'鞋子',bedding:'床品',study:'学习文具',kother:'其他'}},
   dining:{name:'餐饮外食',emoji:'🍜',color:'#f59e0b',subs:{restaurant:'堂食',takeout:'外卖'}},
-  transport:{name:'交通出行',emoji:'🚌',color:'#0ea5e9',subs:{transit:'公共交通',taxi:'打车',fuel:'加油',ticket:'车票机票'}},
+  transport:{name:'交通出行',emoji:'🚌',color:'#0ea5e9',subs:{transit:'公共交通',taxi:'打车',fuel:'加油',charging:'车辆充电',ticket:'车票机票'}},
   living:{name:'居住生活',emoji:'🏠',color:'#8b5cf6',subs:{rent:'房租',utility:'水电燃气',hotel:'住宿酒店'}},
   entertainment:{name:'休闲娱乐',emoji:'🎮',color:'#ec4899',subs:{movie:'影音游戏',scenic:'景点门票',fitness:'健身'}},
   health:{name:'医疗健康',emoji:'💊',color:'#ef4444',subs:{medicine:'药品',checkup:'体检医疗'}},
@@ -1072,8 +1073,12 @@ function toggleFormNoSpend(){
 }
 
 /* ============ 记账弹窗 ============ */
-let form={id:null,cat:'food',sub:'vegetable',projectId:'',projectTouched:false,showCategories:false,showMore:false,sourceTag:''};
+let form={id:null,cat:'food',sub:'vegetable',projectId:'',projectTouched:false,showMore:false,sourceTag:''};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function recentExpenseRecord(){
+  const recent=prefs.recent.expense;if(!recent)return null;
+  return state.records.filter(record=>record.type==='expense'&&record.cat===recent.cat&&record.sub===recent.sub).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]||null;
+}
 function frequentChoices(limit=6){
   const counts=new Map();state.records.filter(record=>record.type==='expense').forEach(record=>{const key=`${record.cat}/${record.sub}`,old=counts.get(key)||{value:key,count:0,latest:''};old.count++;if(record.date>old.latest)old.latest=record.date;counts.set(key,old);});
   const values=[],recent=prefs.recent.expense;if(recent)values.push(`${recent.cat}/${recent.sub}`);
@@ -1089,52 +1094,41 @@ function openRecordForm(id=null,preset=null){
   form.cat=source&&validChoice('expense',source.cat,source.sub)?source.cat:recent?recent.cat:Object.keys(obj)[0];
   form.sub=source&&validChoice('expense',source.cat,source.sub)?source.sub:recent?recent.sub:Object.keys(obj[form.cat].subs)[0];
   const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate);form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.projectTouched=false;
-  form.showCategories=!frequentChoices().length;form.showMore=!!record||!!(source&&(source.note||source.date&&source.date!==todayStr()));
+  form.showMore=!!record||!!(source&&(source.date&&source.date!==todayStr()||sourceProject));
   const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
   const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
     <div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${sourceDate}${record?' · 修改后保存':' · 点击分类直接保存'}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div>
     <div class="sheet-body">
-      <div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div>
+      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div>
       <div class="quick-guidance">${record?'选择分类后点击底部保存':'输入金额后，点击分类即可完成'}</div>
       <div class="field" id="quickField"><label>最近和常用</label><div class="quick-picks" id="quickPicks"></div></div>
-      <button class="record-toggle" data-action="toggle-record-section" data-value="categories">${form.showCategories?'收起全部分类':'更多分类'}</button><div id="categoryMore" class="record-more ${form.showCategories?'':'hidden'}"><div class="cat-grid" id="catGrid"></div><div class="field" id="subField" style="margin:12px 0 0"><label>${record?'选择子分类':'点击子分类直接保存'}</label><div class="sub-list" id="subList"></div></div></div>
+      <div class="field"><label>${record?'全部分类 · 选择细分类':'全部分类 · 点击细分类直接保存'}</label><div class="category-groups" id="categoryGroups"></div></div>
       <div id="projectChip" class="project-chip" style="display:none"></div>
-      <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起更多选项':'日期、备注与专项'}</button>
-      <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div><div class="two"><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div><div class="field" style="margin:0"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div></div>
+      <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起更多选项':'日期与专项'}</button>
+      <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div></div>
       ${record?'':`<button id="noSpendButton" class="no-spend-action" data-action="toggle-form-no-spend">${decisions.noSpendDates.includes(sourceDate)?'取消“当日无支出”确认':'确认当日无支出'}</button>`}
     </div>${record?`<div class="sheet-foot"><button class="save-btn e" data-action="save-record">保存修改</button></div>`:''}
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
-  renderQuickChoices();renderCatGrid();renderSubList();refreshProjectSummary();refreshNoSpendButton();document.querySelector('#modals .x').focus({preventScroll:true});
+  renderQuickChoices();renderCategoryGroups();refreshProjectSummary();refreshNoSpendButton();document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function renderQuickChoices(){
-  const recent=prefs.recent.expense,values=frequentChoices();
+  const recent=prefs.recent.expense,recentRecord=recentExpenseRecord(),values=frequentChoices();
   const field=document.getElementById('quickField');
   if(!values.length){field.style.display='none';return;}
   field.style.display='block';
-  document.getElementById('quickPicks').innerHTML=values.map((value,index)=>{const[cat,sub]=value.split('/'),item=EXPENSE_CATS[cat];return`<button data-action="${form.id?'select-quick':'quick-save'}" data-value="${value}">${item.emoji} ${item.subs[sub]}${index===0&&recent&&value===`${recent.cat}/${recent.sub}`?'<span>最近使用</span>':''}</button>`;}).join('');
+  document.getElementById('quickPicks').innerHTML=values.map(value=>{const[cat,sub]=value.split('/'),item=EXPENSE_CATS[cat],isRecent=!!recent&&value===`${recent.cat}/${recent.sub}`,action=isRecent?(form.id?'select-recent':'recent-save'):(form.id?'select-quick':'quick-save'),detail=isRecent?`<span>${recentRecord&&recentRecord.note?`最近一笔 · ${esc(recentRecord.note)}`:'最近一笔'}</span>`:'';return`<button data-action="${action}" data-value="${value}">${item.emoji} ${item.subs[sub]}${detail}</button>`;}).join('');
 }
-function renderCatGrid(){
-  const obj=EXPENSE_CATS;let h='';
-  Object.keys(obj).forEach(k=>{const c=obj[k],on=form.cat===k;
-    h+=`<button class="${on?'on':''}" style="${on?'background:'+c.color:''}" data-action="select-category" data-value="${k}"><span class="em">${c.emoji}</span>${c.name}</button>`;});
-  document.getElementById('catGrid').innerHTML=h;
-}
-function renderSubList(){
-  const c=EXPENSE_CATS[form.cat],keys=Object.keys(c.subs);
-  const field=document.getElementById('subField');
-  if(keys.length<=1){field.style.display='none';return;}
-  field.style.display='block';let h='';
-  keys.forEach(k=>{const on=form.sub===k;h+=`<button class="${on?'on':''}" style="${on?'background:'+c.color:''}" data-action="select-subcategory" data-value="${k}">${c.subs[k]}</button>`;});
-  document.getElementById('subList').innerHTML=h;
+function renderCategoryGroups(){
+  let h='';Object.entries(EXPENSE_CATS).forEach(([cat,c])=>{h+=`<div class="category-group"><div class="category-title"><span class="em">${c.emoji}</span>${c.name}</div><div class="sub-list">`;Object.entries(c.subs).forEach(([sub,name])=>{const on=form.cat===cat&&form.sub===sub;h+=`<button class="${on?'on':''}" style="${on?'background:'+c.color:''}" data-action="select-category-choice" data-value="${cat}/${sub}">${name}</button>`;});h+='</div></div>';});
+  document.getElementById('categoryGroups').innerHTML=h;
 }
 function refreshProjectSummary(){
   const chip=document.getElementById('projectChip'),select=document.getElementById('fProject');if(!select.value){chip.style.display='none';chip.innerHTML='';return;}
   chip.style.display='flex';chip.innerHTML=`<span>📍 ${esc(select.options[select.selectedIndex].textContent.replace(' · 当前',''))}</span><button data-action="clear-form-project">取消</button>`;
 }
 function toggleRecordSection(value){
-  if(value==='categories'){form.showCategories=!form.showCategories;document.getElementById('categoryMore').classList.toggle('hidden',!form.showCategories);const button=document.querySelector('[data-action="toggle-record-section"][data-value="categories"]');if(button)button.textContent=form.showCategories?'收起全部分类':'更多分类';return;}
-  if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起更多选项':'日期、备注与专项';return;}
+  if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起更多选项':'日期与专项';}
 }
 function clearFormProject(){const select=document.getElementById('fProject');select.value='';form.projectId='';form.projectTouched=true;refreshProjectSummary();}
 function refreshProjectForDate(){
@@ -1143,9 +1137,7 @@ function refreshProjectForDate(){
   select.value=applies?current.id:'';form.projectId=select.value;refreshProjectSummary();
 }
 function refreshNoSpendButton(){const button=document.getElementById('noSpendButton'),input=document.getElementById('fDate');if(!button||!input)return;const date=input.value;button.style.display=validDate(date)&&date<=todayStr()?'block':'none';button.textContent=decisions.noSpendDates.includes(date)?'取消“当日无支出”确认':'确认当日无支出';}
-function selCat(k){if(!EXPENSE_CATS[k])return;form.cat=k;form.sub=Object.keys(EXPENSE_CATS[k].subs)[0];renderCatGrid();renderSubList();if(!form.id&&Object.keys(EXPENSE_CATS[k].subs).length===1)doSave();}
-function selSub(k){if(!EXPENSE_CATS[form.cat].subs[k])return;form.sub=k;renderSubList();if(!form.id)doSave();}
-function selQuick(value,save=false){const[cat,sub]=value.split('/');if(!validChoice('expense',cat,sub))return;form.cat=cat;form.sub=sub;renderCatGrid();renderSubList();if(save)doSave();}
+function selQuick(value,save=false,useRecentNote=false){const[cat,sub]=value.split('/');if(!validChoice('expense',cat,sub))return;form.cat=cat;form.sub=sub;if(useRecentNote){const input=document.getElementById('fNote'),recentRecord=recentExpenseRecord();if(input&&!input.value.trim()&&recentRecord&&recentRecord.note)input.value=recentRecord.note;}renderCategoryGroups();if(save)doSave();}
 function readAmount(){
   const rawAmount=document.getElementById('fAmt').value.trim();
   if(!/^\d+(?:\.\d{1,2})?$/.test(rawAmount)){toast('金额最多保留两位小数');return false;}
@@ -1289,7 +1281,7 @@ document.addEventListener('click',event=>{
     'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(),'add-for-date':()=>openRecordForm(null,{date:value}),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
     'undo-delete':undoDelete,'undo-add':undoAdd,'close-modal':closeModals,'close-overlay':closeModals,
-    'select-category':()=>selCat(value),'select-subcategory':()=>selSub(value),'select-quick':()=>selQuick(value),'quick-save':()=>selQuick(value,true),
+    'select-category-choice':()=>selQuick(value,!form.id),'select-quick':()=>selQuick(value),'quick-save':()=>selQuick(value,true),'select-recent':()=>selQuick(value,false,true),'recent-save':()=>selQuick(value,true,true),
     'toggle-record-section':()=>toggleRecordSection(value),'clear-form-project':clearFormProject,'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
     'open-data-management':openDataManagement,'export':()=>exportData(),'import-trigger':()=>document.getElementById('importFile').click(),
     'apply-import':()=>applyImport(value),'open-recovery':openRecovery,'download-recovery':()=>downloadRecovery(),
