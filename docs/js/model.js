@@ -50,6 +50,13 @@ function beneficiaryBreakdown(records,beneficiaries){
   const items=beneficiaries.map((beneficiary,index)=>({id:beneficiary.id,name:beneficiary.name,amountCents:totals[beneficiary.id]||0,order:index})).filter(item=>item.amountCents>0).sort((a,b)=>b.amountCents-a.amountCents||a.order-b.order).map(({order,...item})=>({...item,percent:totalCents?item.amountCents/totalCents*100:0}));
   return {totalCents,items};
 }
+function quickRecordScenes(records,recentLimit=3){
+  const scenes=new Map(),ordered=[...records].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)||b.date.localeCompare(a.date));
+  ordered.forEach(record=>{const key=JSON.stringify([record.categoryId,record.beneficiaryId,record.projectId||'',record.note||'']),existing=scenes.get(key);if(existing){existing.count++;return;}scenes.set(key,{key,categoryId:record.categoryId,beneficiaryId:record.beneficiaryId,projectId:record.projectId||'',note:record.note||'',count:1,latest:record.updatedAt});});
+  const values=[...scenes.values()],count=Math.max(0,Number.isInteger(recentLimit)?recentLimit:3),recent=values.slice(0,count),recentKeys=new Set(recent.map(item=>item.key));
+  const frequent=values.filter(item=>!recentKeys.has(item.key)).sort((a,b)=>b.count-a.count||b.latest.localeCompare(a.latest)||a.key.localeCompare(b.key));
+  return [...recent,...frequent].map(({key,...item})=>item);
+}
 function calculateProjectMetrics(project,records){
   const items=records.filter(record=>record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
   return {items,actualCents,remainingCents:project.budgetCents?project.budgetCents-actualCents:null,percent:project.budgetCents?actualCents/project.budgetCents*100:null,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};

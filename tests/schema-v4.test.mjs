@@ -88,4 +88,22 @@ assert.equal(beneficiarySummary.items[0].amountCents,20000);
 assert.equal(beneficiarySummary.items[1].percent.toFixed(1),'42.9');
 assert.equal(vm.runInContext('beneficiaryBreakdown([],projectSettings.beneficiaries).items.length',context),0);
 
+context.quickSceneRecords=[
+  {categoryId:'food-vegetable',beneficiaryId:'family',projectId:'',note:'晚餐',date:'2026-07-19',updatedAt:'2026-07-19T10:00:00.000Z'},
+  {categoryId:'food-meat',beneficiaryId:'wife',projectId:'',note:'',date:'2026-07-18',updatedAt:'2026-07-18T10:00:00.000Z'},
+  {categoryId:'food-meat',beneficiaryId:'wife',projectId:'',note:'',date:'2026-07-17',updatedAt:'2026-07-17T10:00:00.000Z'},
+  {categoryId:'transport-taxi',beneficiaryId:'husband',projectId:'',note:'加班',date:'2026-07-16',updatedAt:'2026-07-16T10:00:00.000Z'},
+  {categoryId:'transport-taxi',beneficiaryId:'husband',projectId:'',note:'加班',date:'2026-07-15',updatedAt:'2026-07-15T10:00:00.000Z'},
+  {categoryId:'transport-taxi',beneficiaryId:'husband',projectId:'',note:'加班',date:'2026-07-14',updatedAt:'2026-07-14T10:00:00.000Z'},
+];
+const quickScenes=vm.runInContext('quickRecordScenes(quickSceneRecords,1)',context);
+assert.equal(quickScenes.length,3);
+assert.equal(quickScenes[0].categoryId,'food-vegetable');
+assert.equal(quickScenes[0].note,'晚餐');
+assert.equal(quickScenes[1].categoryId,'transport-taxi');
+assert.equal(quickScenes[1].beneficiaryId,'husband');
+assert.equal(quickScenes[1].count,3);
+assert.equal(quickScenes[2].count,2);
+assert.equal(vm.runInContext('quickRecordScenes([],3).length',context),0);
+
 console.log('schema v4 converter and round-trip validation passed');

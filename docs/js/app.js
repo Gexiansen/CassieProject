@@ -541,19 +541,15 @@ function toggleFormNoSpend(){
 }
 
 /* ============ 记账弹窗 ============ */
-let form={id:null,categoryId:'food-vegetable',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false};
+const QUICK_SCENE_LIMIT=8;
+let renderedQuickScenes=[];
+let form={id:null,categoryId:'food-vegetable',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false,quickExpanded:false};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function recordsForFormContext(){return state.records.filter(record=>form.projectId?record.projectId===form.projectId:!record.projectId&&record.beneficiaryId===form.beneficiaryId);}
-function recentExpenseRecord(){
-  return recordsForFormContext().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]||null;
-}
-function frequentChoices(limit=6){
-  const counts=new Map();recordsForFormContext().forEach(record=>{const key=record.categoryId,old=counts.get(key)||{value:key,count:0,latest:''};old.count++;if(record.date>old.latest)old.latest=record.date;counts.set(key,old);});
-  const values=[],recent=recentExpenseRecord();if(recent&&choiceVisible(recent.categoryId))values.push(recent.categoryId);
-  [...counts.values()].sort((a,b)=>b.count-a.count||b.latest.localeCompare(a.latest)).forEach(item=>{if(values.length<limit&&!values.includes(item.value))values.push(item.value);});
-  return values.filter(value=>choiceVisible(value));
-}
 function choiceVisible(categoryId){const category=getCategory(categoryId);return !!(category&&category.groupActive&&category.active&&(form.projectId||category.beneficiaryIds.includes(form.beneficiaryId)));}
+function quickSceneVisible(scene){
+  const category=getCategory(scene.categoryId),beneficiary=prefs.beneficiaries.find(item=>item.id===scene.beneficiaryId&&item.active);if(!category||!category.groupActive||!category.active||!beneficiary||!category.beneficiaryIds.includes(beneficiary.id))return false;
+  if(!scene.projectId)return true;const project=projectForId(scene.projectId),input=document.getElementById('fDate'),date=input?input.value:todayStr();return projectAppliesOn(project,date);
+}
 function ensureFormChoice(){if(choiceVisible(form.categoryId))return;for(const group of Object.values(EXPENSE_CATS)){for(const item of group.items){if(choiceVisible(item.id)){form.categoryId=item.id;return;}}}}
 function contextProject(){const selected=projectForId(form.projectId);if(selected)return selected;const input=document.getElementById('fDate'),date=input?input.value:todayStr(),current=projectForId(decisions.currentProjectId);return projectAppliesOn(current,date)?current:null;}
 function renderRecordContext(){
@@ -570,7 +566,7 @@ function openRecordForm(id=null,preset=null){
   const source=record||preset;
   form.id=record?record.id:null;
   const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate),sourceBeneficiary=prefs.beneficiaries.find(item=>item.id===(source&&source.beneficiaryId)&&item.active),defaultBeneficiary=prefs.beneficiaries.find(item=>item.id===prefs.defaultBeneficiaryId&&item.active)||prefs.beneficiaries.find(item=>item.id==='family');
-  form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.categoryId=source&&getCategory(source.categoryId)?source.categoryId:form.categoryId;form.projectTouched=false;
+  form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.categoryId=source&&getCategory(source.categoryId)?source.categoryId:form.categoryId;form.projectTouched=false;form.quickExpanded=false;
   form.showMore=!!record||!!(source&&(source.date&&source.date!==todayStr()||sourceProject));
   const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
   const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
@@ -578,7 +574,7 @@ function openRecordForm(id=null,preset=null){
     <div class="sheet-body">
       <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div>
       <div class="record-context" id="recordContext"></div>
-      <div class="field" id="quickField"><label>最近和常用</label><div class="quick-picks" id="quickPicks"></div></div>
+      <div class="field" id="quickField"><label>快捷记录</label><div class="quick-picks" id="quickPicks"></div><button class="quick-picks-more" id="quickPicksMore" data-action="toggle-quick-scenes"></button></div>
       <div class="field"><label>全部分类</label><div class="category-groups" id="categoryGroups"></div></div>
       <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起更多选项':'日期与专项'}</button>
       <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div></div>
@@ -589,11 +585,20 @@ function openRecordForm(id=null,preset=null){
   ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();refreshNoSpendButton();document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function renderQuickChoices(){
-  const recentRecord=recentExpenseRecord(),values=frequentChoices();
+  const all=quickRecordScenes(state.records).filter(quickSceneVisible),values=form.quickExpanded?all:all.slice(0,QUICK_SCENE_LIMIT);
+  renderedQuickScenes=all;
   const field=document.getElementById('quickField');
   if(!values.length){field.style.display='none';return;}
   field.style.display='block';
-  document.getElementById('quickPicks').innerHTML=values.map(value=>{const category=getCategory(value),isRecent=!!recentRecord&&value===recentRecord.categoryId,action=isRecent?(form.id?'select-recent':'recent-save'):(form.id?'select-quick':'quick-save'),detail=isRecent?`<span>${recentRecord.note?`最近一笔 · ${esc(recentRecord.note)}`:'最近一笔'}</span>`:'';return`<button data-action="${action}" data-value="${value}">${category?esc(category.name):'未知分类'}${detail}</button>`;}).join('');
+  document.getElementById('quickPicks').innerHTML=values.map(scene=>{const index=all.indexOf(scene),category=getCategory(scene.categoryId),project=projectForId(scene.projectId),beneficiary=BENEFICIARIES[scene.beneficiaryId]||'未标注',detail=[project&&project.name,beneficiary,scene.note].filter(Boolean).join(' · ');return`<button data-action="${form.id?'select-quick-scene':'save-quick-scene'}" data-value="${index}" title="${esc((category?category.name:'未知分类')+' · '+detail)}"><b>${category?esc(category.name):'未知分类'}</b><span>${esc(detail)}</span></button>`;}).join('');
+  const more=document.getElementById('quickPicksMore');more.style.display=all.length>QUICK_SCENE_LIMIT?'block':'none';more.textContent=form.quickExpanded?'收起快捷记录':`展开更多（${all.length-QUICK_SCENE_LIMIT}）`;
+}
+function toggleQuickScenes(){form.quickExpanded=!form.quickExpanded;renderQuickChoices();}
+function applyQuickScene(value,save=false){
+  const scene=renderedQuickScenes[Number(value)];if(!scene||!quickSceneVisible(scene)){toast('这条快捷记录当前不可用');renderQuickChoices();return;}
+  form.categoryId=scene.categoryId;form.beneficiaryId=scene.beneficiaryId;form.projectId=scene.projectId;form.projectTouched=true;
+  const select=document.getElementById('fProject'),note=document.getElementById('fNote');if(select)select.value=form.projectId;if(note&&!note.value.trim()&&scene.note)note.value=scene.note;
+  renderRecordContext();renderCategoryGroups();if(save)doSave();
 }
 function renderCategoryGroups(){
   let h='';Object.values(EXPENSE_CATS).forEach(group=>{const items=group.items.filter(item=>choiceVisible(item.id));if(!items.length)return;h+=`<div class="category-group"><div class="category-title">${esc(group.name)}</div><div class="sub-list">`;items.forEach(item=>{const on=form.categoryId===item.id;h+=`<button class="${on?'on':''}" style="${on?'background:'+group.color:''}" data-action="select-category-choice" data-value="${item.id}">${esc(item.name)}</button>`;});h+='</div></div>';});
@@ -603,12 +608,12 @@ function toggleRecordSection(value){
   if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起更多选项':'日期与专项';}
 }
 function refreshProjectForDate(){
-  refreshNoSpendButton();if(form.id||form.projectTouched)return;
+  refreshNoSpendButton();if(form.id||form.projectTouched){renderQuickChoices();return;}
   const date=document.getElementById('fDate').value,current=projectForId(decisions.currentProjectId),select=document.getElementById('fProject'),applies=projectAppliesOn(current,date);
   select.value=applies?current.id:'';form.projectId=select.value;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();
 }
 function refreshNoSpendButton(){const button=document.getElementById('noSpendButton'),input=document.getElementById('fDate');if(!button||!input)return;const date=input.value;button.style.display=validDate(date)&&date<=todayStr()?'block':'none';button.textContent=decisions.noSpendDates.includes(date)?'取消“当日无支出”确认':'确认当日无支出';}
-function selQuick(value,save=false,useRecentNote=false){if(!choiceVisible(value))return;form.categoryId=value;if(useRecentNote){const input=document.getElementById('fNote'),recentRecord=recentExpenseRecord();if(input&&!input.value.trim()&&recentRecord&&recentRecord.note)input.value=recentRecord.note;}renderCategoryGroups();if(save)doSave();}
+function selQuick(value,save=false){if(!choiceVisible(value))return;form.categoryId=value;renderCategoryGroups();if(save)doSave();}
 function readAmount(){
   const rawAmount=document.getElementById('fAmt').value.trim();
   if(!/^\d+(?:\.\d{1,2})?$/.test(rawAmount)){toast('金额最多保留两位小数');return false;}
@@ -786,7 +791,7 @@ document.addEventListener('click',event=>{
     'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(),'add-for-date':()=>openRecordForm(null,{date:value}),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
     'undo-delete':undoDelete,'undo-add':undoAdd,'close-modal':closeModals,'close-overlay':closeModals,
-    'select-record-context':()=>selectRecordContext(value),'select-category-choice':()=>selQuick(value,!form.id),'select-quick':()=>selQuick(value),'quick-save':()=>selQuick(value,true),'select-recent':()=>selQuick(value,false,true),'recent-save':()=>selQuick(value,true,true),
+    'select-record-context':()=>selectRecordContext(value),'select-category-choice':()=>selQuick(value,!form.id),'select-quick-scene':()=>applyQuickScene(value),'save-quick-scene':()=>applyQuickScene(value,true),'toggle-quick-scenes':toggleQuickScenes,
     'toggle-record-section':()=>toggleRecordSection(value),'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
     'open-data-management':openDataManagement,'open-start-fresh':openStartFresh,'confirm-start-fresh':confirmStartFresh,'open-category-manager':openCategoryManager,'open-category-name':()=>openCategoryNameForm(value),'save-category-name':saveCategoryName,
     'move-category-group':()=>moveCategoryGroup(value),'move-category-sub':()=>moveCategorySub(value),'toggle-category-group':()=>toggleCategoryGroup(value),'toggle-category-sub':()=>toggleCategorySub(value),'open-category-roles':()=>openCategoryRoles(value),'save-category-roles':saveCategoryRoles,
