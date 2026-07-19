@@ -44,4 +44,19 @@ function calendarDayTotals(records,year,month){
   records.forEach(record=>{if(record.date.startsWith(prefix))totals[record.date]=(totals[record.date]||0)+record.amountCents;});
   return totals;
 }
+function calculateProjectMetrics(project,records){
+  const items=records.filter(record=>record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
+  return {items,actualCents,remainingCents:project.budgetCents?project.budgetCents-actualCents:null,percent:project.budgetCents?actualCents/project.budgetCents*100:null,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};
+}
+function recentProjectReference(type,projects,records,categories){
+  const candidates=projects.filter(project=>project.type===type&&project.status==='completed').sort((a,b)=>b.endDate.localeCompare(a.endDate)||b.updatedAt.localeCompare(a.updatedAt));
+  const categoryItems=categoryMap(categories).items,groupNames=Object.fromEntries(categories.map(group=>[group.id,group.name]));
+  for(const project of candidates){
+    const metrics=calculateProjectMetrics(project,records);if(!metrics.items.length)continue;
+    const totals={};metrics.items.forEach(record=>{const category=categoryItems[record.categoryId];if(category)totals[category.groupId]=(totals[category.groupId]||0)+record.amountCents;});
+    const top=Object.entries(totals).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]))[0]||null;
+    return {project,metrics,topCategory:top?{id:top[0],name:groupNames[top[0]]||'未知分类',amountCents:top[1]}:null};
+  }
+  return null;
+}
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

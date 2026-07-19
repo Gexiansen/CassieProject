@@ -50,4 +50,26 @@ assert.equal(fixtureChecked.errors.length,0);
 assert.equal(fixtureChecked.summary.recordCount,34);
 assert.equal(fixtureChecked.summary.expenseCents,1886980);
 
+context.projectSettings=fixture.settings;
+context.projectList=[
+  {id:'travel-old',name:'旧旅行',type:'travel',budgetCents:160000,startDate:'2025-01-01',endDate:'2025-01-02',people:2,status:'completed',updatedAt:'2025-01-03T00:00:00.000Z'},
+  {id:'travel-reference',name:'杭州旅行',type:'travel',budgetCents:220000,startDate:'2026-05-01',endDate:'2026-05-03',people:4,status:'completed',updatedAt:'2026-05-04T00:00:00.000Z'},
+  {id:'travel-empty',name:'空旅行',type:'travel',budgetCents:300000,startDate:'2026-06-01',endDate:'2026-06-03',people:3,status:'completed',updatedAt:'2026-06-04T00:00:00.000Z'},
+  {id:'travel-active',name:'进行中旅行',type:'travel',budgetCents:400000,startDate:'2026-07-01',endDate:'2026-07-03',people:4,status:'active',updatedAt:'2026-07-04T00:00:00.000Z'},
+];
+context.projectRecords=[
+  {projectId:'travel-old',categoryId:'transport-ticket',amountCents:120000},
+  {projectId:'travel-reference',categoryId:'living-hotel',amountCents:120000},
+  {projectId:'travel-reference',categoryId:'transport-ticket',amountCents:80000},
+  {projectId:'travel-active',categoryId:'living-hotel',amountCents:500000},
+];
+const projectReference=vm.runInContext('recentProjectReference("travel",projectList,projectRecords,projectSettings.categories)',context);
+assert.equal(projectReference.project.id,'travel-reference');
+assert.equal(projectReference.metrics.actualCents,200000);
+assert.equal(projectReference.metrics.perPersonCents,50000);
+assert.equal(projectReference.metrics.perPersonDayCents,16667);
+assert.equal(projectReference.topCategory.name,'居住生活');
+assert.equal(projectReference.topCategory.amountCents,120000);
+assert.equal(vm.runInContext('recentProjectReference("renovation",projectList,projectRecords,projectSettings.categories)',context),null);
+
 console.log('schema v4 converter and round-trip validation passed');

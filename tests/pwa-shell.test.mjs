@@ -15,7 +15,7 @@ const context=vm.createContext({
   },
   caches:{
     open:async name=>{opened.push(name);return {addAll:async files=>cachedShell.push(...files),put:async(key,value)=>{cachePuts.push({key,value});}};},
-    keys:async()=>['cassie-account-v2','cassie-account-v3','cassie-account-v4'],
+    keys:async()=>['cassie-account-v2','cassie-account-v3','cassie-account-v4','cassie-account-v4-20260719'],
     delete:async name=>{deleted.push(name);return true;},
     match:async request=>request==='./index.html'?cachedIndex:String(request.url||request).endsWith('/styles.css')?cachedAsset:null,
   },
@@ -25,7 +25,7 @@ vm.runInContext(await readFile(new URL('../docs/sw.js',import.meta.url),'utf8'),
 let installPromise;
 listeners.install({waitUntil:promise=>{installPromise=promise;}});
 await installPromise;
-assert.deepEqual(opened,['cassie-account-v4']);
+assert.deepEqual(opened,['cassie-account-v4-20260719']);
 assert.equal(cachedShell.includes('./styles.css'),true);
 assert.equal(cachedShell.includes('./js/model.js'),true);
 assert.equal(cachedShell.includes('./js/storage.js'),true);
@@ -37,7 +37,7 @@ for(const entry of cachedShell){
 let activatePromise;
 listeners.activate({waitUntil:promise=>{activatePromise=promise;}});
 await activatePromise;
-assert.deepEqual(deleted,['cassie-account-v2','cassie-account-v3']);
+assert.deepEqual(deleted,['cassie-account-v2','cassie-account-v3','cassie-account-v4']);
 
 fetchImpl=async()=>{throw new Error('offline');};
 let navigationResponse;
