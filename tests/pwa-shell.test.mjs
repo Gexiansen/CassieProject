@@ -2,21 +2,24 @@ import assert from 'node:assert/strict';
 import {access,readFile} from 'node:fs/promises';
 import vm from 'node:vm';
 
-const listeners={},deleted=[],opened=[],cachedShell=[];
+const listeners={},deleted=[],opened=[],cachedShell=[],cachePuts=[];
+const cachedIndex={source:'cached-index'},cachedAsset={source:'cached-asset'};
+let fetchImpl=async()=>({ok:true,clone(){return this;}});
 const context=vm.createContext({
   URL,
   self:{
     addEventListener:(type,handler)=>{listeners[type]=handler;},
     skipWaiting:async()=>{},
     clients:{claim:async()=>{}},
+    location:{origin:'https://example.test'},
   },
   caches:{
-    open:async name=>{opened.push(name);return {addAll:async files=>cachedShell.push(...files),put:async()=>{}};},
-    keys:async()=>['cassie-account-v3','cassie-account-v4'],
+    open:async name=>{opened.push(name);return {addAll:async files=>cachedShell.push(...files),put:async(key,value)=>{cachePuts.push({key,value});}};},
+    keys:async()=>['cassie-account-v2','cassie-account-v3','cassie-account-v4'],
     delete:async name=>{deleted.push(name);return true;},
-    match:async()=>null,
+    match:async request=>request==='./index.html'?cachedIndex:String(request.url||request).endsWith('/styles.css')?cachedAsset:null,
   },
-  fetch:async()=>({ok:true,clone(){return this;}}),
+  fetch:(...args)=>fetchImpl(...args),
 });
 vm.runInContext(await readFile(new URL('../docs/sw.js',import.meta.url),'utf8'),context);
 let installPromise;
@@ -34,5 +37,30 @@ for(const entry of cachedShell){
 let activatePromise;
 listeners.activate({waitUntil:promise=>{activatePromise=promise;}});
 await activatePromise;
-assert.deepEqual(deleted,['cassie-account-v3']);
+assert.deepEqual(deleted,['cassie-account-v2','cassie-account-v3']);
+
+fetchImpl=async()=>{throw new Error('offline');};
+let navigationResponse;
+listeners.fetch({
+  request:{method:'GET',url:'https://example.test/',mode:'navigate'},
+  respondWith:promise=>{navigationResponse=promise;},
+});
+assert.equal(await navigationResponse,cachedIndex);
+
+let assetResponse;
+listeners.fetch({
+  request:{method:'GET',url:'https://example.test/styles.css',mode:'no-cors'},
+  respondWith:promise=>{assetResponse=promise;},
+});
+assert.equal(await assetResponse,cachedAsset);
+
+const freshIndex={ok:true,clone(){return this;}};
+fetchImpl=async()=>freshIndex;
+listeners.fetch({
+  request:{method:'GET',url:'https://example.test/',mode:'navigate'},
+  respondWith:promise=>{navigationResponse=promise;},
+});
+assert.equal(await navigationResponse,freshIndex);
+await new Promise(resolve=>setTimeout(resolve,0));
+assert.equal(cachePuts.some(item=>item.key==='./index.html'&&item.value===freshIndex),true);
 console.log('PWA shell validation passed');
