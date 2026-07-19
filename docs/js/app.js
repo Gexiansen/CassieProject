@@ -257,10 +257,12 @@ function renderOverview(recs){
   h+=`<div class="card"><h3>💡 本期观察</h3><div class="review-observation ${warn?'warn':''}">${warn?'⚠️':'✓'} ${insight}</div></div>`;
   let analysis='';const trendMonths=new Set(state.records.filter(record=>record.date.startsWith(String(state.year))).map(record=>record.date.slice(0,7)));
   if(trendMonths.size>=2)analysis+=`<h3>📈 ${state.year}年 支出趋势</h3>${trendSVG()}`;
+  const beneficiaries=beneficiaryBreakdown(exp,prefs.beneficiaries);
+  if(beneficiaries.items.length>=2){analysis+=`<h3 style="margin-top:${analysis?'18px':'0'}">👨‍👩‍👧 家庭支出去向 <span class="sub">按获益方</span></h3><p class="planning-note" style="margin:0 0 10px">表示支出用于谁，不代表由谁付款。</p>`;const colors=['#6366f1','#0ea5e9','#f59e0b','#ec4899','#22c55e','#8b5cf6','#ef4444','#64748b'],max=beneficiaries.items[0].amountCents;beneficiaries.items.forEach((item,index)=>{analysis+=`<div class="bar-item"><div class="row"><span class="l">${esc(item.name)}<span class="cat"> · ${item.percent.toFixed(1)}%</span></span><span class="r">¥${fmt(item.amountCents)}</span></div><div class="track"><div class="fill" style="width:${item.amountCents/max*100}%;background:${colors[index%colors.length]}"></div></div></div>`;});}
   const subMap={};exp.forEach(r=>{subMap[r.categoryId]=(subMap[r.categoryId]||0)+r.amountCents;});
   const subs=Object.entries(subMap).map(([id,value])=>{const category=getCategory(id);return category?{name:category.name,catName:category.groupName,color:category.color,value}:null;}).filter(Boolean).sort((a,b)=>b.value-a.value).slice(0,5);
   if(subs.length){analysis+=`<h3 style="margin-top:${analysis?'18px':'0'}">🔥 支出排行 <span class="sub">前 ${subs.length} 项</span></h3>`;const mx=subs[0].value;subs.forEach(s=>{analysis+=`<div class="bar-item"><div class="row"><span class="l"><span class="cat">${s.catName}·</span>${s.name}</span><span class="r">¥${fmt(s.value)}</span></div><div class="track"><div class="fill" style="width:${s.value/mx*100}%;background:${s.color}"></div></div></div>`;});}
-  if(analysis)h+=`<details class="card analysis-card"><summary>📊 查看趋势和排行</summary>${analysis}</details>`;
+  if(analysis)h+=`<details class="card analysis-card"><summary>📊 查看更多分析</summary>${analysis}</details>`;
   return h;
 }
 

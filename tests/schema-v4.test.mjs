@@ -76,4 +76,16 @@ assert.equal(projectHistory.map(item=>item.project.id).join(','),'travel-old');
 assert.equal(projectHistory[0].metrics.actualCents,120000);
 assert.equal(vm.runInContext('projectHistoryReferences("travel",projectList,projectRecords,projectSettings.categories,"",1).length',context),1);
 
+context.beneficiaryRecords=[
+  {beneficiaryId:'family',amountCents:10000},
+  {beneficiaryId:'wife',amountCents:20000},
+  {beneficiaryId:'family',amountCents:5000},
+];
+const beneficiarySummary=vm.runInContext('beneficiaryBreakdown(beneficiaryRecords,projectSettings.beneficiaries)',context);
+assert.equal(beneficiarySummary.totalCents,35000);
+assert.equal(beneficiarySummary.items.map(item=>item.id).join(','),'wife,family');
+assert.equal(beneficiarySummary.items[0].amountCents,20000);
+assert.equal(beneficiarySummary.items[1].percent.toFixed(1),'42.9');
+assert.equal(vm.runInContext('beneficiaryBreakdown([],projectSettings.beneficiaries).items.length',context),0);
+
 console.log('schema v4 converter and round-trip validation passed');

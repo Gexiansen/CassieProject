@@ -44,6 +44,12 @@ function calendarDayTotals(records,year,month){
   records.forEach(record=>{if(record.date.startsWith(prefix))totals[record.date]=(totals[record.date]||0)+record.amountCents;});
   return totals;
 }
+function beneficiaryBreakdown(records,beneficiaries){
+  const totals={};records.forEach(record=>{totals[record.beneficiaryId]=(totals[record.beneficiaryId]||0)+record.amountCents;});
+  const totalCents=Object.values(totals).reduce((sum,value)=>sum+value,0);
+  const items=beneficiaries.map((beneficiary,index)=>({id:beneficiary.id,name:beneficiary.name,amountCents:totals[beneficiary.id]||0,order:index})).filter(item=>item.amountCents>0).sort((a,b)=>b.amountCents-a.amountCents||a.order-b.order).map(({order,...item})=>({...item,percent:totalCents?item.amountCents/totalCents*100:0}));
+  return {totalCents,items};
+}
 function calculateProjectMetrics(project,records){
   const items=records.filter(record=>record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
   return {items,actualCents,remainingCents:project.budgetCents?project.budgetCents-actualCents:null,percent:project.budgetCents?actualCents/project.budgetCents*100:null,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};
