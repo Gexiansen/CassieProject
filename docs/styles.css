@@ -210,13 +210,22 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
 @media(min-width:640px){.overlay{align-items:center;padding:16px;}}
-.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:448px;max-height:94vh;overflow:auto;}
+.sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:448px;max-height:94vh;max-height:94dvh;overflow:auto;}
 @media(min-width:640px){.sheet{border-radius:24px;}}
 .sheet-head{padding:20px 24px 12px;border-bottom:2px solid #f8fafc;}
 .sheet-head .r1{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
 .sheet-head h3{font-size:18px;font-weight:800;color:#475569;}
 .sheet-head .x{width:44px;height:44px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:22px;line-height:1;}
 .sheet-body{padding:16px 24px;}
+.record-sticky{position:sticky;top:0;z-index:5;background:#fff;box-shadow:0 8px 14px rgba(15,23,42,.06);}
+.record-sticky .sheet-head{padding-bottom:6px;border-bottom:none;}
+.record-head-actions{display:flex;align-items:center;gap:4px;flex:none;}
+.record-no-spend{min-width:72px;min-height:44px;padding:6px 9px;border:2px solid #d1fae5;background:#ecfdf5;color:#047857;border-radius:12px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
+.record-no-spend.on{border-color:#a7f3d0;background:#fff;color:#047857;}.record-no-spend.armed{border-color:#fde68a;background:#fffbeb;color:#b45309;}
+.record-sticky-body{padding:0 24px 10px;}
+.record-date-tag{display:flex;align-items:center;min-height:32px;margin-bottom:8px;padding:5px 10px;border-radius:10px;background:#f8fafc;color:#64748b;font-size:12px;font-weight:800;}
+.record-date-edit{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:8px;}.record-date-edit label{color:#64748b;font-size:12px;font-weight:800;}.record-date-edit input{flex:1;min-width:0;height:44px;border:2px solid #e2e8f0;border-radius:12px;background:#f8fafc;padding:0 10px;color:#475569;font-size:16px;font-weight:700;font-family:inherit;outline:none;}
+.record-scroll-body{padding-top:14px;}
 .field{margin-bottom:16px;}
 .field label{font-size:12px;color:#94a3b8;font-weight:700;display:block;margin-bottom:6px;}
 .amount-box{display:flex;align-items:center;border-radius:16px;padding:0 16px;border:2px solid;}
@@ -229,7 +238,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .record-main .field{min-width:0;margin-bottom:12px;}
 .record-main .amount-box,.record-main>.field>input{height:52px;min-height:52px;}
 .record-main .amount-box input{height:100%;padding:0;}
-.record-context{position:sticky;top:0;z-index:2;display:grid;grid-template-columns:repeat(var(--context-count,4),minmax(0,1fr));gap:6px;background:#fff;padding:4px 0 12px;margin-bottom:4px;}
+.record-context{display:grid;grid-template-columns:repeat(var(--context-count,4),minmax(0,1fr));gap:6px;background:#fff;padding:4px 0 0;}
 .record-context button{min-width:0;min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:6px 3px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .record-context button.on{border-color:#6366f1;background:#6366f1;color:#fff;}
 .category-groups{display:grid;gap:12px;}
@@ -258,7 +267,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .quick-picks button b{display:block;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .quick-picks button span{display:block;font-size:10px;color:#64748b;margin-top:3px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .quick-picks-more{display:none;width:100%;min-height:44px;margin-top:6px;border:none;background:none;color:#6366f1;border-radius:12px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
-.no-spend-action{width:100%;min-height:44px;margin-top:8px;border:2px solid #d1fae5;background:#ecfdf5;color:#047857;border-radius:14px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;}
 .analysis-card>summary{min-height:44px;display:flex;align-items:center;color:#475569;font-size:15px;font-weight:800;cursor:pointer;list-style:none;}
 .analysis-card>summary::-webkit-details-marker{display:none;}
 .analysis-card[open]>summary{margin-bottom:16px;}

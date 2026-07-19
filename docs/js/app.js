@@ -498,7 +498,7 @@ function setGoalStatus(value){
   if(!saveDecisions()){decisions.goals[index]=old;return;}
   render();toast(status==='paused'?'目标已暂停':status==='completed'?'目标已完成':'目标已重新启用');
 }
-let deletedUndo=null,addedUndo=null;
+let deletedUndo=null,addedUndo=null,noSpendUndo=null;
 function openRecordActions(id){
   const record=state.records.find(item=>item.id===id);if(!record)return;const category=getCategory(record.categoryId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';
   const content=`<div class="record-action-list"><button data-action="copy-record" data-value="${record.id}">复制为新记录</button><button data-action="edit-record" data-value="${record.id}">编辑这笔记录</button><button class="danger" data-action="delete-record" data-value="${record.id}">删除，可在 12 秒内撤销</button></div>`;
@@ -533,25 +533,35 @@ function openDayDetails(date){
   let rows='';records.forEach(record=>{const category=getCategory(record.categoryId),project=projectForId(record.projectId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';rows+=`<button class="drow" data-action="open-record-actions" data-value="${record.id}"><span style="color:#475569;font-weight:700">${category?esc(category.name):'未知分类'}${record.note?` · ${esc(record.note)}`:''}</span><span class="tagmini">${esc(beneficiary)}</span>${project?`<span class="tagmini">${esc(project.name)}</span>`:''}<span class="amt ex-c">-¥${fmt(record.amountCents)}</span></button>`;});
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="当日支出"><div class="sheet-head"><div class="r1"><div><h3>📅 ${label}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${records.length} 笔支出</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="day-sheet-total">当日支出<b>¥${fmt(total)}</b></div>${rows}</div><div class="sheet-foot"><button class="save-btn e" data-action="add-for-date" data-value="${date}">＋ 再记一笔</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
+function persistNoSpendState(date,confirmed){
+  const oldDates=decisions.noSpendDates,exists=oldDates.includes(date);if(exists===confirmed)return true;
+  decisions.noSpendDates=confirmed?[...oldDates,date].sort():oldDates.filter(item=>item!==date);if(saveDecisions())return true;decisions.noSpendDates=oldDates;return false;
+}
 function toggleFormNoSpend(){
-  const input=document.getElementById('fDate'),date=input?input.value:'';if(!validDate(date)||date>todayStr())return;
-  if(state.records.some(record=>record.date===date)){toast('这天已有支出，不能标记无支出');return;}
-  const oldDates=decisions.noSpendDates,exists=oldDates.includes(date);decisions.noSpendDates=exists?oldDates.filter(item=>item!==date):[...oldDates,date].sort();
-  if(!saveDecisions()){decisions.noSpendDates=oldDates;return;}const selected=dateFromString(date);state.calendarAnchor=date;state.year=selected.getFullYear();state.month=selected.getMonth();closeModals();render();toast(exists?'已取消无支出确认':'已确认当日无支出');
+  const date=recordFormDate();if(!validDate(date)||date>todayStr())return;if(state.records.some(record=>record.date===date)){toast('这天已有支出，不能标记无支出');return;}
+  const exists=decisions.noSpendDates.includes(date),amount=document.getElementById('fAmt'),note=document.getElementById('fNote'),hasDraft=!exists&&!!((amount&&amount.value.trim())||(note&&note.value.trim()));
+  if(hasDraft&&!form.noSpendArmed){form.noSpendArmed=true;refreshNoSpendButton();toast('已填写内容，再次点击将放弃并确认无支出');return;}
+  if(!persistNoSpendState(date,!exists))return;if(noSpendUndo)clearTimeout(noSpendUndo.timer);noSpendUndo={date,wasConfirmed:exists,timer:setTimeout(()=>{noSpendUndo=null;},12000)};
+  const selected=dateFromString(date);state.calendarAnchor=date;state.year=selected.getFullYear();state.month=selected.getMonth();if(exists){form.noSpendArmed=false;render();refreshNoSpendButton();toast('已取消无支出确认','undo-no-spend');return;}closeModals();render();toast('已确认当日无支出','undo-no-spend');
+}
+function undoNoSpend(){
+  if(!noSpendUndo)return;const item=noSpendUndo;if(!persistNoSpendState(item.date,item.wasConfirmed))return;clearTimeout(item.timer);noSpendUndo=null;const selected=dateFromString(item.date);state.calendarAnchor=item.date;state.year=selected.getFullYear();state.month=selected.getMonth();render();refreshNoSpendButton();toast('已恢复无支出状态');
 }
 
 /* ============ 记账弹窗 ============ */
 const QUICK_SCENE_LIMIT=8;
 let renderedQuickScenes=[];
-let form={id:null,categoryId:'food-vegetable',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false,quickExpanded:false};
+let form={id:null,date:'',categoryId:'food-vegetable',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false,quickExpanded:false,noSpendArmed:false};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
+function recordFormDate(){const input=document.getElementById('fDate');return input?input.value:form.date||todayStr();}
+function recordDateLabel(value){const date=dateFromString(value),week=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()];return`${value===todayStr()?'今天 · ':''}${date.getMonth()+1}月${date.getDate()}日 · ${week}`;}
 function choiceVisible(categoryId){const category=getCategory(categoryId);return !!(category&&category.groupActive&&category.active&&(form.projectId||category.beneficiaryIds.includes(form.beneficiaryId)));}
 function quickSceneVisible(scene){
   const category=getCategory(scene.categoryId),beneficiary=prefs.beneficiaries.find(item=>item.id===scene.beneficiaryId&&item.active);if(!category||!category.groupActive||!category.active||!beneficiary||!category.beneficiaryIds.includes(beneficiary.id))return false;
-  if(!scene.projectId)return true;const project=projectForId(scene.projectId),input=document.getElementById('fDate'),date=input?input.value:todayStr();return projectAppliesOn(project,date);
+  if(!scene.projectId)return true;const project=projectForId(scene.projectId);return projectAppliesOn(project,recordFormDate());
 }
 function ensureFormChoice(){if(choiceVisible(form.categoryId))return;for(const group of Object.values(EXPENSE_CATS)){for(const item of group.items){if(choiceVisible(item.id)){form.categoryId=item.id;return;}}}}
-function contextProject(){const selected=projectForId(form.projectId);if(selected)return selected;const input=document.getElementById('fDate'),date=input?input.value:todayStr(),current=projectForId(decisions.currentProjectId);return projectAppliesOn(current,date)?current:null;}
+function contextProject(){const selected=projectForId(form.projectId);if(selected)return selected;const current=projectForId(decisions.currentProjectId);return projectAppliesOn(current,recordFormDate())?current:null;}
 function renderRecordContext(){
   const container=document.getElementById('recordContext'),project=contextProject(),items=prefs.beneficiaries.filter(item=>item.active).map(item=>({value:item.id,name:item.name,on:!form.projectId&&form.beneficiaryId===item.id}));if(project)items.push({value:`project:${project.id}`,name:project.name,on:form.projectId===project.id});const columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${item.on?'on':''}" data-action="select-record-context" data-value="${item.value}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
 }
@@ -566,19 +576,20 @@ function openRecordForm(id=null,preset=null){
   const source=record||preset;
   form.id=record?record.id:null;
   const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate),sourceBeneficiary=prefs.beneficiaries.find(item=>item.id===(source&&source.beneficiaryId)&&item.active),defaultBeneficiary=prefs.beneficiaries.find(item=>item.id===prefs.defaultBeneficiaryId&&item.active)||prefs.beneficiaries.find(item=>item.id==='family');
-  form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.categoryId=source&&getCategory(source.categoryId)?source.categoryId:form.categoryId;form.projectTouched=false;form.quickExpanded=false;
+  form.date=sourceDate;form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.categoryId=source&&getCategory(source.categoryId)?source.categoryId:form.categoryId;form.projectTouched=false;form.quickExpanded=false;form.noSpendArmed=false;
   form.showMore=!!record||!!(source&&(source.date&&source.date!==todayStr()||sourceProject));
   const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
+  const hasDateRecords=state.records.some(item=>item.date===sourceDate),confirmedNoSpend=decisions.noSpendDates.includes(sourceDate),noSpendAction=!record&&!hasDateRecords?`<button class="record-no-spend ${confirmedNoSpend?'on':''}" id="noSpendButton" data-action="toggle-form-no-spend">${confirmedNoSpend?'取消确认':'✓ 无支出'}</button>`:'',dateMarkup=record?`<div class="record-date-edit"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div>`:`<div class="record-date-tag">📅 ${recordDateLabel(sourceDate)}</div>`;
   const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
-    <div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record?sourceDate+' · 修改后点击底部保存':'输入金额后，点击分类即可完成'}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div>
-    <div class="sheet-body">
+    <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record?'修改后点击底部保存':'输入金额后，点击分类即可完成'}</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
+    <div class="record-sticky-body">${dateMarkup}
       <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div>
-      <div class="record-context" id="recordContext"></div>
+      <div class="record-context" id="recordContext"></div></div></div>
+    <div class="sheet-body record-scroll-body">
       <div class="field" id="quickField"><label>快捷记录</label><div class="quick-picks" id="quickPicks"></div><button class="quick-picks-more" id="quickPicksMore" data-action="toggle-quick-scenes"></button></div>
       <div class="field"><label>全部分类</label><div class="category-groups" id="categoryGroups"></div></div>
-      <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起更多选项':'日期与专项'}</button>
-      <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div></div>
-      ${record?'':`<button id="noSpendButton" class="no-spend-action" data-action="toggle-form-no-spend">${decisions.noSpendDates.includes(sourceDate)?'取消“当日无支出”确认':'确认当日无支出'}</button>`}
+      <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起所属专项':'所属专项'}</button>
+      <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field" style="margin:0"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div></div>
     </div>${record?`<div class="sheet-foot"><button class="save-btn e" data-action="save-record">保存修改</button></div>`:''}
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
@@ -605,14 +616,14 @@ function renderCategoryGroups(){
   document.getElementById('categoryGroups').innerHTML=h||'<div class="empty" style="padding:12px 0">当前成员没有可用分类，请到“数据—分类管理”中配置。</div>';
 }
 function toggleRecordSection(value){
-  if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起更多选项':'日期与专项';}
+  if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起所属专项':'所属专项';}
 }
 function refreshProjectForDate(){
-  refreshNoSpendButton();if(form.id||form.projectTouched){renderQuickChoices();return;}
-  const date=document.getElementById('fDate').value,current=projectForId(decisions.currentProjectId),select=document.getElementById('fProject'),applies=projectAppliesOn(current,date);
+  const date=recordFormDate();form.date=date;refreshNoSpendButton();if(form.id||form.projectTouched){renderQuickChoices();return;}
+  const current=projectForId(decisions.currentProjectId),select=document.getElementById('fProject'),applies=projectAppliesOn(current,date);
   select.value=applies?current.id:'';form.projectId=select.value;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();
 }
-function refreshNoSpendButton(){const button=document.getElementById('noSpendButton'),input=document.getElementById('fDate');if(!button||!input)return;const date=input.value;button.style.display=validDate(date)&&date<=todayStr()?'block':'none';button.textContent=decisions.noSpendDates.includes(date)?'取消“当日无支出”确认':'确认当日无支出';}
+function refreshNoSpendButton(){const button=document.getElementById('noSpendButton');if(!button)return;const date=recordFormDate(),confirmed=decisions.noSpendDates.includes(date);button.classList.toggle('on',confirmed);button.classList.toggle('armed',form.noSpendArmed);button.textContent=confirmed?'取消确认':form.noSpendArmed?'再次确认':'✓ 无支出';}
 function selQuick(value,save=false){if(!choiceVisible(value))return;form.categoryId=value;renderCategoryGroups();if(save)doSave();}
 function readAmount(){
   const rawAmount=document.getElementById('fAmt').value.trim();
@@ -623,7 +634,7 @@ function readAmount(){
 }
 function doSave(){
   const amountCents=readAmount();if(amountCents===false)return;
-  const date=document.getElementById('fDate').value||todayStr();
+  const date=recordFormDate();form.date=date;
   if(!validDate(date)||!form.id&&date>todayStr()){toast(date>todayStr()?'不能记录未来支出':'请输入正确的日期');return;}
   const note=document.getElementById('fNote').value.trim().slice(0,20);
   const selectedProjectId=document.getElementById('fProject').value,projectId=projectForId(selectedProjectId)?selectedProjectId:'';
@@ -790,7 +801,7 @@ document.addEventListener('click',event=>{
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),
     'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(),'add-for-date':()=>openRecordForm(null,{date:value}),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
-    'undo-delete':undoDelete,'undo-add':undoAdd,'close-modal':closeModals,'close-overlay':closeModals,
+    'undo-delete':undoDelete,'undo-add':undoAdd,'undo-no-spend':undoNoSpend,'close-modal':closeModals,'close-overlay':closeModals,
     'select-record-context':()=>selectRecordContext(value),'select-category-choice':()=>selQuick(value,!form.id),'select-quick-scene':()=>applyQuickScene(value),'save-quick-scene':()=>applyQuickScene(value,true),'toggle-quick-scenes':toggleQuickScenes,
     'toggle-record-section':()=>toggleRecordSection(value),'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
     'open-data-management':openDataManagement,'open-start-fresh':openStartFresh,'confirm-start-fresh':confirmStartFresh,'open-category-manager':openCategoryManager,'open-category-name':()=>openCategoryNameForm(value),'save-category-name':saveCategoryName,
@@ -804,6 +815,7 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
 document.addEventListener('change',event=>{if(event.target.id==='fProject'){form.projectId=event.target.value;form.projectTouched=true;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();}if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
+document.addEventListener('input',event=>{if((event.target.id==='fAmt'||event.target.id==='fNote')&&form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}});
 new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
 document.addEventListener('keydown',event=>{
   const dialog=document.querySelector('#modals [role="dialog"]');if(!dialog)return;
