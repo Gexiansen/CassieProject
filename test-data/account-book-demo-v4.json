@@ -1,0 +1,846 @@
+{
+  "appName": "CassieProject",
+  "backupVersion": 4,
+  "schemaVersion": 4,
+  "exportedAt": "2026-07-19T05:14:34.016Z",
+  "summary": {
+    "recordCount": 34,
+    "expenseCents": 1886980
+  },
+  "records": {
+    "schemaVersion": 4,
+    "updatedAt": "2026-07-19T05:14:34.016Z",
+    "records": [
+      {
+        "id": "11111111-1111-4111-8111-000000000002",
+        "date": "2026-01-06",
+        "amountCents": 520000,
+        "categoryId": "living-rent",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "一月房租",
+        "createdAt": "2026-01-06T02:00:00.000Z",
+        "updatedAt": "2026-01-06T02:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000003",
+        "date": "2026-01-10",
+        "amountCents": 18650,
+        "categoryId": "food-vegetable",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "周末买菜",
+        "createdAt": "2026-01-10T03:00:00.000Z",
+        "updatedAt": "2026-01-10T03:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000004",
+        "date": "2026-01-18",
+        "amountCents": 32800,
+        "categoryId": "dining-restaurant",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭聚餐",
+        "createdAt": "2026-01-18T11:00:00.000Z",
+        "updatedAt": "2026-01-18T11:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000007",
+        "date": "2026-02-09",
+        "amountCents": 88000,
+        "categoryId": "social-gift",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "春节红包",
+        "createdAt": "2026-02-09T04:00:00.000Z",
+        "updatedAt": "2026-02-09T04:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000008",
+        "date": "2026-02-15",
+        "amountCents": 236000,
+        "categoryId": "transport-ticket",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "春节往返车票",
+        "createdAt": "2026-02-15T05:00:00.000Z",
+        "updatedAt": "2026-02-15T05:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000009",
+        "date": "2026-02-16",
+        "amountCents": 69900,
+        "categoryId": "living-hotel",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "返程住宿",
+        "createdAt": "2026-02-16T05:00:00.000Z",
+        "updatedAt": "2026-02-16T05:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000012",
+        "date": "2026-03-08",
+        "amountCents": 45900,
+        "categoryId": "shopping-daily",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭日用品",
+        "createdAt": "2026-03-08T06:00:00.000Z",
+        "updatedAt": "2026-03-08T06:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000013",
+        "date": "2026-03-12",
+        "amountCents": 68000,
+        "categoryId": "health-checkup",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "年度体检",
+        "createdAt": "2026-03-12T01:00:00.000Z",
+        "updatedAt": "2026-03-12T01:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000015",
+        "date": "2026-04-04",
+        "amountCents": 42000,
+        "categoryId": "transport-fuel",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "自驾加油",
+        "createdAt": "2026-04-04T01:00:00.000Z",
+        "updatedAt": "2026-04-04T01:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000016",
+        "date": "2026-04-04",
+        "amountCents": 75800,
+        "categoryId": "living-hotel",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "湖边酒店",
+        "createdAt": "2026-04-04T13:00:00.000Z",
+        "updatedAt": "2026-04-04T13:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000017",
+        "date": "2026-04-05",
+        "amountCents": 26000,
+        "categoryId": "entertainment-scenic",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "景区门票",
+        "createdAt": "2026-04-05T03:00:00.000Z",
+        "updatedAt": "2026-04-05T03:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000018",
+        "date": "2026-04-05",
+        "amountCents": 46800,
+        "categoryId": "dining-restaurant",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "杭帮菜",
+        "createdAt": "2026-04-05T10:00:00.000Z",
+        "updatedAt": "2026-04-05T10:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000020",
+        "date": "2026-05-02",
+        "amountCents": 19900,
+        "categoryId": "kids-toy",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "儿童积木",
+        "createdAt": "2026-05-02T07:00:00.000Z",
+        "updatedAt": "2026-05-02T07:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000021",
+        "date": "2026-05-11",
+        "amountCents": 89900,
+        "categoryId": "shopping-digital",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭路由器",
+        "createdAt": "2026-05-11T07:00:00.000Z",
+        "updatedAt": "2026-05-11T07:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000022",
+        "date": "2026-05-18",
+        "amountCents": 35680,
+        "categoryId": "living-utility",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "水电燃气",
+        "createdAt": "2026-05-18T02:00:00.000Z",
+        "updatedAt": "2026-05-18T02:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000025",
+        "date": "2026-06-07",
+        "amountCents": 36800,
+        "categoryId": "shopping-clothes",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "夏季衣物",
+        "createdAt": "2026-06-07T08:00:00.000Z",
+        "updatedAt": "2026-06-07T08:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000026",
+        "date": "2026-06-14",
+        "amountCents": 12650,
+        "categoryId": "health-medicine",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "常用药品",
+        "createdAt": "2026-06-14T03:00:00.000Z",
+        "updatedAt": "2026-06-14T03:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000027",
+        "date": "2026-06-22",
+        "amountCents": 98000,
+        "categoryId": "entertainment-fitness",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "季度健身卡",
+        "createdAt": "2026-06-22T07:00:00.000Z",
+        "updatedAt": "2026-06-22T07:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000030",
+        "date": "2026-07-01",
+        "amountCents": 12860,
+        "categoryId": "food-vegetable",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "超市蔬菜",
+        "createdAt": "2026-07-01T10:00:00.000Z",
+        "updatedAt": "2026-07-01T10:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000031",
+        "date": "2026-07-02",
+        "amountCents": 23680,
+        "categoryId": "food-meat",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "肉类海鲜",
+        "createdAt": "2026-07-02T10:00:00.000Z",
+        "updatedAt": "2026-07-02T10:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000032",
+        "date": "2026-07-03",
+        "amountCents": 1200,
+        "categoryId": "transport-transit",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "地铁通勤",
+        "createdAt": "2026-07-03T00:30:00.000Z",
+        "updatedAt": "2026-07-03T00:30:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000033",
+        "date": "2026-07-04",
+        "amountCents": 3260,
+        "categoryId": "dining-takeout",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "午餐外卖",
+        "createdAt": "2026-07-04T04:00:00.000Z",
+        "updatedAt": "2026-07-04T04:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000034",
+        "date": "2026-07-05",
+        "amountCents": 25800,
+        "categoryId": "shopping-daily",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "清洁用品",
+        "createdAt": "2026-07-05T08:00:00.000Z",
+        "updatedAt": "2026-07-05T08:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000035",
+        "date": "2026-07-06",
+        "amountCents": 16800,
+        "categoryId": "kids-study",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "学习文具",
+        "createdAt": "2026-07-06T08:00:00.000Z",
+        "updatedAt": "2026-07-06T08:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000036",
+        "date": "2026-07-07",
+        "amountCents": 9800,
+        "categoryId": "entertainment-movie",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭电影夜",
+        "createdAt": "2026-07-07T11:00:00.000Z",
+        "updatedAt": "2026-07-07T11:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000037",
+        "date": "2026-07-08",
+        "amountCents": 4860,
+        "categoryId": "transport-taxi",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "雨天打车",
+        "createdAt": "2026-07-08T09:00:00.000Z",
+        "updatedAt": "2026-07-08T09:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000038",
+        "date": "2026-07-08",
+        "amountCents": 68800,
+        "categoryId": "living-hotel",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "商务酒店",
+        "createdAt": "2026-07-08T13:00:00.000Z",
+        "updatedAt": "2026-07-08T13:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000039",
+        "date": "2026-07-09",
+        "amountCents": 36800,
+        "categoryId": "dining-restaurant",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "出差晚餐",
+        "createdAt": "2026-07-09T11:00:00.000Z",
+        "updatedAt": "2026-07-09T11:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000040",
+        "date": "2026-07-10",
+        "amountCents": 15800,
+        "categoryId": "food-fruit",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "当季水果",
+        "createdAt": "2026-07-10T10:00:00.000Z",
+        "updatedAt": "2026-07-10T10:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000041",
+        "date": "2026-07-11",
+        "amountCents": 50000,
+        "categoryId": "social-gift",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "朋友婚礼红包",
+        "createdAt": "2026-07-11T04:00:00.000Z",
+        "updatedAt": "2026-07-11T04:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000042",
+        "date": "2026-07-12",
+        "amountCents": 31240,
+        "categoryId": "living-utility",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "本月水电燃气",
+        "createdAt": "2026-07-12T02:00:00.000Z",
+        "updatedAt": "2026-07-12T02:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000043",
+        "date": "2026-07-13",
+        "amountCents": 6800,
+        "categoryId": "food-snack",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "周末零食",
+        "createdAt": "2026-07-13T08:00:00.000Z",
+        "updatedAt": "2026-07-13T08:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000044",
+        "date": "2026-07-14",
+        "amountCents": 3600,
+        "categoryId": "food-drink",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "咖啡饮料",
+        "createdAt": "2026-07-14T03:00:00.000Z",
+        "updatedAt": "2026-07-14T03:00:00.000Z"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000045",
+        "date": "2026-07-14",
+        "amountCents": 12900,
+        "categoryId": "shopping-sports",
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "羽毛球拍",
+        "createdAt": "2026-07-14T05:00:00.000Z",
+        "updatedAt": "2026-07-14T05:00:00.000Z"
+      }
+    ]
+  },
+  "settings": {
+    "schemaVersion": 4,
+    "updatedAt": "",
+    "defaultBeneficiaryId": "family",
+    "beneficiaries": [
+      {
+        "id": "family",
+        "name": "共同",
+        "kind": "shared",
+        "active": true
+      },
+      {
+        "id": "wife",
+        "name": "妻子",
+        "kind": "member",
+        "active": true
+      },
+      {
+        "id": "husband",
+        "name": "丈夫",
+        "kind": "member",
+        "active": true
+      },
+      {
+        "id": "son",
+        "name": "儿子",
+        "kind": "member",
+        "active": true
+      }
+    ],
+    "categories": [
+      {
+        "id": "food",
+        "name": "食品生鲜",
+        "color": "#22c55e",
+        "active": true,
+        "items": [
+          {
+            "id": "food-vegetable",
+            "name": "买菜",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "food-meat",
+            "name": "买肉",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "food-fruit",
+            "name": "水果",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "food-snack",
+            "name": "零食",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "food-drink",
+            "name": "饮料",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "shopping",
+        "name": "购物",
+        "color": "#6366f1",
+        "active": true,
+        "items": [
+          {
+            "id": "shopping-daily",
+            "name": "日用品",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "shopping-clothes",
+            "name": "衣服",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "shopping-sports",
+            "name": "运动器材",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "shopping-digital",
+            "name": "数码电器",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "kids",
+        "name": "育儿",
+        "color": "#fb7185",
+        "active": true,
+        "items": [
+          {
+            "id": "kids-toy",
+            "name": "玩具",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "kids-kclothes",
+            "name": "衣服",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "kids-shoes",
+            "name": "鞋子",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "kids-bedding",
+            "name": "床品",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "kids-study",
+            "name": "学习文具",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "kids-kother",
+            "name": "其他",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "dining",
+        "name": "餐饮外食",
+        "color": "#f59e0b",
+        "active": true,
+        "items": [
+          {
+            "id": "dining-restaurant",
+            "name": "堂食",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "dining-takeout",
+            "name": "外卖",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "transport",
+        "name": "交通出行",
+        "color": "#0ea5e9",
+        "active": true,
+        "items": [
+          {
+            "id": "transport-transit",
+            "name": "公共交通",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "transport-taxi",
+            "name": "打车",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "transport-fuel",
+            "name": "加油",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "transport-charging",
+            "name": "车辆充电",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "transport-ticket",
+            "name": "车票机票",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "living",
+        "name": "居住生活",
+        "color": "#8b5cf6",
+        "active": true,
+        "items": [
+          {
+            "id": "living-rent",
+            "name": "房租",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "living-utility",
+            "name": "水电燃气",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "living-hotel",
+            "name": "住宿酒店",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "entertainment",
+        "name": "休闲娱乐",
+        "color": "#ec4899",
+        "active": true,
+        "items": [
+          {
+            "id": "entertainment-movie",
+            "name": "影音游戏",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "entertainment-scenic",
+            "name": "景点门票",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "entertainment-fitness",
+            "name": "健身",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "health",
+        "name": "医疗健康",
+        "color": "#ef4444",
+        "active": true,
+        "items": [
+          {
+            "id": "health-medicine",
+            "name": "药品",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          },
+          {
+            "id": "health-checkup",
+            "name": "体检医疗",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      },
+      {
+        "id": "social",
+        "name": "人情往来",
+        "color": "#f97316",
+        "active": true,
+        "items": [
+          {
+            "id": "social-gift",
+            "name": "礼物红包",
+            "active": true,
+            "beneficiaryIds": [
+              "family",
+              "wife",
+              "husband",
+              "son"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "plans": {
+    "schemaVersion": 4,
+    "updatedAt": "",
+    "budgets": {},
+    "projects": [],
+    "currentProjectId": "",
+    "goals": [],
+    "reviews": {},
+    "noSpendDates": []
+  }
+}

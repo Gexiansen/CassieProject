@@ -1,12 +1,13 @@
 /* ============ 状态 ============ */
-let prefs=readPrefs();
-EXPENSE_CATS=categoryMap(prefs.categories);
-const loaded=readStoredData();
-let storageLocked=loaded.locked;
+let prefs=readSettings();
+refreshDerivedSettings(prefs);
+let decisions=readPlans();
+const loaded=readStoredData(prefs,decisions);
+let upgradeRequired=loaded.needsUpgrade;
+let storageLocked=loaded.locked||upgradeRequired;
 let backupMeta=readBackupMeta();
-let decisions=readDecisions();
 const now=new Date();
-function defaultFilters(){return {keyword:'',type:'all',range:'all',start:'',end:''};}
+function defaultFilters(){return {keyword:'',range:'all',start:'',end:''};}
 let state={records:loaded.records,view:'month',tab:'home',filtersExpanded:false,year:now.getFullYear(),month:now.getMonth(),calendarExpanded:false,calendarAnchor:todayStr(),
   openYears:{[now.getFullYear()]:true},
   openMonths:{[now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')]:true},filters:defaultFilters(),planningView:'budget'};
@@ -14,17 +15,17 @@ let state={records:loaded.records,view:'month',tab:'home',filtersExpanded:false,
 /* ============ 计算辅助 ============ */
 function inPeriod(r){const[y,m]=r.date.split('-').map(Number);return state.view==='year'?y===state.year:y===state.year&&m-1===state.month;}
 function periodRecs(){return state.records.filter(inPeriod);}
-function sumType(recs,t){return recs.filter(r=>r.type===t).reduce((s,r)=>s+r.amountCents,0);}
+function sumType(recs){return recs.reduce((s,r)=>s+r.amountCents,0);}
 function previousComparable(type,records=state.records,year=state.year,month=state.month,view=state.view,baseDate=todayStr()){
   const[baseYear,baseMonth,baseDay]=baseDate.split('-').map(Number);
   if(view==='year'){
     const previousYear=year-1,isCurrent=year===baseYear,cutoff=isCurrent?`${previousYear}-${String(baseMonth).padStart(2,'0')}-${String(baseDay).padStart(2,'0')}`:`${previousYear}-12-31`;
-    const amountCents=records.filter(record=>record.type===type&&record.date.slice(0,4)===String(previousYear)&&record.date<=cutoff).reduce((sum,record)=>sum+record.amountCents,0);
+    const amountCents=records.filter(record=>record.date.slice(0,4)===String(previousYear)&&record.date<=cutoff).reduce((sum,record)=>sum+record.amountCents,0);
     return {amountCents,label:isCurrent?'上年同期':'上年'};
   }
   const previous=new Date(year,month-1,1),previousYear=previous.getFullYear(),previousMonth=previous.getMonth()+1,isCurrent=year===baseYear&&month===baseMonth-1,lastDay=new Date(previousYear,previousMonth,0).getDate(),cutoffDay=isCurrent?Math.min(baseDay,lastDay):lastDay;
   const prefix=`${previousYear}-${String(previousMonth).padStart(2,'0')}`,cutoff=`${prefix}-${String(cutoffDay).padStart(2,'0')}`;
-  const amountCents=records.filter(record=>record.type===type&&record.date.startsWith(prefix)&&record.date<=cutoff).reduce((sum,record)=>sum+record.amountCents,0);
+  const amountCents=records.filter(record=>record.date.startsWith(prefix)&&record.date<=cutoff).reduce((sum,record)=>sum+record.amountCents,0);
   return {amountCents,label:isCurrent?'上月同期':'上月'};
 }
 function filterDateBounds(range,today){
@@ -34,14 +35,13 @@ function filterDateBounds(range,today){
   if(range==='year')return[`${y}-01-01`,`${y}-12-31`];
   return ['', ''];
 }
-function hasActiveFilters(filters=state.filters){return Object.entries(filters).some(([key,value])=>key==='type'||key==='range'?value!=='all':value!=='');}
+function hasActiveFilters(filters=state.filters){return Object.entries(filters).some(([key,value])=>key==='range'?value!=='all':value!=='');}
 function filterRecords(records,filters,today=todayStr()){
   const keyword=filters.keyword.toLocaleLowerCase('zh-CN'),bounds=filterDateBounds(filters.range,today);
   const start=filters.range==='custom'?filters.start:bounds[0],end=filters.range==='custom'?filters.end:bounds[1];
   return records.filter(record=>{
-    const cat=getCat(record.type,record.cat),project=projectForId(record.projectId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'',haystack=`${record.note} ${record.tag} ${project?project.name:''} ${beneficiary} ${cat.name} ${cat.subs[record.sub]}`.toLocaleLowerCase('zh-CN');
+    const category=getCategory(record.categoryId),project=projectForId(record.projectId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'',haystack=`${record.note} ${project?project.name:''} ${beneficiary} ${category?category.groupName:''} ${category?category.name:''}`.toLocaleLowerCase('zh-CN');
     if(keyword&&!haystack.includes(keyword))return false;
-    if(filters.type!=='all'&&record.type!==filters.type)return false;
     if(start&&record.date<start||end&&record.date>end)return false;
     return true;
   });
@@ -51,13 +51,13 @@ function previousMonthKey(value){const[y,m]=value.split('-').map(Number),date=ne
 function projectForId(id,decisionData=decisions){return id?decisionData.projects.find(project=>project.id===id)||null:null;}
 function projectAppliesOn(project,date){return !!(project&&project.status==='active'&&validDate(date)&&project.startDate<=date&&date<=project.endDate);}
 function calculateProject(project,records=state.records){
-  const items=records.filter(record=>record.type==='expense'&&record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
+  const items=records.filter(record=>record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
   return {items,actualCents,remainingCents:project.budgetCents?project.budgetCents-actualCents:null,percent:project.budgetCents?actualCents/project.budgetCents*100:null,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};
 }
 function projectBudgetForMonth(value,decisionData=decisions){return decisionData.projects.filter(project=>project.status!=='archived'&&project.startDate.slice(0,7)===value).reduce((sum,project)=>sum+project.budgetCents,0);}
 function calculateBudget(value,records=state.records,decisionData=decisions){
   const budget=decisionData.budgets[value]||null;let spentCents=0;
-  records.forEach(record=>{if(record.type==='expense'&&record.date.slice(0,7)===value&&!projectForId(record.projectId,decisionData))spentCents+=record.amountCents;});
+  records.forEach(record=>{if(record.date.slice(0,7)===value&&!projectForId(record.projectId,decisionData))spentCents+=record.amountCents;});
   return {configured:!!(budget&&budget.totalCents!==null),budget,totalCents:budget?budget.totalCents:null,spentCents,remainingCents:budget&&budget.totalCents!==null?budget.totalCents-spentCents:null,percent:budget&&budget.totalCents?spentCents/budget.totalCents*100:null};
 }
 function budgetLevel(percent){return percent===null?'':percent>=100?'over':percent>=80?'warn':'';}
@@ -71,11 +71,11 @@ function calculateGoal(goal,baseDate=todayStr()){
   return {savedCents,remainingCents,percent,recommendedCents:remainingCents?Math.ceil(remainingCents/months):0,months};
 }
 function calculateMonthReview(value,records=state.records,decisionData=decisions){
-  const monthRecords=records.filter(record=>record.date.slice(0,7)===value),legacyIncomeCents=sumType(monthRecords,'income'),expenseCents=sumType(monthRecords,'expense'),budget=decisionData.budgets[value]||null,availableCents=budget&&budget.availableCents!==null&&budget.availableCents!==undefined?budget.availableCents:legacyIncomeCents||null;
+  const monthRecords=records.filter(record=>record.date.slice(0,7)===value),expenseCents=sumType(monthRecords),budget=decisionData.budgets[value]||null,availableCents=budget&&budget.availableCents!==null&&budget.availableCents!==undefined?budget.availableCents:null;
   let goalContributionCents=0,goalContributionCount=0;
   decisionData.goals.forEach(goal=>goal.contributions.forEach(item=>{if(item.date.slice(0,7)===value){goalContributionCents+=item.amountCents;goalContributionCount++;}}));
-  const followReview=decisionData.reviews[previousMonthKey(value)]||null,followActions=followReview?followReview.actions:[];
-  return {availableCents,availableSource:budget&&budget.availableCents?'plan':legacyIncomeCents?'legacy':'none',legacyIncomeCents,expenseCents,balanceCents:availableCents===null?null:availableCents-expenseCents-goalContributionCents,budget:calculateBudget(value,records,decisionData),goalContributionCents,goalContributionCount,followActions};
+  const followReview=decisionData.reviews[previousMonthKey(value)]||null,followActions=followReview&&followReview.action?[followReview.action]:[];
+  return {availableCents,availableSource:budget&&budget.availableCents?'plan':'none',expenseCents,balanceCents:availableCents===null?null:availableCents-expenseCents-goalContributionCents,budget:calculateBudget(value,records,decisionData),goalContributionCents,goalContributionCount,followActions};
 }
 function reviewObservations(metrics,decisionData=decisions){
   const items=[];
@@ -94,7 +94,7 @@ function recentCompleteMonthKeys(baseDate=todayStr(),count=3){
   return keys;
 }
 function calculateCashflow(records=state.records,decisionData=decisions,baseDate=todayStr()){
-  const keys=recentCompleteMonthKeys(baseDate),periods=keys.map(key=>{const items=records.filter(record=>record.type==='expense'&&record.date.slice(0,7)===key);return {key,recordCount:items.length,expenseCents:sumType(items,'expense')};}).filter(item=>item.recordCount>0);
+  const keys=recentCompleteMonthKeys(baseDate),periods=keys.map(key=>{const items=records.filter(record=>record.date.slice(0,7)===key);return {key,recordCount:items.length,expenseCents:sumType(items)};}).filter(item=>item.recordCount>0);
   const average=field=>periods.length?Math.round(periods.reduce((sum,item)=>sum+item[field],0)/periods.length):0;
   const averageExpenseCents=average('expenseCents');
   const activeGoals=decisionData.goals.filter(goal=>goal.status==='active'),requiredGoalCents=activeGoals.reduce((sum,goal)=>sum+calculateGoal(goal,baseDate).recommendedCents,0);
@@ -114,7 +114,7 @@ function cashflowObservations(metrics){
 /* ============ 图表(纯SVG) ============ */
 function trendSVG(){
   const arr=Array(12).fill(0);
-  state.records.forEach(r=>{const[y,m]=r.date.split('-').map(Number);if(r.type==='expense'&&y===state.year)arr[m-1]+=r.amountCents;});
+  state.records.forEach(r=>{const[y,m]=r.date.split('-').map(Number);if(y===state.year)arr[m-1]+=r.amountCents;});
   const max=Math.max(1,...arr);
   const W=340,H=190,pL=34,pR=10,pT=10,pB=30,cw=W-pL-pR,ch=H-pT-pB,base=pT+ch;
   const X=i=>pL+i*cw/11, Y=v=>base-(v/max)*ch;
@@ -129,7 +129,7 @@ function trendSVG(){
 /* ============ 渲染主界面 ============ */
 function render(){
   const recs=periodRecs();
-  const totalExp=sumType(recs,'expense'),pExp=previousComparable('expense');
+  const totalExp=sumType(recs),pExp=previousComparable('expense');
   const diff=totalExp-pExp.amountCents, diffPct=pExp.amountCents>0?diff/pExp.amountCents*100:null;
   const currentBudget=state.view==='month'?decisions.budgets[monthKey()]||null:null,availableCents=currentBudget&&currentBudget.availableCents!==undefined?currentBudget.availableCents:null;
   const periodLabel=state.view==='year'?`${state.year}年`:`${state.year}年${state.month+1}月`;
@@ -147,7 +147,7 @@ function render(){
     <button class="${state.tab==='planning'?'on':''}" data-action="set-tab" data-value="planning">🧭 计划</button>
   </div>`;
   if(state.tab!=='home')html+=`<div class="compact-period"><button data-action="shift" data-value="-1" aria-label="上一${state.view==='year'?'年':'月'}">‹</button><div class="period-label">${periodLabel}</div>${showToday?`<button class="today" data-action="go-today">回本月</button>`:''}<button data-action="shift" data-value="1" aria-label="下一${state.view==='year'?'年':'月'}">›</button>${state.tab==='details'?`<div class="view-toggle"><button class="${state.view==='month'?'on':''}" data-action="set-view" data-value="month">月</button><button class="${state.view==='year'?'on':''}" data-action="set-view" data-value="year">年</button></div>`:''}</div>`;
-  if(state.tab==='home'&&(backup.warn||storageLocked))html+=`<button class="backup-notice" data-action="open-data-management"><span>${storageLocked?'检测到本地数据异常，记账已暂停。':esc(backup.text)}</span><b>${storageLocked?'处理':'去备份'} ›</b></button>`;
+  if(state.tab==='home'&&(backup.warn||storageLocked))html+=`<button class="backup-notice" data-action="open-data-management"><span>${upgradeRequired?'检测到旧版账本，需要先完成断代升级。':storageLocked?'检测到本地数据异常，记账已暂停。':esc(backup.text)}</span><b>${storageLocked?'处理':'去备份'} ›</b></button>`;
 
   if(state.tab==='home')html+=renderHomeCalendar()+`<div class="card-sum">
     <div class="blob" style="width:112px;height:112px;right:-24px;top:-24px;"></div>
@@ -178,7 +178,7 @@ function renderBudgetCard(showAction=true){
 }
 
 function renderBudgetPlanning(){
-  const key=monthKey(),metrics=calculateBudget(key),budget=metrics.budget||{totalCents:null,availableCents:null,categories:{}},previous=decisions.budgets[previousMonthKey(key)],hasPlan=budget.totalCents!==null||(budget.availableCents!==null&&budget.availableCents!==undefined);
+  const key=monthKey(),metrics=calculateBudget(key),budget=metrics.budget||{totalCents:null,availableCents:null},previous=decisions.budgets[previousMonthKey(key)],hasPlan=budget.totalCents!==null||(budget.availableCents!==null&&budget.availableCents!==undefined);
   return `<div class="card"><h3>🧭 制定月度计划 <span class="sub">${state.year}年${state.month+1}月</span></h3><p class="planning-note">不再逐笔记录收入；可支配金额表示本月可以安排给支出和目标的钱。</p>
     <div class="budget-form-row"><div class="name">本月可支配金额<span>用于判断计划后结余，选填</span></div><div class="money">¥<input id="budgetAvailable" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月可支配金额" placeholder="未设置" value="${budget.availableCents?(budget.availableCents/100).toFixed(2):''}"></div></div>
     <div class="budget-form-row"><div class="name">本月日常预算<span>不含已关联正式专项的支出</span></div><div class="money">¥<input id="budgetTotal" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月日常预算" placeholder="未设置" value="${budget.totalCents?(budget.totalCents/100).toFixed(2):''}"></div></div><div class="budget-actions">${previous&&(previous.totalCents||previous.availableCents)&&!hasPlan?`<button data-action="copy-previous-budget">复制上月计划</button>`:''}<button class="primary" data-action="save-budget">保存月度计划</button></div></div>`;
@@ -215,15 +215,15 @@ function renderGoalsPlanning(){
 function renderReviewPlanning(){
   const key=monthKey(),today=new Date(),currentKey=monthKey(today.getFullYear(),today.getMonth()),label=`${state.year}年${state.month+1}月`;
   if(key>currentKey)return `<div class="card"><h3>📝 月度复盘 <span class="sub">${label}</span></h3><div class="empty">这个月还没有发生<br><span style="font-size:12px;font-weight:500">到当月再根据实际支出进行复盘</span></div></div>`;
-  const metrics=calculateMonthReview(key),review=decisions.reviews[key]||{highlight:'',adjustment:'',actions:[]},observations=reviewObservations(metrics);
-  let h=`<div class="card"><h3>📊 本月结果 <span class="sub">${label}</span></h3><div class="review-summary"><div>可支配<b>${metrics.availableCents===null?'未设置':`¥${fmt(metrics.availableCents)}`}</b></div><div>支出<b>¥${fmt(metrics.expenseCents)}</b></div><div>剩余<b class="${metrics.balanceCents!==null&&metrics.balanceCents<0?'negative':''}">${metrics.balanceCents===null?'—':`${metrics.balanceCents<0?'-':''}¥${fmt(Math.abs(metrics.balanceCents))}`}</b></div></div><p class="planning-note" style="margin:0">目标投入：¥${fmt(metrics.goalContributionCents)}，共 ${metrics.goalContributionCount} 次。${metrics.availableSource==='legacy'?' 可支配金额暂用历史逐笔收入合计。':''}</p></div>`;
+  const metrics=calculateMonthReview(key),review=decisions.reviews[key]||{highlight:'',action:null},observations=reviewObservations(metrics);
+  let h=`<div class="card"><h3>📊 本月结果 <span class="sub">${label}</span></h3><div class="review-summary"><div>可支配<b>${metrics.availableCents===null?'未设置':`¥${fmt(metrics.availableCents)}`}</b></div><div>支出<b>¥${fmt(metrics.expenseCents)}</b></div><div>剩余<b class="${metrics.balanceCents!==null&&metrics.balanceCents<0?'negative':''}">${metrics.balanceCents===null?'—':`${metrics.balanceCents<0?'-':''}¥${fmt(Math.abs(metrics.balanceCents))}`}</b></div></div><p class="planning-note" style="margin:0">目标投入：¥${fmt(metrics.goalContributionCents)}，共 ${metrics.goalContributionCount} 次。</p></div>`;
   h+=`<div class="card"><h3>🔎 系统观察 <span class="sub">根据当前本地数据</span></h3><div class="review-observations">${observations.map(item=>`<div class="review-observation ${item.warn?'warn':''}">${item.warn?'⚠️':'✓'} ${item.text}</div>`).join('')}</div></div>`;
   const followMonth=previousMonthKey(key);
   h+=`<div class="card"><h3>✅ 上月行动跟进 <span class="sub">来自 ${followMonth}</span></h3>`;
   if(!metrics.followActions.length)h+=`<div class="empty" style="padding:14px 0">上月没有设置行动事项</div>`;
   else h+=`<div class="follow-actions">${metrics.followActions.map(item=>`<button class="follow-action ${item.done?'done':''}" data-action="toggle-review-action" data-value="${followMonth}/${item.id}"><span class="check">${item.done?'✓':''}</span><span>${esc(item.text)}</span></button>`).join('')}</div>`;
-  const firstAction=review.actions[0],hasLegacy=!!review.adjustment||review.actions.length>1;
-  h+=`</div><div class="card review-form"><h3>✍️ 本月一个结论 ${review.updatedAt?'<span class="sub">已保存</span>':''}</h3><div class="field"><label for="reviewHighlight">最值得记住的发现</label><textarea id="reviewHighlight" maxlength="120" placeholder="例如：外卖是本月最容易失控的支出">${esc(review.highlight||review.adjustment)}</textarea></div><div class="field"><label for="reviewAction">下个月只做一件事</label><div class="action-input"><span>1</span><input id="reviewAction" class="review-action-input" data-id="${firstAction?firstAction.id:''}" type="text" maxlength="40" placeholder="例如：每周外卖不超过 2 次" value="${firstAction?esc(firstAction.text):''}"></div></div>${hasLegacy?`<details class="advanced-import"><summary>旧版复盘中的其他内容仍会保留</summary><p class="planning-note" style="margin:6px 0 0">${review.adjustment?`补充：${esc(review.adjustment)}`:''}${review.actions.slice(1).map(item=>`<br>行动：${esc(item.text)}`).join('')}</p></details>`:''}<div class="budget-actions"><button class="primary" data-action="save-review">保存月度结论</button></div></div>`;
+  const firstAction=review.action;
+  h+=`</div><div class="card review-form"><h3>✍️ 本月一个结论 ${review.updatedAt?'<span class="sub">已保存</span>':''}</h3><div class="field"><label for="reviewHighlight">最值得记住的发现</label><textarea id="reviewHighlight" maxlength="120" placeholder="例如：外卖是本月最容易失控的支出">${esc(review.highlight)}</textarea></div><div class="field"><label for="reviewAction">下个月只做一件事</label><div class="action-input"><span>1</span><input id="reviewAction" class="review-action-input" data-id="${firstAction?firstAction.id:''}" type="text" maxlength="40" placeholder="例如：每周外卖不超过 2 次" value="${firstAction?esc(firstAction.text):''}"></div></div><div class="budget-actions"><button class="primary" data-action="save-review">保存月度结论</button></div></div>`;
   return h;
 }
 
@@ -246,7 +246,7 @@ function renderDetails(){
 }
 
 function renderOverview(recs){
-  const exp=recs.filter(r=>r.type==='expense');
+  const exp=recs;
   if(!state.records.length)return `<div class="card"><h3>👋 从第一笔开始</h3><p style="font-size:14px;color:#64748b;line-height:1.7">先记录今天的一笔支出，再设置本月日常预算。</p><div class="budget-actions"><button class="primary" data-action="open-add" data-value="expense">＋ 记录第一笔支出</button></div></div>`;
   let h=renderBudgetCard();
   const currentProject=projectForId(decisions.currentProjectId);
@@ -254,12 +254,12 @@ function renderOverview(recs){
   const budget=state.view==='month'?calculateBudget(monthKey()):null;
   let insight='继续记录一段时间后，这里会给出更有针对性的月度观察。',warn=false;
   if(budget&&budget.configured&&budget.percent!==null){warn=budget.percent>=80;insight=budget.percent>=100?`日常预算已经超出 ¥${fmt(Math.abs(budget.remainingCents))}，本月应优先检查可推迟的支出。`:`日常预算已使用 ${budget.percent.toFixed(1)}％，还可安排 ¥${fmt(Math.max(0,budget.remainingCents))}。`;}
-  else if(exp.length){const catTotals={};exp.forEach(record=>{catTotals[record.cat]=(catTotals[record.cat]||0)+record.amountCents;});const top=Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0],total=sumType(exp,'expense');if(top)insight=`${EXPENSE_CATS[top[0]].name}是当前最大支出，占本期支出的 ${(top[1]/total*100).toFixed(1)}％。`;}
+  else if(exp.length){const catTotals={};exp.forEach(record=>{const category=getCategory(record.categoryId);if(category)catTotals[category.groupId]=(catTotals[category.groupId]||0)+record.amountCents;});const top=Object.entries(catTotals).sort((a,b)=>b[1]-a[1])[0],total=sumType(exp);if(top)insight=`${EXPENSE_CATS[top[0]].name}是当前最大支出，占本期支出的 ${(top[1]/total*100).toFixed(1)}％。`;}
   h+=`<div class="card"><h3>💡 本期观察</h3><div class="review-observation ${warn?'warn':''}">${warn?'⚠️':'✓'} ${insight}</div></div>`;
-  let analysis='';const trendMonths=new Set(state.records.filter(record=>record.type==='expense'&&record.date.startsWith(String(state.year))).map(record=>record.date.slice(0,7)));
+  let analysis='';const trendMonths=new Set(state.records.filter(record=>record.date.startsWith(String(state.year))).map(record=>record.date.slice(0,7)));
   if(trendMonths.size>=2)analysis+=`<h3>📈 ${state.year}年 支出趋势</h3>${trendSVG()}`;
-  const subMap={};exp.forEach(r=>{const k=r.cat+'/'+r.sub;subMap[k]=(subMap[k]||0)+r.amountCents;});
-  const subs=Object.entries(subMap).map(([k,v])=>{const[c,s]=k.split('/');return{name:EXPENSE_CATS[c].subs[s],catName:EXPENSE_CATS[c].name,color:EXPENSE_CATS[c].color,value:v};}).sort((a,b)=>b.value-a.value).slice(0,5);
+  const subMap={};exp.forEach(r=>{subMap[r.categoryId]=(subMap[r.categoryId]||0)+r.amountCents;});
+  const subs=Object.entries(subMap).map(([id,value])=>{const category=getCategory(id);return category?{name:category.name,catName:category.groupName,color:category.color,value}:null;}).filter(Boolean).sort((a,b)=>b.value-a.value).slice(0,5);
   if(subs.length){analysis+=`<h3 style="margin-top:${analysis?'18px':'0'}">🔥 支出排行 <span class="sub">前 ${subs.length} 项</span></h3>`;const mx=subs[0].value;subs.forEach(s=>{analysis+=`<div class="bar-item"><div class="row"><span class="l"><span class="cat">${s.catName}·</span>${s.name}</span><span class="r">¥${fmt(s.value)}</span></div><div class="track"><div class="fill" style="width:${s.value/mx*100}%;background:${s.color}"></div></div></div>`;});}
   if(analysis)h+=`<details class="card analysis-card"><summary>📊 查看趋势和排行</summary>${analysis}</details>`;
   return h;
@@ -278,7 +278,7 @@ function renderHomeCalendar(){
   }
   let cells='';
   for(let index=0;index<count;index++){
-    const date=new Date(start);date.setDate(start.getDate()+index);const value=dateString(date),amount=monthMap[value]||state.records.filter(record=>record.type==='expense'&&record.date===value).reduce((sum,record)=>sum+record.amountCents,0),future=value>today,confirmed=noSpend.has(value)&&!amount,otherMonth=state.calendarExpanded&&(date.getFullYear()!==state.year||date.getMonth()!==state.month);
+    const date=new Date(start);date.setDate(start.getDate()+index);const value=dateString(date),amount=monthMap[value]||state.records.filter(record=>record.date===value).reduce((sum,record)=>sum+record.amountCents,0),future=value>today,confirmed=noSpend.has(value)&&!amount,otherMonth=state.calendarExpanded&&(date.getFullYear()!==state.year||date.getMonth()!==state.month);
     const status=amount?'recorded':future?'future':confirmed?'no-spend':'unrecorded',label=amount?calendarAmountLabel(amount):future?'':confirmed?'✓ 无支出':value===today?'今天':'无记录';
     cells+=`<button class="day ${status} ${value===today?'today':''} ${otherMonth?'other-month':''}" data-action="open-calendar-day" data-value="${value}" aria-label="${date.getMonth()+1}月${date.getDate()}日，${amount?`支出 ${fmt(amount)} 元`:confirmed?'已确认无支出':future?'未来日期':'无记录'}"><span class="dn">${date.getDate()}</span>${label?`<span class="amt">${label}</span>`:''}</button>`;
   }
@@ -293,7 +293,6 @@ function renderFilterPanel(){
   return `<div class="card filter-card"><h3>🔎 查找明细 ${active?`<span class="sub">筛选已生效</span>`:''}</h3><form id="filterForm">
     <div class="filter-search"><input id="filterKeyword" type="search" maxlength="40" placeholder="搜索备注、专项或分类" value="${esc(filters.keyword)}"><button type="button" data-action="apply-filters">搜索</button></div><button class="record-toggle" type="button" data-action="toggle-filters">${state.filtersExpanded||active?'收起筛选条件':'更多筛选条件'}</button>
     <div class="filter-advanced ${state.filtersExpanded||active?'':'hidden'}"><div class="filter-grid" style="margin-top:12px">
-      <div class="filter-field"><label for="filterType">记录类型</label><select id="filterType"><option value="all"${selected('all',filters.type)}>全部记录</option><option value="expense"${selected('expense',filters.type)}>支出</option><option value="income"${selected('income',filters.type)}>历史收入</option></select></div>
       <div class="filter-field"><label for="filterRange">日期范围</label><select id="filterRange"><option value="all"${selected('all',filters.range)}>全部日期</option><option value="month"${selected('month',filters.range)}>本月</option><option value="lastMonth"${selected('lastMonth',filters.range)}>上月</option><option value="year"${selected('year',filters.range)}>今年</option><option value="custom"${selected('custom',filters.range)}>自定义</option></select></div>
       <div class="filter-field wide"><label>自定义日期</label><div class="filter-dates"><input id="filterStart" type="date" aria-label="开始日期" value="${filters.start}"><input id="filterEnd" type="date" aria-label="结束日期" value="${filters.end}"></div></div>
     </div><div class="filter-actions">${active?`<button type="button" class="clear" data-action="clear-filters">清空筛选</button>`:''}<button type="button" data-action="apply-filters">应用筛选</button></div></div>
@@ -304,25 +303,25 @@ function renderList(){
   if(!state.records.length)return `<div class="card"><div class="empty">还没有任何记录<br><span style="font-size:13px;font-weight:500">点右下角「记一笔」开始吧 ✨</span></div></div>`;
   const active=hasActiveFilters(),records=filterRecords(state.records,state.filters);
   let h=renderFilterPanel();
-  if(active){const income=sumType(records,'income'),expense=sumType(records,'expense');h+=`<div class="filter-summary"><div>结果<b>${records.length} 笔</b></div><div>历史收入<b class="in-c">+${fmt(income)}</b></div><div>支出<b class="ex-c">-${fmt(expense)}</b></div></div>`;}
+  if(active){const expense=sumType(records);h+=`<div class="filter-summary"><div>结果<b>${records.length} 笔</b></div><div>支出合计<b class="ex-c">-${fmt(expense)}</b></div></div>`;}
   if(!records.length)return h+`<div class="card"><div class="empty">没有找到符合条件的记录<br><span style="font-size:13px;font-weight:500">可以调整或清空筛选条件</span></div></div>`;
   const yMap={};
   records.forEach(r=>{const y=r.date.slice(0,4),ym=r.date.slice(0,7);
-    if(!yMap[y])yMap[y]={year:y,exp:0,inc:0,count:0,months:{}};
-    yMap[y][r.type==='income'?'inc':'exp']+=r.amountCents;yMap[y].count++;
-    if(!yMap[y].months[ym])yMap[y].months[ym]={ym,exp:0,inc:0,items:[]};
-    yMap[y].months[ym][r.type==='income'?'inc':'exp']+=r.amountCents;yMap[y].months[ym].items.push(r);});
+    if(!yMap[y])yMap[y]={year:y,exp:0,count:0,months:{}};
+    yMap[y].exp+=r.amountCents;yMap[y].count++;
+    if(!yMap[y].months[ym])yMap[y].months[ym]={ym,exp:0,items:[]};
+    yMap[y].months[ym].exp+=r.amountCents;yMap[y].months[ym].items.push(r);});
   const groups=Object.values(yMap).map(g=>({...g,
     months:Object.values(g.months).map(m=>({...m,items:m.items.sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt))})).sort((a,b)=>b.ym.localeCompare(a.ym))})).sort((a,b)=>b.year.localeCompare(a.year));
   h+=`<div class="hint">${active?'筛选结果已自动展开，可直接查看明细':'默认按年折叠，点年展开月份、再点月份看明细 👇'}</div>`;
   groups.forEach(yg=>{const yo=active||!!state.openYears[yg.year];
-    h+=`<div class="acc"><button class="acc-head" data-action="toggle-year" data-value="${yg.year}"><span class="l"><span class="chev ${yo?'':'closed'}">▾</span>${yg.year}年<span class="c">(${yg.count}笔 · ${yg.months.length}个月)</span></span><span class="r">${yg.inc?`<div class="in">历史收 +${fmt(yg.inc)}</div>`:''}<div class="ex">支 -${fmt(yg.exp)}</div></span></button>`;
+    h+=`<div class="acc"><button class="acc-head" data-action="toggle-year" data-value="${yg.year}"><span class="l"><span class="chev ${yo?'':'closed'}">▾</span>${yg.year}年<span class="c">(${yg.count}笔 · ${yg.months.length}个月)</span></span><span class="r"><div class="ex">支 -${fmt(yg.exp)}</div></span></button>`;
     if(yo){h+=`<div class="months">`;
       yg.months.forEach(g=>{const gm=+g.ym.split('-')[1],mo=active||!!state.openMonths[g.ym];
-        h+=`<div class="macc"><button class="macc-head" data-action="toggle-month" data-value="${g.ym}"><span class="l"><span class="chev ${mo?'':'closed'}">▾</span>${gm}月<span class="c">(${g.items.length}笔)</span></span><span class="r">${g.inc?`<span class="in" style="font-size:12px;font-weight:700">历史 +${fmt(g.inc)}</span> · `:''}<span class="ex" style="font-size:12px;font-weight:700">-${fmt(g.exp)}</span></span></button>`;
+        h+=`<div class="macc"><button class="macc-head" data-action="toggle-month" data-value="${g.ym}"><span class="l"><span class="chev ${mo?'':'closed'}">▾</span>${gm}月<span class="c">(${g.items.length}笔)</span></span><span class="r"><span class="ex" style="font-size:12px;font-weight:700">-${fmt(g.exp)}</span></span></button>`;
         if(mo){h+=`<div class="items">`;
-          g.items.forEach(r=>{const c=getCat(r.type,r.cat),inc=r.type==='income',project=projectForId(r.projectId),scene=project?project.name:r.tag;
-            const beneficiary=!inc?(BENEFICIARIES[r.beneficiaryId]||'未标注'):'';h+=`<div class="item"><div class="mid"><div class="tt">${c.subs[r.sub]}<span class="cat">${c.name}</span>${beneficiary?`<span class="tagmini">${beneficiary}</span>`:''}${scene?`<span class="tagmini">${esc(scene)}</span>`:''}</div><div class="sub">${+r.date.slice(8)}日${r.note?' · '+esc(r.note):''}</div></div><div class="amt ${inc?'in-c':'ex-c'}">${inc?'+':'-'}¥${fmt(r.amountCents)}</div><button class="more" data-action="open-record-actions" data-value="${r.id}" aria-label="${inc?'查看历史收入':'管理这笔支出'}">${inc?'›':'⋯'}</button></div>`;});
+          g.items.forEach(r=>{const category=getCategory(r.categoryId),project=projectForId(r.projectId),scene=project?project.name:'';
+            const beneficiary=BENEFICIARIES[r.beneficiaryId]||'未标注';h+=`<div class="item"><div class="mid"><div class="tt">${category?esc(category.name):'未知分类'}<span class="cat">${category?esc(category.groupName):''}</span><span class="tagmini">${esc(beneficiary)}</span>${scene?`<span class="tagmini">${esc(scene)}</span>`:''}</div><div class="sub">${+r.date.slice(8)}日${r.note?' · '+esc(r.note):''}</div></div><div class="amt ex-c">-¥${fmt(r.amountCents)}</div><button class="more" data-action="open-record-actions" data-value="${r.id}" aria-label="管理这笔支出">⋯</button></div>`;});
           h+=`</div>`;}
         h+=`</div>`;});
       h+=`</div>`;}
@@ -346,7 +345,6 @@ function togY(y){state.openYears[y]=!state.openYears[y];render();}
 function togM(ym){state.openMonths[ym]=!state.openMonths[ym];render();}
 function applyFilters(){
   const keyword=document.getElementById('filterKeyword').value.trim().slice(0,40);
-  const type=document.getElementById('filterType').value;
   const range=document.getElementById('filterRange').value;
   let start=document.getElementById('filterStart').value,end=document.getElementById('filterEnd').value;
   if(range==='custom'){
@@ -354,7 +352,7 @@ function applyFilters(){
     if(start&&!validDate(start)||end&&!validDate(end)){toast('请输入正确的日期');return;}
     if(start&&end&&start>end){toast('开始日期不能晚于结束日期');return;}
   }else{start='';end='';}
-  state.filters={keyword,type,range,start,end};render();
+  state.filters={keyword,range,start,end};render();
 }
 function toggleFilters(){const box=document.querySelector('.filter-advanced'),button=document.querySelector('[data-action="toggle-filters"]'),willOpen=box?box.classList.contains('hidden'):!state.filtersExpanded;state.filtersExpanded=willOpen;if(box)box.classList.toggle('hidden',!willOpen);if(button)button.textContent=willOpen?'收起筛选条件':'更多筛选条件';}
 function clearFilters(){state.filters=defaultFilters();state.filtersExpanded=false;render();}
@@ -368,40 +366,40 @@ function saveBudget(){
   if(availableCents===false){toast('可支配金额最多保留两位小数');return;}if(totalCents===false){toast('日常预算最多保留两位小数');return;}
   if(availableCents===null&&totalCents===null){toast('请至少填写可支配金额或日常预算');return;}
   const key=monthKey(),old=decisions.budgets[key],nowIso=new Date().toISOString();
-  decisions.budgets[key]={totalCents,availableCents,categories:old&&old.categories?old.categories:{},updatedAt:nowIso};
+  decisions.budgets[key]={totalCents,availableCents,updatedAt:nowIso};
   if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
   render();toast('本月计划已保存');
 }
 function copyPreviousBudget(){
   const key=monthKey(),source=decisions.budgets[previousMonthKey(key)];if(!source){toast('上月没有可复制的预算');return;}
-  const old=decisions.budgets[key];decisions.budgets[key]={totalCents:source.totalCents??null,availableCents:source.availableCents??null,categories:old&&old.categories?old.categories:{},updatedAt:new Date().toISOString()};
+  const old=decisions.budgets[key];decisions.budgets[key]={totalCents:source.totalCents??null,availableCents:source.availableCents??null,updatedAt:new Date().toISOString()};
   if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
   render();toast('已复制上月计划');
 }
 function saveReview(){
   const today=new Date(),key=monthKey(),currentKey=monthKey(today.getFullYear(),today.getMonth());if(key>currentKey)return;
-  const highlight=document.getElementById('reviewHighlight').value.trim().slice(0,120),old=decisions.reviews[key]||null,adjustment=old?old.adjustment:'',nowIso=new Date().toISOString(),input=document.getElementById('reviewAction'),text=input.value.trim().slice(0,40),actions=old?old.actions.slice(1):[];
-  if(text){const previous=old&&old.actions.find(item=>item.id===input.dataset.id);actions.unshift(previous?{...previous,text}:{id:uuid(),text,done:false,createdAt:nowIso,completedAt:''});}
-  if(!highlight&&!adjustment&&!actions.length){toast('请至少填写一项复盘内容');return;}
-  decisions.reviews[key]={highlight,adjustment,actions,updatedAt:nowIso};
+  const highlight=document.getElementById('reviewHighlight').value.trim().slice(0,120),old=decisions.reviews[key]||null,nowIso=new Date().toISOString(),input=document.getElementById('reviewAction'),text=input.value.trim().slice(0,40);
+  const action=text?old&&old.action&&old.action.id===input.dataset.id?{...old.action,text}:{id:uuid(),text,done:false,createdAt:nowIso,completedAt:''}:null;
+  if(!highlight&&!action){toast('请至少填写一项复盘内容');return;}
+  decisions.reviews[key]={highlight,action,updatedAt:nowIso};
   if(!saveDecisions()){if(old)decisions.reviews[key]=old;else delete decisions.reviews[key];return;}
   render();toast('本月复盘已保存');
 }
 function toggleReviewAction(value){
   const slash=value.indexOf('/'),month=value.slice(0,slash),id=value.slice(slash+1),review=decisions.reviews[month];if(!validYearMonth(month)||!review)return;
-  const index=review.actions.findIndex(item=>item.id===id);if(index<0)return;
-  const old=review.actions[index],done=!old.done;review.actions[index]={...old,done,completedAt:done?new Date().toISOString():''};review.updatedAt=new Date().toISOString();
-  if(!saveDecisions()){review.actions[index]=old;return;}
+  if(!review.action||review.action.id!==id)return;
+  const old=review.action,done=!old.done;review.action={...old,done,completedAt:done?new Date().toISOString():''};review.updatedAt=new Date().toISOString();
+  if(!saveDecisions()){review.action=old;return;}
   render();toast(done?'行动已完成':'行动已恢复为待办');
 }
 let projectFormId=null;
 function openProjectForm(id=null){
   const project=id?decisions.projects.find(item=>item.id===id):null;projectFormId=project?project.id:null;const options=Object.entries(PROJECT_TYPES).map(([key,item])=>`<option value="${key}"${project&&project.type===key?' selected':''}>${item.emoji} ${item.name}</option>`).join('');
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${project?'编辑专项计划':'新建专项计划'}"><div class="sheet-head"><div class="r1"><h3>🧳 ${project?'编辑专项':'新建专项'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="projectName">专项名称</label><input id="projectName" type="text" maxlength="20" placeholder="如：2026 北京旅行" value="${project?esc(project.name):''}"></div><div class="field"><label for="projectType">专项类型</label><select id="projectType">${options}</select></div><div class="field" id="projectPeopleField" style="display:${!project||project.type==='travel'?'block':'none'}"><label for="projectPeople">旅行参与人数</label><input id="projectPeople" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="选填" value="${project&&project.type==='travel'&&project.people?project.people:''}"></div><div class="field"><label for="projectBudget">专项预算（元） <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><input id="projectBudget" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="暂不设置" value="${project&&project.budgetCents?(project.budgetCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="projectStart">开始日期</label><input id="projectStart" type="date" value="${project?project.startDate:todayStr()}"></div><div class="field"><label for="projectEnd">结束日期</label><input id="projectEnd" type="date" value="${project?project.endDate:todayStr()}"></div></div><p class="planning-note" style="margin:0">只有旅行专项使用参与人数计算人均费用；未设置预算时仍可归集实际支出。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-project">保存专项计划</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${project?'编辑专项计划':'新建专项计划'}"><div class="sheet-head"><div class="r1"><h3>🧳 ${project?'编辑专项':'新建专项'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="projectName">专项名称</label><input id="projectName" type="text" maxlength="20" placeholder="如：2026 北京旅行" value="${project?esc(project.name):''}"></div><div class="field"><label for="projectType">专项类型</label><select id="projectType">${options}</select></div><div class="field" id="projectPeopleField" style="display:${!project||project.type==='travel'?'block':'none'}"><label for="projectPeople">旅行参与人数</label><input id="projectPeople" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="1 至 20 人" value="${project&&project.type==='travel'&&project.people?project.people:''}"></div><div class="field"><label for="projectBudget">专项预算（元） <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><input id="projectBudget" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="暂不设置" value="${project&&project.budgetCents?(project.budgetCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="projectStart">开始日期</label><input id="projectStart" type="date" value="${project?project.startDate:todayStr()}"></div><div class="field"><label for="projectEnd">结束日期</label><input id="projectEnd" type="date" value="${project?project.endDate:todayStr()}"></div></div><p class="planning-note" style="margin:0">旅行专项需要参与人数计算人均费用；未设置预算时仍可归集实际支出。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-project">保存专项计划</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function saveProject(){
   const name=document.getElementById('projectName').value.trim().slice(0,20),type=document.getElementById('projectType').value,budgetInput=readBudgetInput(document.getElementById('projectBudget')),budgetCents=budgetInput===null?0:budgetInput,startDate=document.getElementById('projectStart').value,endDate=document.getElementById('projectEnd').value,peopleRaw=document.getElementById('projectPeople').value.trim(),people=type==='travel'&&peopleRaw?Number(peopleRaw):null;
-  if(!name){toast('请填写专项名称');return;}if(!PROJECT_TYPES[type]){toast('请选择专项类型');return;}if(budgetCents===false){toast('请输入正确的专项预算');return;}if(!validDate(startDate)||!validDate(endDate)||startDate>endDate){toast('请输入正确的专项日期范围');return;}if(people!==null&&(!Number.isInteger(people)||people<1||people>20)){toast('参与人数应为 1 至 20 人');return;}
+  if(!name){toast('请填写专项名称');return;}if(!PROJECT_TYPES[type]){toast('请选择专项类型');return;}if(budgetCents===false){toast('请输入正确的专项预算');return;}if(!validDate(startDate)||!validDate(endDate)||startDate>endDate){toast('请输入正确的专项日期范围');return;}if(type==='travel'&&(people===null||!Number.isInteger(people)||people<1||people>20)){toast('旅行参与人数应为 1 至 20 人');return;}
   const index=projectFormId?decisions.projects.findIndex(item=>item.id===projectFormId):-1,old=index>=0?decisions.projects[index]:null,nowIso=new Date().toISOString(),next=old?{...old,name,type,budgetCents,startDate,endDate,people,updatedAt:nowIso}:{id:uuid(),name,type,budgetCents,startDate,endDate,people,status:'active',createdAt:nowIso,updatedAt:nowIso};
   if(index>=0)decisions.projects[index]=next;else decisions.projects.push(next);const oldCurrent=decisions.currentProjectId,madeCurrent=!old&&!oldCurrent&&next.status==='active';if(madeCurrent)decisions.currentProjectId=next.id;
   if(!saveDecisions()){if(index>=0)decisions.projects[index]=old;else decisions.projects.pop();decisions.currentProjectId=oldCurrent;return;}
@@ -416,11 +414,11 @@ function setProjectStatus(value){
   if(!saveDecisions()){decisions.projects[index]=old;decisions.currentProjectId=oldCurrent;return;}render();toast(status==='active'?'专项已重新启用':'专项已完成');
 }
 function openProject(id){
-  const project=decisions.projects.find(item=>item.id===id);if(!project)return;const type=PROJECT_TYPES[project.type],metrics=calculateProject(project),byCat={};metrics.items.forEach(item=>{byCat[item.cat]=(byCat[item.cat]||0)+item.amountCents;});const cats=Object.entries(byCat).map(([key,value])=>({cat:EXPENSE_CATS[key],value})).sort((a,b)=>b.value-a.value),items=[...metrics.items].sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt)),level=budgetLevel(metrics.percent);
+  const project=decisions.projects.find(item=>item.id===id);if(!project)return;const type=PROJECT_TYPES[project.type],metrics=calculateProject(project),byCat={};metrics.items.forEach(item=>{const category=getCategory(item.categoryId);if(category)byCat[category.groupId]=(byCat[category.groupId]||0)+item.amountCents;});const cats=Object.entries(byCat).map(([key,value])=>({cat:EXPENSE_CATS[key],value})).sort((a,b)=>b.value-a.value),items=[...metrics.items].sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt)),level=budgetLevel(metrics.percent);
   const stats=project.type==='travel'?`<div>天数<b>${metrics.days} 天</b></div><div>人均<b>¥${fmt(metrics.perPersonCents)}</b></div><div>人均每天<b>¥${fmt(metrics.perPersonDayCents)}</b></div>`:`<div>周期<b>${metrics.days} 天</b></div><div>记录<b>${metrics.items.length} 笔</b></div><div>${project.budgetCents?'剩余':'预算'}<b>${project.budgetCents?`¥${fmt(Math.max(0,metrics.remainingCents))}`:'未设置'}</b></div>`,budget=project.budgetCents?`<div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>预算 ¥${fmt(project.budgetCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div>`:`<div class="budget-caption"><span>未设置专项预算</span><span>只统计实际支出</span></div>`;
   let h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="专项详情"><div class="sheet-head"><div class="r1"><div><h3>${type.emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="td-box"><div class="l">专项总花费</div><div class="n">¥${fmt(metrics.actualCents)}</div></div>${budget}<div class="project-stats">${stats}</div>`;
   if(cats.length){h+=`<div class="field"><label>费用构成</label>`;cats.forEach(item=>{h+=`<div class="bar-item"><div class="row"><span class="l">${esc(item.cat.name)}</span><span class="r">¥${fmt(item.value)}</span></div><div class="track"><div class="fill" style="width:${item.value/metrics.actualCents*100}%;background:${item.cat.color}"></div></div></div>`;});h+=`</div>`;}
-  h+=`<div class="field"><label>支出明细（${items.length}）</label>`;if(!items.length)h+=`<div class="empty" style="padding:14px 0">还没有关联支出</div>`;items.forEach(item=>{const cat=EXPENSE_CATS[item.cat],beneficiary=BENEFICIARIES[item.beneficiaryId]||'未标注';h+=`<button class="drow" data-action="open-record-actions" data-value="${item.id}"><span><span style="display:block;color:#475569;font-weight:600">${cat.subs[item.sub]}${item.note?' · '+esc(item.note):''}</span><span style="font-size:12px;color:#cbd5e1">${item.date} · ${beneficiary}</span></span><span class="amt" style="color:#475569">¥${fmt(item.amountCents)}</span></button>`;});h+=`</div></div></div></div>`;document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
+  h+=`<div class="field"><label>支出明细（${items.length}）</label>`;if(!items.length)h+=`<div class="empty" style="padding:14px 0">还没有关联支出</div>`;items.forEach(item=>{const category=getCategory(item.categoryId),beneficiary=BENEFICIARIES[item.beneficiaryId]||'未标注';h+=`<button class="drow" data-action="open-record-actions" data-value="${item.id}"><span><span style="display:block;color:#475569;font-weight:600">${category?esc(category.name):'未知分类'}${item.note?' · '+esc(item.note):''}</span><span style="font-size:12px;color:#cbd5e1">${item.date} · ${esc(beneficiary)}</span></span><span class="amt" style="color:#475569">¥${fmt(item.amountCents)}</span></button>`;});h+=`</div></div></div></div>`;document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
 }
 function openProjectActions(id){
   const project=decisions.projects.find(item=>item.id===id);if(!project)return;const current=project.id===decisions.currentProjectId;
@@ -488,14 +486,13 @@ function setGoalStatus(value){
 }
 let deletedUndo=null,addedUndo=null;
 function openRecordActions(id){
-  const record=state.records.find(item=>item.id===id);if(!record)return;const cat=getCat(record.type,record.cat);
-  const beneficiary=record.type==='expense'?(BENEFICIARIES[record.beneficiaryId]||'未标注'):'';
-  const content=record.type==='income'?`<p style="font-size:14px;color:#64748b;line-height:1.7">这是停用逐笔收入前保留的历史记录。它会继续出现在明细、备份和导入中，但不能复制、编辑或删除。</p>`:`<div class="record-action-list"><button data-action="copy-record" data-value="${record.id}">复制为新记录</button><button data-action="edit-record" data-value="${record.id}">编辑这笔记录</button><button class="danger" data-action="delete-record" data-value="${record.id}">删除，可在 12 秒内撤销</button></div>`;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record.type==='income'?'历史收入记录':'管理记录'}"><div class="sheet-head"><div class="r1"><div><h3>${cat.subs[record.sub]}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record.date} · ¥${fmt(record.amountCents)}${beneficiary?` · ${beneficiary}`:''}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${content}</div></div></div>`;document.body.style.overflow='hidden';
+  const record=state.records.find(item=>item.id===id);if(!record)return;const category=getCategory(record.categoryId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';
+  const content=`<div class="record-action-list"><button data-action="copy-record" data-value="${record.id}">复制为新记录</button><button data-action="edit-record" data-value="${record.id}">编辑这笔记录</button><button class="danger" data-action="delete-record" data-value="${record.id}">删除，可在 12 秒内撤销</button></div>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理记录"><div class="sheet-head"><div class="r1"><div><h3>${category?esc(category.name):'未知分类'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record.date} · ¥${fmt(record.amountCents)} · ${esc(beneficiary)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${content}</div></div></div>`;document.body.style.overflow='hidden';
 }
 function delRec(id){
   const index=state.records.findIndex(r=>r.id===id);if(index<0)return;
-  const record=state.records[index];if(record.type!=='expense')return;
+  const record=state.records[index];
   const next=state.records.filter(r=>r.id!==id);
   if(!persist(next))return;
   if(addedUndo&&addedUndo.record.id===id){clearTimeout(addedUndo.timer);addedUndo=null;}
@@ -515,53 +512,51 @@ function undoAdd(){
 }
 function openCalendarDay(date){
   if(!validDate(date))return;if(date>todayStr()){toast('未来日期暂不记账');return;}
-  const records=state.records.filter(record=>record.type==='expense'&&record.date===date);if(records.length)openDayDetails(date);else openRecordForm(null,{date});
+  const records=state.records.filter(record=>record.date===date);if(records.length)openDayDetails(date);else openRecordForm(null,{date});
 }
 function openDayDetails(date){
-  const records=state.records.filter(record=>record.type==='expense'&&record.date===date).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)),total=records.reduce((sum,record)=>sum+record.amountCents,0),label=dateFromString(date).toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
-  let rows='';records.forEach(record=>{const cat=EXPENSE_CATS[record.cat],project=projectForId(record.projectId),scene=project?project.name:record.tag,beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';rows+=`<button class="drow" data-action="open-record-actions" data-value="${record.id}"><span style="color:#475569;font-weight:700">${cat.subs[record.sub]}${record.note?` · ${esc(record.note)}`:''}</span><span class="tagmini">${beneficiary}</span>${scene?`<span class="tagmini">${esc(scene)}</span>`:''}<span class="amt ex-c">-¥${fmt(record.amountCents)}</span></button>`;});
+  const records=state.records.filter(record=>record.date===date).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)),total=records.reduce((sum,record)=>sum+record.amountCents,0),label=dateFromString(date).toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
+  let rows='';records.forEach(record=>{const category=getCategory(record.categoryId),project=projectForId(record.projectId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';rows+=`<button class="drow" data-action="open-record-actions" data-value="${record.id}"><span style="color:#475569;font-weight:700">${category?esc(category.name):'未知分类'}${record.note?` · ${esc(record.note)}`:''}</span><span class="tagmini">${esc(beneficiary)}</span>${project?`<span class="tagmini">${esc(project.name)}</span>`:''}<span class="amt ex-c">-¥${fmt(record.amountCents)}</span></button>`;});
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="当日支出"><div class="sheet-head"><div class="r1"><div><h3>📅 ${label}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${records.length} 笔支出</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="day-sheet-total">当日支出<b>¥${fmt(total)}</b></div>${rows}</div><div class="sheet-foot"><button class="save-btn e" data-action="add-for-date" data-value="${date}">＋ 再记一笔</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function toggleFormNoSpend(){
   const input=document.getElementById('fDate'),date=input?input.value:'';if(!validDate(date)||date>todayStr())return;
-  if(state.records.some(record=>record.type==='expense'&&record.date===date)){toast('这天已有支出，不能标记无支出');return;}
+  if(state.records.some(record=>record.date===date)){toast('这天已有支出，不能标记无支出');return;}
   const oldDates=decisions.noSpendDates,exists=oldDates.includes(date);decisions.noSpendDates=exists?oldDates.filter(item=>item!==date):[...oldDates,date].sort();
   if(!saveDecisions()){decisions.noSpendDates=oldDates;return;}const selected=dateFromString(date);state.calendarAnchor=date;state.year=selected.getFullYear();state.month=selected.getMonth();closeModals();render();toast(exists?'已取消无支出确认':'已确认当日无支出');
 }
 
 /* ============ 记账弹窗 ============ */
-let form={id:null,cat:'food',sub:'vegetable',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false,sourceTag:''};
+let form={id:null,categoryId:'food-vegetable',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
-function recordsForFormContext(){return state.records.filter(record=>record.type==='expense'&&(form.projectId?record.projectId===form.projectId:!record.projectId&&record.beneficiaryId===form.beneficiaryId));}
+function recordsForFormContext(){return state.records.filter(record=>form.projectId?record.projectId===form.projectId:!record.projectId&&record.beneficiaryId===form.beneficiaryId);}
 function recentExpenseRecord(){
   return recordsForFormContext().sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0]||null;
 }
 function frequentChoices(limit=6){
-  const counts=new Map();recordsForFormContext().forEach(record=>{const key=`${record.cat}/${record.sub}`,old=counts.get(key)||{value:key,count:0,latest:''};old.count++;if(record.date>old.latest)old.latest=record.date;counts.set(key,old);});
-  const values=[],recent=recentExpenseRecord();if(recent&&choiceVisible(recent.cat,recent.sub))values.push(`${recent.cat}/${recent.sub}`);
+  const counts=new Map();recordsForFormContext().forEach(record=>{const key=record.categoryId,old=counts.get(key)||{value:key,count:0,latest:''};old.count++;if(record.date>old.latest)old.latest=record.date;counts.set(key,old);});
+  const values=[],recent=recentExpenseRecord();if(recent&&choiceVisible(recent.categoryId))values.push(recent.categoryId);
   [...counts.values()].sort((a,b)=>b.count-a.count||b.latest.localeCompare(a.latest)).forEach(item=>{if(values.length<limit&&!values.includes(item.value))values.push(item.value);});
-  return values.filter(value=>{const[cat,sub]=value.split('/');return choiceVisible(cat,sub);});
+  return values.filter(value=>choiceVisible(value));
 }
-function choiceVisible(cat,sub){const group=EXPENSE_CATS[cat],config=group&&group.subConfig[sub];return !!(group&&group.active&&config&&config.active&&(form.projectId||config.roles.includes(form.beneficiaryId)));}
-function ensureFormChoice(){if(choiceVisible(form.cat,form.sub))return;for(const[cat,group]of Object.entries(EXPENSE_CATS)){for(const sub of Object.keys(group.subs)){if(choiceVisible(cat,sub)){form.cat=cat;form.sub=sub;return;}}}}
+function choiceVisible(categoryId){const category=getCategory(categoryId);return !!(category&&category.groupActive&&category.active&&(form.projectId||category.beneficiaryIds.includes(form.beneficiaryId)));}
+function ensureFormChoice(){if(choiceVisible(form.categoryId))return;for(const group of Object.values(EXPENSE_CATS)){for(const item of group.items){if(choiceVisible(item.id)){form.categoryId=item.id;return;}}}}
 function contextProject(){const selected=projectForId(form.projectId);if(selected)return selected;const input=document.getElementById('fDate'),date=input?input.value:todayStr(),current=projectForId(decisions.currentProjectId);return projectAppliesOn(current,date)?current:null;}
 function renderRecordContext(){
-  const container=document.getElementById('recordContext'),project=contextProject(),items=Object.entries(BENEFICIARIES).map(([id,name])=>({value:id,name,on:!form.projectId&&form.beneficiaryId===id}));if(project)items.push({value:`project:${project.id}`,name:project.name,on:form.projectId===project.id});container.className=`record-context ${items.length===5?'five':'four'}`;container.innerHTML=items.map(item=>`<button class="${item.on?'on':''}" data-action="select-record-context" data-value="${item.value}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
+  const container=document.getElementById('recordContext'),project=contextProject(),items=prefs.beneficiaries.filter(item=>item.active).map(item=>({value:item.id,name:item.name,on:!form.projectId&&form.beneficiaryId===item.id}));if(project)items.push({value:`project:${project.id}`,name:project.name,on:form.projectId===project.id});const columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${item.on?'on':''}" data-action="select-record-context" data-value="${item.value}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
 }
 function selectRecordContext(value){
-  if(value.startsWith('project:')){const project=projectForId(value.slice(8));if(!project)return;form.projectId=project.id;form.beneficiaryId='family';}
-  else{if(!BENEFICIARIES[value])return;form.beneficiaryId=value;form.projectId='';}
+  if(value.startsWith('project:')){const project=projectForId(value.slice(8));if(!project)return;form.projectId=project.id;}
+  else{if(!prefs.beneficiaries.some(item=>item.id===value&&item.active))return;form.beneficiaryId=value;form.projectId='';}
   form.projectTouched=true;const select=document.getElementById('fProject');if(select)select.value=form.projectId;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();
 }
 function openRecordForm(id=null,preset=null){
+  if(storageLocked){toast(upgradeRequired?'请先导入转换后的 v4 完整备份':'请先处理数据救援');return;}
   const record=id?state.records.find(r=>r.id===id):null;
-  if(record&&record.type==='income'){toast('历史收入记录仅保留查看');return;}
   const source=record||preset;
-  form.id=record?record.id:null;form.sourceTag=source&&source.tag?source.tag:'';
-  const obj=EXPENSE_CATS,recent=prefs.recent.expense;
-  form.cat=source&&validChoice('expense',source.cat,source.sub)?source.cat:recent?recent.cat:Object.keys(obj)[0];
-  form.sub=source&&validChoice('expense',source.cat,source.sub)?source.sub:recent?recent.sub:Object.keys(obj[form.cat].subs)[0];
-  const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate);form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=source&&BENEFICIARIES[source.beneficiaryId]?source.beneficiaryId:'family';if(form.projectId&&!BENEFICIARIES[source&&source.beneficiaryId])form.beneficiaryId='family';form.projectTouched=false;
+  form.id=record?record.id:null;
+  const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate),sourceBeneficiary=prefs.beneficiaries.find(item=>item.id===(source&&source.beneficiaryId)&&item.active),defaultBeneficiary=prefs.beneficiaries.find(item=>item.id===prefs.defaultBeneficiaryId&&item.active)||prefs.beneficiaries.find(item=>item.id==='family');
+  form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.categoryId=source&&getCategory(source.categoryId)?source.categoryId:form.categoryId;form.projectTouched=false;
   form.showMore=!!record||!!(source&&(source.date&&source.date!==todayStr()||sourceProject));
   const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
   const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
@@ -585,11 +580,11 @@ function renderQuickChoices(){
   const field=document.getElementById('quickField');
   if(!values.length){field.style.display='none';return;}
   field.style.display='block';
-  document.getElementById('quickPicks').innerHTML=values.map(value=>{const[cat,sub]=value.split('/'),item=EXPENSE_CATS[cat],isRecent=!!recentRecord&&value===`${recentRecord.cat}/${recentRecord.sub}`,action=isRecent?(form.id?'select-recent':'recent-save'):(form.id?'select-quick':'quick-save'),detail=isRecent?`<span>${recentRecord.note?`最近一笔 · ${esc(recentRecord.note)}`:'最近一笔'}</span>`:'';return`<button data-action="${action}" data-value="${value}">${item.subs[sub]}${detail}</button>`;}).join('');
+  document.getElementById('quickPicks').innerHTML=values.map(value=>{const category=getCategory(value),isRecent=!!recentRecord&&value===recentRecord.categoryId,action=isRecent?(form.id?'select-recent':'recent-save'):(form.id?'select-quick':'quick-save'),detail=isRecent?`<span>${recentRecord.note?`最近一笔 · ${esc(recentRecord.note)}`:'最近一笔'}</span>`:'';return`<button data-action="${action}" data-value="${value}">${category?esc(category.name):'未知分类'}${detail}</button>`;}).join('');
 }
 function renderCategoryGroups(){
-  let h='';Object.entries(EXPENSE_CATS).forEach(([cat,c])=>{const subs=Object.entries(c.subs).filter(([sub])=>choiceVisible(cat,sub));if(!subs.length)return;h+=`<div class="category-group"><div class="category-title">${esc(c.name)}</div><div class="sub-list">`;subs.forEach(([sub,name])=>{const on=form.cat===cat&&form.sub===sub;h+=`<button class="${on?'on':''}" style="${on?'background:'+c.color:''}" data-action="select-category-choice" data-value="${cat}/${sub}">${esc(name)}</button>`;});h+='</div></div>';});
-  document.getElementById('categoryGroups').innerHTML=h||'<div class="empty" style="padding:12px 0">当前角色没有可用分类，请到“数据—分类管理”中配置。</div>';
+  let h='';Object.values(EXPENSE_CATS).forEach(group=>{const items=group.items.filter(item=>choiceVisible(item.id));if(!items.length)return;h+=`<div class="category-group"><div class="category-title">${esc(group.name)}</div><div class="sub-list">`;items.forEach(item=>{const on=form.categoryId===item.id;h+=`<button class="${on?'on':''}" style="${on?'background:'+group.color:''}" data-action="select-category-choice" data-value="${item.id}">${esc(item.name)}</button>`;});h+='</div></div>';});
+  document.getElementById('categoryGroups').innerHTML=h||'<div class="empty" style="padding:12px 0">当前成员没有可用分类，请到“数据—分类管理”中配置。</div>';
 }
 function toggleRecordSection(value){
   if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起更多选项':'日期与专项';}
@@ -597,10 +592,10 @@ function toggleRecordSection(value){
 function refreshProjectForDate(){
   refreshNoSpendButton();if(form.id||form.projectTouched)return;
   const date=document.getElementById('fDate').value,current=projectForId(decisions.currentProjectId),select=document.getElementById('fProject'),applies=projectAppliesOn(current,date);
-  select.value=applies?current.id:'';form.projectId=select.value;if(form.projectId)form.beneficiaryId='family';ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();
+  select.value=applies?current.id:'';form.projectId=select.value;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();
 }
 function refreshNoSpendButton(){const button=document.getElementById('noSpendButton'),input=document.getElementById('fDate');if(!button||!input)return;const date=input.value;button.style.display=validDate(date)&&date<=todayStr()?'block':'none';button.textContent=decisions.noSpendDates.includes(date)?'取消“当日无支出”确认':'确认当日无支出';}
-function selQuick(value,save=false,useRecentNote=false){const[cat,sub]=value.split('/');if(!validChoice('expense',cat,sub))return;form.cat=cat;form.sub=sub;if(useRecentNote){const input=document.getElementById('fNote'),recentRecord=recentExpenseRecord();if(input&&!input.value.trim()&&recentRecord&&recentRecord.note)input.value=recentRecord.note;}renderCategoryGroups();if(save)doSave();}
+function selQuick(value,save=false,useRecentNote=false){if(!choiceVisible(value))return;form.categoryId=value;if(useRecentNote){const input=document.getElementById('fNote'),recentRecord=recentExpenseRecord();if(input&&!input.value.trim()&&recentRecord&&recentRecord.note)input.value=recentRecord.note;}renderCategoryGroups();if(save)doSave();}
 function readAmount(){
   const rawAmount=document.getElementById('fAmt').value.trim();
   if(!/^\d+(?:\.\d{1,2})?$/.test(rawAmount)){toast('金额最多保留两位小数');return false;}
@@ -612,22 +607,22 @@ function doSave(){
   const amountCents=readAmount();if(amountCents===false)return;
   const date=document.getElementById('fDate').value||todayStr();
   if(!validDate(date)||!form.id&&date>todayStr()){toast(date>todayStr()?'不能记录未来支出':'请输入正确的日期');return;}
-  const note=document.getElementById('fNote').value.trim();
-  const tag=form.sourceTag,selectedProjectId=document.getElementById('fProject').value,projectId=projectForId(selectedProjectId)?selectedProjectId:'';
+  const note=document.getElementById('fNote').value.trim().slice(0,20);
+  const selectedProjectId=document.getElementById('fProject').value,projectId=projectForId(selectedProjectId)?selectedProjectId:'';
   const nowIso=new Date().toISOString(),old=form.id?state.records.find(r=>r.id===form.id):null;
-  const record={id:old?old.id:uuid(),type:'expense',date,cat:form.cat,sub:form.sub,amountCents,note,tag,projectId,beneficiaryId:form.beneficiaryId,
+  if(!choiceVisible(form.categoryId)){toast('请选择当前获益方可用的分类');return;}
+  const record={id:old?old.id:uuid(),date,categoryId:form.categoryId,amountCents,note,projectId,beneficiaryId:form.beneficiaryId,
     createdAt:old?old.createdAt:nowIso,updatedAt:nowIso};
   const next=old?state.records.map(r=>r.id===old.id?record:r):[...state.records,record];
   if(!persist(next))return;
   state.records=next;
-  prefs.recent.expense={cat:form.cat,sub:form.sub,beneficiaryId:form.beneficiaryId,projectId};savePrefs();
   const removedNoSpend=decisions.noSpendDates.includes(date);if(removedNoSpend){const oldDates=decisions.noSpendDates;decisions.noSpendDates=oldDates.filter(item=>item!==date);if(!saveDecisions())decisions.noSpendDates=oldDates;}
   state.openYears[date.slice(0,4)]=true;state.openMonths[date.slice(0,7)]=true;
   state.calendarAnchor=date;const savedDate=dateFromString(date);state.year=savedDate.getFullYear();state.month=savedDate.getMonth();
   if(!old){if(addedUndo)clearTimeout(addedUndo.timer);addedUndo={record,removedNoSpend,timer:setTimeout(()=>{addedUndo=null;},12000)};}
   closeModals();render();toast(old?'修改已保存':'已记录，可撤销',old?'':'undo-add');
 }
-function copyRecord(id){const record=state.records.find(item=>item.id===id);if(record&&record.type==='expense')openRecordForm(null,{...record,date:todayStr()});}
+function copyRecord(id){const record=state.records.find(item=>item.id===id);if(record)openRecordForm(null,{...record,date:todayStr()});}
 let modalReturnFocus=null;
 function syncModalState(){
   const modals=document.getElementById('modals'),app=document.getElementById('app'),dialog=modals.querySelector('[role="dialog"]'),hasModal=!!dialog;
@@ -648,42 +643,59 @@ function closeModals(){
 /* ============ 分类管理 ============ */
 let categoryEditor=null;
 function categoryConfigGroup(id){return prefs.categories.find(group=>group.id===id);}
-function categoryRoleText(roles){return roles.length===BENEFICIARY_IDS.length?'全部角色':roles.map(role=>BENEFICIARIES[role]).join('、');}
-function persistCategoryChange(previous,message){if(!savePrefs()){prefs.categories=previous;EXPENSE_CATS=categoryMap(previous);return false;}render();openCategoryManager();toast(message);return true;}
+function categoryRoleText(ids){return ids.length===prefs.beneficiaries.length?'全部成员':ids.map(id=>BENEFICIARIES[id]).filter(Boolean).join('、');}
+function persistCategoryChange(previous,message){if(!saveSettings()){prefs.categories=previous;refreshDerivedSettings(prefs);return false;}render();openCategoryManager();toast(message);return true;}
 function openCategoryManager(){
   const active=prefs.categories.filter(group=>group.active),inactive=prefs.categories.filter(group=>!group.active);let groups='';
-  active.forEach((group,groupIndex)=>{const activeSubs=group.subs.filter(sub=>sub.active),inactiveSubs=group.subs.filter(sub=>!sub.active);groups+=`<section class="category-manage-group"><div class="category-manage-head"><b>${esc(group.name)}</b><div class="category-manage-actions"><button data-action="move-category-group" data-value="${group.id}/-1"${groupIndex===0?' disabled':''} aria-label="上移 ${esc(group.name)}">↑</button><button data-action="move-category-group" data-value="${group.id}/1"${groupIndex===active.length-1?' disabled':''} aria-label="下移 ${esc(group.name)}">↓</button><button data-action="open-category-name" data-value="rename-group/${group.id}">改名</button><button data-action="toggle-category-group" data-value="${group.id}">停用</button></div></div><div class="category-manage-subs">`;
-    activeSubs.forEach((sub,subIndex)=>{groups+=`<div class="category-manage-sub"><span class="name">${esc(sub.name)}<span class="meta">${categoryRoleText(sub.roles)}</span></span><div class="category-manage-actions"><button data-action="move-category-sub" data-value="${group.id}/${sub.id}/-1"${subIndex===0?' disabled':''} aria-label="上移 ${esc(sub.name)}">↑</button><button data-action="move-category-sub" data-value="${group.id}/${sub.id}/1"${subIndex===activeSubs.length-1?' disabled':''} aria-label="下移 ${esc(sub.name)}">↓</button><button data-action="open-category-roles" data-value="${group.id}/${sub.id}">角色</button><button data-action="open-category-name" data-value="rename-sub/${group.id}/${sub.id}">改名</button><button data-action="toggle-category-sub" data-value="${group.id}/${sub.id}">停用</button></div></div>`;});
+  active.forEach((group,groupIndex)=>{const activeSubs=group.items.filter(sub=>sub.active),inactiveSubs=group.items.filter(sub=>!sub.active);groups+=`<section class="category-manage-group"><div class="category-manage-head"><b>${esc(group.name)}</b><div class="category-manage-actions"><button data-action="move-category-group" data-value="${group.id}/-1"${groupIndex===0?' disabled':''} aria-label="上移 ${esc(group.name)}">↑</button><button data-action="move-category-group" data-value="${group.id}/1"${groupIndex===active.length-1?' disabled':''} aria-label="下移 ${esc(group.name)}">↓</button><button data-action="open-category-name" data-value="rename-group/${group.id}">改名</button><button data-action="toggle-category-group" data-value="${group.id}">停用</button></div></div><div class="category-manage-subs">`;
+    activeSubs.forEach((sub,subIndex)=>{groups+=`<div class="category-manage-sub"><span class="name">${esc(sub.name)}<span class="meta">${categoryRoleText(sub.beneficiaryIds)}</span></span><div class="category-manage-actions"><button data-action="move-category-sub" data-value="${group.id}/${sub.id}/-1"${subIndex===0?' disabled':''} aria-label="上移 ${esc(sub.name)}">↑</button><button data-action="move-category-sub" data-value="${group.id}/${sub.id}/1"${subIndex===activeSubs.length-1?' disabled':''} aria-label="下移 ${esc(sub.name)}">↓</button><button data-action="open-category-roles" data-value="${group.id}/${sub.id}">成员</button><button data-action="open-category-name" data-value="rename-sub/${group.id}/${sub.id}">改名</button><button data-action="toggle-category-sub" data-value="${group.id}/${sub.id}">停用</button></div></div>`;});
     if(!activeSubs.length)groups+='<div class="empty" style="padding:8px 0">当前没有启用的细分类</div>';
     groups+=`</div><button class="category-manage-add" data-action="open-category-name" data-value="add-sub/${group.id}">＋ 新增细分类</button>`;
     if(inactiveSubs.length)groups+=`<div class="inactive-list"><div class="planning-note" style="margin:0 0 4px">已停用细分类</div>${inactiveSubs.map(sub=>`<div class="inactive-row"><span>${esc(sub.name)}</span><button data-action="toggle-category-sub" data-value="${group.id}/${sub.id}">恢复</button></div>`).join('')}</div>`;groups+='</section>';});
   const inactiveHtml=inactive.length?`<div class="inactive-list"><div class="planning-note" style="margin:0 0 4px">已停用大类</div>${inactive.map(group=>`<div class="inactive-row"><span>${esc(group.name)}</span><button data-action="toggle-category-group" data-value="${group.id}">恢复</button></div>`).join('')}</div>`:'';
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="分类管理"><div class="sheet-head"><div class="r1"><div><h3>分类管理</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">分类共用稳定 ID，可分别设置在哪些角色下显示</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${groups}<button class="category-manage-add" data-action="open-category-name" data-value="add-group">＋ 新增大类</button>${inactiveHtml}<p class="planning-note" style="margin:12px 0 0">停用不会删除历史账目；完整备份会保存分类名称、顺序和角色显示设置。</p></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="分类管理"><div class="sheet-head"><div class="r1"><div><h3>分类管理</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">分类使用稳定 ID，可分别设置在哪些成员下显示</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${groups}<button class="category-manage-add" data-action="open-category-name" data-value="add-group">＋ 新增大类</button>${inactiveHtml}<p class="planning-note" style="margin:12px 0 0">停用不会删除历史账目；完整备份会保存分类名称、顺序和成员显示设置。</p></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function openCategoryNameForm(value){
-  const parts=value.split('/'),kind=parts[0],group=categoryConfigGroup(parts[1]),sub=group&&group.subs.find(item=>item.id===parts[2]);categoryEditor={kind,groupId:parts[1]||'',subId:parts[2]||''};
+  const parts=value.split('/'),kind=parts[0],group=categoryConfigGroup(parts[1]),sub=group&&group.items.find(item=>item.id===parts[2]);categoryEditor={kind,groupId:parts[1]||'',subId:parts[2]||''};
   const addingGroup=kind==='add-group',addingSub=kind==='add-sub',title=addingGroup?'新增大类':addingSub?'新增细分类':kind==='rename-group'?'修改大类名称':'修改细分类名称',current=kind==='rename-group'&&group?group.name:kind==='rename-sub'&&sub?sub.name:'';
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="sheet-head"><div class="r1"><h3>${title}</h3><button class="x" data-action="open-category-manager" aria-label="返回分类管理">✕</button></div></div><div class="sheet-body"><div class="field"><label for="categoryName">${addingGroup?'大类名称':'分类名称'}</label><input id="categoryName" type="text" maxlength="12" value="${esc(current)}" placeholder="最多 12 个字"></div>${addingGroup?'<div class="field"><label for="categoryFirstSub">首个细分类</label><input id="categoryFirstSub" type="text" maxlength="12" placeholder="例如：其他"></div>':''}</div><div class="sheet-foot"><button class="save-btn e" data-action="save-category-name">保存</button></div></div></div>`;document.body.style.overflow='hidden';document.getElementById('categoryName').focus({preventScroll:true});
 }
 function saveCategoryName(){
   if(!categoryEditor)return;const name=document.getElementById('categoryName').value.trim().slice(0,12);if(!name){toast('请输入分类名称');return;}const previous=cloneCategoryConfig(prefs.categories),kind=categoryEditor.kind,group=categoryConfigGroup(categoryEditor.groupId);
-  if(kind==='add-group'){const first=document.getElementById('categoryFirstSub').value.trim().slice(0,12);if(!first){toast('请输入首个细分类');return;}if(prefs.categories.some(item=>item.name===name)){toast('大类名称已存在');return;}prefs.categories.push({id:`cat-${uuid()}`,name,color:CATEGORY_COLORS[prefs.categories.length%CATEGORY_COLORS.length],active:true,subs:[{id:`sub-${uuid()}`,name:first,active:true,roles:[...BENEFICIARY_IDS]}]});}
-  else if(kind==='add-sub'){if(!group)return;if(group.subs.some(item=>item.name===name)){toast('该大类中已有同名分类');return;}group.subs.push({id:`sub-${uuid()}`,name,active:true,roles:[...BENEFICIARY_IDS]});}
+  if(kind==='add-group'){const first=document.getElementById('categoryFirstSub').value.trim().slice(0,12);if(!first){toast('请输入首个细分类');return;}if(prefs.categories.some(item=>item.name===name)){toast('大类名称已存在');return;}prefs.categories.push({id:`group-${uuid()}`,name,color:CATEGORY_COLORS[prefs.categories.length%CATEGORY_COLORS.length],active:true,items:[{id:`item-${uuid()}`,name:first,active:true,beneficiaryIds:[...BENEFICIARY_IDS]}]});}
+  else if(kind==='add-sub'){if(!group)return;if(group.items.some(item=>item.name===name)){toast('该大类中已有同名分类');return;}group.items.push({id:`item-${uuid()}`,name,active:true,beneficiaryIds:[...BENEFICIARY_IDS]});}
   else if(kind==='rename-group'){if(!group)return;if(prefs.categories.some(item=>item.id!==group.id&&item.name===name)){toast('大类名称已存在');return;}group.name=name;}
-  else{const sub=group&&group.subs.find(item=>item.id===categoryEditor.subId);if(!sub)return;if(group.subs.some(item=>item.id!==sub.id&&item.name===name)){toast('该大类中已有同名分类');return;}sub.name=name;}
+  else{const sub=group&&group.items.find(item=>item.id===categoryEditor.subId);if(!sub)return;if(group.items.some(item=>item.id!==sub.id&&item.name===name)){toast('该大类中已有同名分类');return;}sub.name=name;}
   categoryEditor=null;persistCategoryChange(previous,'分类设置已保存');
 }
 function moveCategoryGroup(value){const[indexValue,directionValue]=[value.slice(0,value.lastIndexOf('/')),value.slice(value.lastIndexOf('/')+1)],direction=Number(directionValue),active=prefs.categories.filter(group=>group.active),group=categoryConfigGroup(indexValue),position=active.indexOf(group),target=active[position+direction];if(!group||!target)return;const previous=cloneCategoryConfig(prefs.categories),from=prefs.categories.indexOf(group),to=prefs.categories.indexOf(target);prefs.categories.splice(from,1);prefs.categories.splice(to,0,group);persistCategoryChange(previous,'分类顺序已更新');}
-function moveCategorySub(value){const parts=value.split('/'),group=categoryConfigGroup(parts[0]),sub=group&&group.subs.find(item=>item.id===parts[1]),direction=Number(parts[2]),active=group?group.subs.filter(item=>item.active):[],position=active.indexOf(sub),target=active[position+direction];if(!sub||!target)return;const previous=cloneCategoryConfig(prefs.categories),from=group.subs.indexOf(sub),to=group.subs.indexOf(target);group.subs.splice(from,1);group.subs.splice(to,0,sub);persistCategoryChange(previous,'分类顺序已更新');}
+function moveCategorySub(value){const parts=value.split('/'),group=categoryConfigGroup(parts[0]),sub=group&&group.items.find(item=>item.id===parts[1]),direction=Number(parts[2]),active=group?group.items.filter(item=>item.active):[],position=active.indexOf(sub),target=active[position+direction];if(!sub||!target)return;const previous=cloneCategoryConfig(prefs.categories),from=group.items.indexOf(sub),to=group.items.indexOf(target);group.items.splice(from,1);group.items.splice(to,0,sub);persistCategoryChange(previous,'分类顺序已更新');}
 function toggleCategoryGroup(id){const group=categoryConfigGroup(id);if(!group)return;if(group.active&&prefs.categories.filter(item=>item.active).length<=1){toast('至少保留一个启用的大类');return;}const previous=cloneCategoryConfig(prefs.categories);group.active=!group.active;persistCategoryChange(previous,group.active?'大类已恢复':'大类已停用');}
-function toggleCategorySub(value){const[catId,subId]=value.split('/'),group=categoryConfigGroup(catId),sub=group&&group.subs.find(item=>item.id===subId);if(!sub)return;const activeCount=prefs.categories.filter(item=>item.active).reduce((sum,item)=>sum+item.subs.filter(child=>child.active).length,0);if(sub.active&&activeCount<=1){toast('至少保留一个启用的细分类');return;}const previous=cloneCategoryConfig(prefs.categories);sub.active=!sub.active;persistCategoryChange(previous,sub.active?'细分类已恢复':'细分类已停用');}
-function openCategoryRoles(value){const[catId,subId]=value.split('/'),group=categoryConfigGroup(catId),sub=group&&group.subs.find(item=>item.id===subId);if(!sub)return;categoryEditor={kind:'roles',groupId:catId,subId};const checks=Object.entries(BENEFICIARIES).map(([id,name])=>`<label><input type="checkbox" name="categoryRole" value="${id}"${sub.roles.includes(id)?' checked':''}>${name}</label>`).join('');document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="设置分类角色"><div class="sheet-head"><div class="r1"><div><h3>${esc(sub.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">选择这个分类出现在哪些角色页</p></div><button class="x" data-action="open-category-manager" aria-label="返回分类管理">✕</button></div></div><div class="sheet-body"><div class="category-role-list">${checks}</div></div><div class="sheet-foot"><button class="save-btn e" data-action="save-category-roles">保存角色设置</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});}
-function saveCategoryRoles(){if(!categoryEditor)return;const group=categoryConfigGroup(categoryEditor.groupId),sub=group&&group.subs.find(item=>item.id===categoryEditor.subId),roles=[...document.querySelectorAll('input[name="categoryRole"]:checked')].map(input=>input.value).filter(value=>BENEFICIARIES[value]);if(!sub||!roles.length){toast('至少选择一个角色');return;}const previous=cloneCategoryConfig(prefs.categories);sub.roles=roles;categoryEditor=null;persistCategoryChange(previous,'角色显示设置已保存');}
+function toggleCategorySub(value){const[catId,subId]=value.split('/'),group=categoryConfigGroup(catId),sub=group&&group.items.find(item=>item.id===subId);if(!sub)return;const activeCount=prefs.categories.filter(item=>item.active).reduce((sum,item)=>sum+item.items.filter(child=>child.active).length,0);if(sub.active&&activeCount<=1){toast('至少保留一个启用的细分类');return;}const previous=cloneCategoryConfig(prefs.categories);sub.active=!sub.active;persistCategoryChange(previous,sub.active?'细分类已恢复':'细分类已停用');}
+function openCategoryRoles(value){const[catId,subId]=value.split('/'),group=categoryConfigGroup(catId),sub=group&&group.items.find(item=>item.id===subId);if(!sub)return;categoryEditor={kind:'roles',groupId:catId,subId};const checks=prefs.beneficiaries.map(item=>`<label><input type="checkbox" name="categoryRole" value="${item.id}"${sub.beneficiaryIds.includes(item.id)?' checked':''}>${esc(item.name)}${item.active?'':'（已停用）'}</label>`).join('');document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="设置分类成员"><div class="sheet-head"><div class="r1"><div><h3>${esc(sub.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">选择这个分类出现在哪些成员页</p></div><button class="x" data-action="open-category-manager" aria-label="返回分类管理">✕</button></div></div><div class="sheet-body"><div class="category-role-list">${checks}</div></div><div class="sheet-foot"><button class="save-btn e" data-action="save-category-roles">保存成员设置</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});}
+function saveCategoryRoles(){if(!categoryEditor)return;const group=categoryConfigGroup(categoryEditor.groupId),sub=group&&group.items.find(item=>item.id===categoryEditor.subId),roles=[...document.querySelectorAll('input[name="categoryRole"]:checked')].map(input=>input.value).filter(value=>BENEFICIARIES[value]);if(!sub||!roles.length){toast('至少选择一个成员');return;}const previous=cloneCategoryConfig(prefs.categories);sub.beneficiaryIds=roles;categoryEditor=null;persistCategoryChange(previous,'成员显示设置已保存');}
+
+/* ============ 家庭成员管理 ============ */
+let beneficiaryEditorId='';
+function cloneSettings(){return JSON.parse(JSON.stringify(prefs));}
+function persistBeneficiaryChange(previous,message){if(!saveSettings()){prefs=previous;refreshDerivedSettings(prefs);return false;}render();openBeneficiaryManager();toast(message);return true;}
+function openBeneficiaryManager(){
+  const active=prefs.beneficiaries.filter(item=>item.active),inactive=prefs.beneficiaries.filter(item=>!item.active),rows=active.map((item,index)=>`<div class="category-manage-sub"><span class="name">${esc(item.name)}<span class="meta">${item.id===prefs.defaultBeneficiaryId?'默认获益方':item.kind==='shared'?'家庭共同':'家庭成员'}</span></span><div class="category-manage-actions"><button data-action="move-beneficiary" data-value="${item.id}/-1"${index===0?' disabled':''} aria-label="上移 ${esc(item.name)}">↑</button><button data-action="move-beneficiary" data-value="${item.id}/1"${index===active.length-1?' disabled':''} aria-label="下移 ${esc(item.name)}">↓</button>${item.id===prefs.defaultBeneficiaryId?'':`<button data-action="set-default-beneficiary" data-value="${item.id}">设为默认</button>`}<button data-action="open-beneficiary-name" data-value="${item.id}">改名</button>${item.kind==='shared'?'':`<button data-action="toggle-beneficiary" data-value="${item.id}">停用</button>`}</div></div>`).join('');
+  const inactiveRows=inactive.length?`<div class="inactive-list"><div class="planning-note" style="margin:0 0 4px">已停用成员</div>${inactive.map(item=>`<div class="inactive-row"><span>${esc(item.name)}</span><button data-action="toggle-beneficiary" data-value="${item.id}">恢复</button></div>`).join('')}</div>`:'';
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="家庭成员管理"><div class="sheet-head"><div class="r1"><div><h3>家庭成员</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">顺序会同步到快速记账；最多启用 8 个获益方</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><section class="category-manage-group"><div class="category-manage-subs">${rows}</div><button class="category-manage-add" data-action="open-beneficiary-name" data-value="">＋ 新增家庭成员</button></section>${inactiveRows}<p class="planning-note" style="margin:12px 0 0">“共同”不能停用；停用成员仍保留在历史账目和完整备份中。</p></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+}
+function openBeneficiaryNameForm(id=''){const member=id?prefs.beneficiaries.find(item=>item.id===id):null;if(id&&!member)return;beneficiaryEditorId=id;const title=member?'修改成员名称':'新增家庭成员';document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="sheet-head"><div class="r1"><h3>${title}</h3><button class="x" data-action="open-beneficiary-manager" aria-label="返回家庭成员">✕</button></div></div><div class="sheet-body"><div class="field"><label for="beneficiaryName">成员名称</label><input id="beneficiaryName" type="text" maxlength="6" value="${member?esc(member.name):''}" placeholder="1 至 6 个字"></div></div><div class="sheet-foot"><button class="save-btn e" data-action="save-beneficiary-name">保存</button></div></div></div>`;document.body.style.overflow='hidden';document.getElementById('beneficiaryName').focus({preventScroll:true});}
+function saveBeneficiaryName(){const name=document.getElementById('beneficiaryName').value.trim().slice(0,6);if(!name){toast('请输入成员名称');return;}if(prefs.beneficiaries.some(item=>item.id!==beneficiaryEditorId&&item.name===name)){toast('成员名称不能重复');return;}const previous=cloneSettings();if(beneficiaryEditorId){const member=prefs.beneficiaries.find(item=>item.id===beneficiaryEditorId);if(!member)return;member.name=name;}else{if(prefs.beneficiaries.filter(item=>item.active).length>=8){toast('最多启用 8 个获益方');return;}const id=uuid();prefs.beneficiaries.push({id,name,kind:'member',active:true});prefs.categories.forEach(group=>group.items.forEach(item=>item.beneficiaryIds.push(id)));}beneficiaryEditorId='';persistBeneficiaryChange(previous,'家庭成员已保存');}
+function moveBeneficiary(value){const slash=value.lastIndexOf('/'),id=value.slice(0,slash),direction=Number(value.slice(slash+1)),active=prefs.beneficiaries.filter(item=>item.active),member=prefs.beneficiaries.find(item=>item.id===id),position=active.indexOf(member),target=active[position+direction];if(!member||!target)return;const previous=cloneSettings(),from=prefs.beneficiaries.indexOf(member),to=prefs.beneficiaries.indexOf(target);prefs.beneficiaries.splice(from,1);prefs.beneficiaries.splice(to,0,member);persistBeneficiaryChange(previous,'成员顺序已更新');}
+function toggleBeneficiary(id){const member=prefs.beneficiaries.find(item=>item.id===id);if(!member||member.kind==='shared')return;if(!member.active&&prefs.beneficiaries.filter(item=>item.active).length>=8){toast('最多启用 8 个获益方');return;}const previous=cloneSettings();member.active=!member.active;if(!member.active&&prefs.defaultBeneficiaryId===id)prefs.defaultBeneficiaryId='family';persistBeneficiaryChange(previous,member.active?'成员已恢复':'成员已停用');}
+function setDefaultBeneficiary(id){if(!prefs.beneficiaries.some(item=>item.id===id&&item.active))return;const previous=cloneSettings();prefs.defaultBeneficiaryId=id;persistBeneficiaryChange(previous,'默认获益方已更新');}
 
 /* ============ 备份 ============ */
 function openDataManagement(){
-  const backup=backupStatus();document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据管理"><div class="sheet-head"><div class="r1"><div><h3>☁️ 数据管理</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">账目、设置和规划都保存在当前浏览器</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>${storageLocked?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}<div class="backup">${storageLocked?`<button data-action="open-recovery">🛟 数据救援</button>`:`<button data-action="export">⬇️ 导出完整备份</button>`}<button data-action="import-trigger">⬆️ 导入备份</button><button data-action="open-category-manager">分类管理</button></div></div></div></div>`;document.body.style.overflow='hidden';
+  const backup=backupStatus(),upgrade=`<div class="rescue">检测到 schema v3 或更早版本的本地数据。v4 不会读取、覆盖或删除旧数据；可以导入转换后的 v4 备份，也可以保留旧数据并从空白 v4 账本开始。</div>`;document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据管理"><div class="sheet-head"><div class="r1"><div><h3>☁️ 数据管理</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">账目、家庭设置和规划都保存在当前浏览器</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${upgradeRequired?upgrade:`<p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>`}${storageLocked&&!upgradeRequired?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}<div class="backup">${!storageLocked?`<button data-action="export">⬇️ 导出完整备份</button>`:''}${storageLocked&&!upgradeRequired?`<button data-action="open-recovery">🛟 数据救援</button>`:''}<button data-action="import-trigger">⬆️ 导入 v4 备份</button>${upgradeRequired?`<button data-action="open-start-fresh">开始空白 v4 账本</button>`:''}${!storageLocked?`<button data-action="open-beneficiary-manager">家庭成员</button><button data-action="open-category-manager">分类管理</button>`:''}</div></div></div></div>`;document.body.style.overflow='hidden';
 }
+function openStartFresh(){document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="开始空白 v4 账本"><div class="sheet-head"><div class="r1"><div><h3>开始空白 v4 账本</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">旧版本地数据会原样保留</p></div><button class="x" data-action="open-data-management" aria-label="返回数据管理">✕</button></div></div><div class="sheet-body"><div class="rescue">新账本会从 0 笔支出和默认家庭设置开始。应用不会删除旧数据，但 v4 页面之后只读取新存储。</div><p style="font-size:13px;color:#64748b;line-height:1.7">如果还要保留历史账目，请先退出并使用一次性转换工具；确认不需要后再继续。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-start-fresh">确认开始空白账本</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});}
+function confirmStartFresh(){const nextSettings=defaultSettings(),nextPlans=defaultPlans();if(!persistFullRestore([],nextSettings,nextPlans,true))return;try{localStorage.removeItem(META_KEY);}catch(error){}prefs=nextSettings;decisions=nextPlans;state.records=[];refreshDerivedSettings(prefs);upgradeRequired=false;storageLocked=false;backupMeta={};closeModals();render();toast('空白 v4 账本已启用');}
 function downloadText(content,filename,type='application/json'){
   const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);
@@ -691,7 +703,7 @@ function downloadText(content,filename,type='application/json'){
 function exportData(prefix='完整账本备份',showToast=true,mark=true){
   downloadText(JSON.stringify(backupEnvelope(state.records,prefs,decisions),null,2),`${prefix}_${todayStr()}.json`);
   if(mark){
-    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,prefsUpdatedAt:prefs.updatedAt,decisionsUpdatedAt:decisions.updatedAt};
+    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,settingsUpdatedAt:prefs.updatedAt,plansUpdatedAt:decisions.updatedAt};
     try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份已下载，但备份时间记录失败');return;}
     render();
   }
@@ -707,24 +719,18 @@ function downloadRecovery(showToast=true){
 }
 function acceptRecovery(){
   if(!recoveryDownloaded){toast('请先下载原始数据');return;}
-  try{localStorage.setItem(KEY,JSON.stringify(envelope(state.records)));}
-  catch(error){toast('重建失败：'+error.message);return;}
+  if(!persistFullRestore(state.records,prefs,decisions,true))return;
   storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;closeModals();render();toast('已用有效记录重建账本');
 }
 let pendingImport=null;
 function parseBackup(parsed,name=''){
-  const legacy=Array.isArray(parsed),raw=legacy?parsed:parsed&&parsed.records;
-  if(!Array.isArray(raw))throw new Error('备份中没有记录数组');
-  if(!legacy&&![2,SCHEMA_VERSION].includes(parsed.schemaVersion))throw new Error('账目版本不受支持');
-  if(!legacy&&parsed.backupVersion!==undefined&&![1,2,BACKUP_VERSION].includes(parsed.backupVersion))throw new Error('完整备份版本不受支持');
-  const hasSettingsField=!legacy&&Object.prototype.hasOwnProperty.call(parsed,'preferences'),hasCategories=hasSettingsField&&Array.isArray(parsed.preferences&&parsed.preferences.categories);
-  const normalized=hasSettingsField?normalizePrefs(parsed.preferences):{preferences:defaultPrefs(),ignored:0,supported:false};
-  const importCategories=hasSettingsField&&normalized.supported?normalized.preferences.categories:defaultCategoryConfig(),expenseCats=categoryMap(importCategories),result=normalizeRecords(raw,expenseCats);if(result.errors.length)throw new Error(`${result.errors[0]}，共 ${result.errors.length} 条异常`);
-  const hasDecisionsField=!legacy&&Object.prototype.hasOwnProperty.call(parsed,'decisions'),normalizedDecisions=hasDecisionsField?normalizeDecisions(parsed.decisions,expenseCats):{decisionData:defaultDecisions(),ignored:0,supported:false};
-  const format=legacy?'旧版数组':parsed.backupVersion?`完整备份 v${parsed.backupVersion}`:`账目备份 v${parsed.schemaVersion}`;
-  return {records:result.records,preferences:normalized.preferences,categories:importCategories,hasPreferences:hasSettingsField&&normalized.supported,hasCategories:hasCategories&&normalized.supported,preferenceWarnings:normalized.ignored,
-    decisions:normalizedDecisions.decisionData,hasDecisions:hasDecisionsField&&normalizedDecisions.supported,decisionWarnings:normalizedDecisions.ignored,
-    source:{name,format,backupVersion:legacy?null:parsed.backupVersion||null,exportedAt:legacy?'':parsed.exportedAt||''}};
+  if(!parsed||typeof parsed!=='object'||parsed.backupVersion!==BACKUP_VERSION||parsed.schemaVersion!==SCHEMA_VERSION)throw new Error('只支持完整备份 v4；旧备份请先使用一次性转换工具');
+  const settings=normalizeSettings(parsed.settings),plans=normalizePlans(parsed.plans);
+  if(!parsed.records||parsed.records.schemaVersion!==SCHEMA_VERSION||!Array.isArray(parsed.records.records))throw new Error('备份中的账目对象无效');
+  const result=normalizeRecords(parsed.records.records,settings,plans);if(result.errors.length)throw new Error(`${result.errors[0]}，共 ${result.errors.length} 条异常`);
+  const expenseCents=result.records.reduce((sum,item)=>sum+item.amountCents,0),summary=parsed.summary||{};
+  if(summary.recordCount!==result.records.length||summary.expenseCents!==expenseCents)throw new Error('备份摘要与账目数据不一致');
+  return {records:result.records,settings,plans,source:{name,format:'完整备份 v4',exportedAt:parsed.exportedAt||''}};
 }
 document.getElementById('importFile').addEventListener('change',function(e){
   const file=e.target.files[0];if(!file)return;const reader=new FileReader();
@@ -735,35 +741,19 @@ document.getElementById('importFile').addEventListener('change',function(e){
 });
 function openImportPreview(){
   const records=pendingImport.records,dates=records.map(r=>r.date).sort(),span=dates.length?`${dates[0]} 至 ${dates[dates.length-1]}`:'无记录';
-  const income=sumType(records,'income'),expense=sumType(records,'expense'),currentIds=new Set(state.records.map(r=>r.id));
-  const duplicates=records.filter(r=>currentIds.has(r.id)).length;
+  const expense=sumType(records);
   const exportedAt=pendingImport.source.exportedAt&&Number.isFinite(Date.parse(pendingImport.source.exportedAt))?new Date(pendingImport.source.exportedAt).toLocaleString('zh-CN'):'未提供';
-  const importedPrefs=pendingImport.preferences,favorites=importedPrefs.favorites.expense.length+importedPrefs.favorites.income.length,recent=Number(!!importedPrefs.recent.expense)+Number(!!importedPrefs.recent.income);
-  const settingsInfo=pendingImport.hasPreferences?`<div class="summary-grid">${pendingImport.hasCategories?`<div>分类大类<b>${importedPrefs.categories.length} 个</b></div>`:'<div>分类设置<b>保留当前</b></div>'}<div>最近分类<b>${recent} 个</b></div><div>收藏分类<b>${favorites} 个</b></div><div>设置校验<b>${pendingImport.preferenceWarnings?`忽略 ${pendingImport.preferenceWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.preferenceWarnings?'快捷设置版本无法识别，将只导入账目。':'这是旧版账目备份，不包含分类设置。'}</p>`;
-  const planningInfo=pendingImport.hasDecisions?`<div class="summary-grid"><div>预算月份<b>${Object.keys(pendingImport.decisions.budgets).length} 个月</b></div><div>正式专项<b>${pendingImport.decisions.projects.length} 个</b></div><div>财务目标<b>${pendingImport.decisions.goals.length} 个</b></div><div>月度复盘<b>${Object.keys(pendingImport.decisions.reviews).length} 个月</b></div><div>无支出确认<b>${pendingImport.decisions.noSpendDates.length} 天</b></div><div>规划校验<b>${pendingImport.decisionWarnings?`忽略 ${pendingImport.decisionWarnings} 项`:'全部通过'}</b></div></div>`:`<p class="backup-status warn" style="margin-top:12px">${pendingImport.decisionWarnings?'规划数据版本无法识别，将保留当前规划。':'此备份不包含规划数据，完整恢复时会保留当前规划。'}</p>`;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认导入</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${esc(pendingImport.source.format)}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>记录数<b>${records.length} 笔</b></div><div>与当前重复<b>${duplicates} 笔</b></div><div>历史收入<b>¥${fmt(income)}</b></div><div>支出合计<b>¥${fmt(expense)}</b></div></div>${settingsInfo}${planningInfo}<p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">操作前会自动下载当前完整备份；默认完整恢复账目，并恢复文件中可识别的设置和规划。旧备份缺少的内容会保留当前数据。</p></div><div class="sheet-foot"><div class="import-actions"><button class="full" data-action="apply-import" data-value="full">完整恢复账目与设置</button></div><details class="advanced-import"><summary>高级导入方式</summary><div class="import-actions"><button data-action="apply-import" data-value="merge">合并账目<br>保留当前数据</button><button data-action="apply-import" data-value="replace">覆盖账目<br>设置保持不变</button></div></details></div></div></div>`;
+  const settings=pendingImport.settings,plans=pendingImport.plans;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认完整恢复</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${pendingImport.source.format}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>支出记录<b>${records.length} 笔</b></div><div>支出合计<b>¥${fmt(expense)}</b></div><div>家庭成员<b>${settings.beneficiaries.length} 个</b></div><div>分类大类<b>${settings.categories.length} 个</b></div><div>正式专项<b>${plans.projects.length} 个</b></div><div>财务目标<b>${plans.goals.length} 个</b></div></div><p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">恢复会完整替换当前 v4 账目、家庭设置和规划。当前已有 v4 数据时，会先自动下载一份完整备份。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="apply-import" data-value="full">确认完整恢复</button></div></div></div>`;
   document.body.style.overflow='hidden';
 }
 function applyImport(mode){
-  if(!pendingImport)return;
-  if(storageLocked)downloadRecovery(false);else exportData('导入前完整备份',false,false);
-  const incoming=pendingImport.records;
-  let next=incoming;
-  if(mode==='merge'){
-    const map=new Map(state.records.map(r=>[r.id,r]));
-    incoming.forEach(r=>{const old=map.get(r.id);if(!old||r.updatedAt>old.updatedAt)map.set(r.id,r);});
-    next=[...map.values()];
-  }
-  if(mode==='replace'&&incoming.some(record=>record.type==='expense'&&!validChoice('expense',record.cat,record.sub))){toast('备份包含当前分类设置无法识别的记录，请使用完整恢复或合并');return;}
-  const restoredDecisions=mode==='full'&&pendingImport.hasDecisions?pendingImport.decisions:null;let restoredPrefs=null;
-  if(mode==='full')restoredPrefs=pendingImport.hasPreferences?{...pendingImport.preferences,categories:pendingImport.hasCategories?pendingImport.preferences.categories:mergeCategoryConfigs(prefs.categories,pendingImport.categories)}:{...prefs,categories:mergeCategoryConfigs(prefs.categories,pendingImport.categories),updatedAt:new Date().toISOString()};
-  else if(mode==='merge'){const categories=mergeCategoryConfigs(prefs.categories,pendingImport.categories);if(JSON.stringify(categories)!==JSON.stringify(prefs.categories))restoredPrefs={...prefs,categories,updatedAt:new Date().toISOString()};}
-  if(restoredPrefs||restoredDecisions){if(!persistFullRestore(next,restoredPrefs||prefs,restoredDecisions,storageLocked))return;}else if(!persist(next,storageLocked))return;
-  const count=next.length;state.records=next;if(restoredPrefs){prefs=restoredPrefs;EXPENSE_CATS=categoryMap(prefs.categories);}if(restoredDecisions)decisions=restoredDecisions;pendingImport=null;
-  if(storageLocked){storageLocked=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;}
-  closeModals();render();toast(mode==='full'?`完整恢复成功，共 ${count} 笔`:`账目导入成功，共 ${count} 笔`);
+  if(!pendingImport||mode!=='full')return;
+  if(!storageLocked&&(state.records.length||hasCustomSettings()||hasDecisionData()))exportData('导入前完整备份',false,false);
+  if(!persistFullRestore(pendingImport.records,pendingImport.settings,pendingImport.plans,true))return;
+  const count=pendingImport.records.length;state.records=pendingImport.records;prefs=pendingImport.settings;decisions=pendingImport.plans;refreshDerivedSettings(prefs);pendingImport=null;storageLocked=false;upgradeRequired=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;backupMeta={};try{localStorage.removeItem(META_KEY);}catch(error){}
+  closeModals();render();toast(`完整恢复成功，共 ${count} 笔`);
 }
-function mergeCategoryConfigs(base,incoming){const merged=cloneCategoryConfig(base);incoming.forEach(group=>{let target=merged.find(item=>item.id===group.id);if(!target){merged.push(cloneCategoryConfig(group));return;}group.subs.forEach(sub=>{if(!target.subs.some(item=>item.id===sub.id))target.subs.push(cloneCategoryConfig(sub));});});return merged;}
 let toastTimer;
 function toast(msg,undoAction=''){const t=document.getElementById('toast'),button=document.getElementById('toastUndo');document.getElementById('toastMsg').textContent=msg;button.dataset.action=undoAction;t.classList.toggle('undo',!!undoAction);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undoAction?12000:1800);}
 
@@ -785,8 +775,9 @@ document.addEventListener('click',event=>{
     'undo-delete':undoDelete,'undo-add':undoAdd,'close-modal':closeModals,'close-overlay':closeModals,
     'select-record-context':()=>selectRecordContext(value),'select-category-choice':()=>selQuick(value,!form.id),'select-quick':()=>selQuick(value),'quick-save':()=>selQuick(value,true),'select-recent':()=>selQuick(value,false,true),'recent-save':()=>selQuick(value,true,true),
     'toggle-record-section':()=>toggleRecordSection(value),'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
-    'open-data-management':openDataManagement,'open-category-manager':openCategoryManager,'open-category-name':()=>openCategoryNameForm(value),'save-category-name':saveCategoryName,
+    'open-data-management':openDataManagement,'open-start-fresh':openStartFresh,'confirm-start-fresh':confirmStartFresh,'open-category-manager':openCategoryManager,'open-category-name':()=>openCategoryNameForm(value),'save-category-name':saveCategoryName,
     'move-category-group':()=>moveCategoryGroup(value),'move-category-sub':()=>moveCategorySub(value),'toggle-category-group':()=>toggleCategoryGroup(value),'toggle-category-sub':()=>toggleCategorySub(value),'open-category-roles':()=>openCategoryRoles(value),'save-category-roles':saveCategoryRoles,
+    'open-beneficiary-manager':openBeneficiaryManager,'open-beneficiary-name':()=>openBeneficiaryNameForm(value),'save-beneficiary-name':saveBeneficiaryName,'move-beneficiary':()=>moveBeneficiary(value),'toggle-beneficiary':()=>toggleBeneficiary(value),'set-default-beneficiary':()=>setDefaultBeneficiary(value),
     'export':()=>exportData(),'import-trigger':()=>document.getElementById('importFile').click(),
     'apply-import':()=>applyImport(value),'open-recovery':openRecovery,'download-recovery':()=>downloadRecovery(),
     'accept-recovery':acceptRecovery
@@ -794,7 +785,7 @@ document.addEventListener('click',event=>{
   if(actions[action]){actions[action]();if(!hadModal&&document.querySelector('#modals [role="dialog"]'))modalReturnFocus=el;}
 });
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
-document.addEventListener('change',event=>{if(event.target.id==='fProject'){form.projectId=event.target.value;if(form.projectId)form.beneficiaryId='family';form.projectTouched=true;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();}if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';}});
+document.addEventListener('change',event=>{if(event.target.id==='fProject'){form.projectId=event.target.value;form.projectTouched=true;ensureFormChoice();renderRecordContext();renderQuickChoices();renderCategoryGroups();}if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';}});
 new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
 document.addEventListener('keydown',event=>{
   const dialog=document.querySelector('#modals [role="dialog"]');if(!dialog)return;
@@ -809,4 +800,4 @@ document.addEventListener('keydown',event=>{
 
 render();
 if(loaded.notice)setTimeout(()=>toast(loaded.notice),0);
-if('serviceWorker' in navigator&&location.protocol!=='file:')window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+if('serviceWorker' in navigator&&location.protocol!=='file:'&&!new URLSearchParams(location.search).has('no-sw'))window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
