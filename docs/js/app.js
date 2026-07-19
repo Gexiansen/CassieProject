@@ -574,13 +574,12 @@ function openRecordForm(id=null,preset=null){
   form.showMore=!!record||!!(source&&(source.date&&source.date!==todayStr()||sourceProject));
   const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
   const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
-    <div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${sourceDate}${record?' · 修改后保存':' · 点击分类直接保存'}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div>
+    <div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record?sourceDate+' · 修改后点击底部保存':'输入金额后，点击分类即可完成'}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div>
     <div class="sheet-body">
       <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div>
       <div class="record-context" id="recordContext"></div>
-      <div class="quick-guidance">${record?'选择分类后点击底部保存':'输入金额后，点击分类即可完成'}</div>
       <div class="field" id="quickField"><label>最近和常用</label><div class="quick-picks" id="quickPicks"></div></div>
-      <div class="field"><label>${record?'全部分类 · 选择细分类':'全部分类 · 点击细分类直接保存'}</label><div class="category-groups" id="categoryGroups"></div></div>
+      <div class="field"><label>全部分类</label><div class="category-groups" id="categoryGroups"></div></div>
       <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起更多选项':'日期与专项'}</button>
       <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div><div class="field" style="margin:0"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div></div>
       ${record?'':`<button id="noSpendButton" class="no-spend-action" data-action="toggle-form-no-spend">${decisions.noSpendDates.includes(sourceDate)?'取消“当日无支出”确认':'确认当日无支出'}</button>`}
