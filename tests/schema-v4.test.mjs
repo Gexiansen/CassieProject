@@ -71,5 +71,9 @@ assert.equal(projectReference.metrics.perPersonDayCents,16667);
 assert.equal(projectReference.topCategory.name,'居住生活');
 assert.equal(projectReference.topCategory.amountCents,120000);
 assert.equal(vm.runInContext('recentProjectReference("renovation",projectList,projectRecords,projectSettings.categories)',context),null);
+const projectHistory=vm.runInContext('projectHistoryReferences("travel",projectList,projectRecords,projectSettings.categories,"travel-reference",5)',context);
+assert.equal(projectHistory.map(item=>item.project.id).join(','),'travel-old');
+assert.equal(projectHistory[0].metrics.actualCents,120000);
+assert.equal(vm.runInContext('projectHistoryReferences("travel",projectList,projectRecords,projectSettings.categories,"",1).length',context),1);
 
 console.log('schema v4 converter and round-trip validation passed');
