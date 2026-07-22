@@ -1,10 +1,10 @@
-const SCHEMA_VERSION=4;
-const BACKUP_VERSION=4;
-const RECORDS_KEY='cassie_records_v4';
-const SETTINGS_KEY='cassie_settings_v4';
-const PLANS_KEY='cassie_plans_v4';
-const META_KEY='cassie_backup_meta_v4';
-const LEGACY_KEYS=['myBudgetBook_v2','myBudgetBook_v1','myBudgetBook_meta_v1','myBudgetBook_prefs_v1','myBudgetBook_decisions_v1'];
+const SCHEMA_VERSION=5;
+const BACKUP_VERSION=5;
+const RECORDS_KEY='cassie_records_v5';
+const SETTINGS_KEY='cassie_settings_v5';
+const PLANS_KEY='cassie_plans_v5';
+const META_KEY='cassie_backup_meta_v5';
+const LEGACY_KEYS=['cassie_records_v4','cassie_settings_v4','cassie_plans_v4','cassie_backup_meta_v4','myBudgetBook_v2','myBudgetBook_v1','myBudgetBook_meta_v1','myBudgetBook_prefs_v1','myBudgetBook_decisions_v1'];
 let recoveryRaw='',recoveryError='',recoveryDownloaded=false,storageReadError='';
 
 function uuid(){
@@ -27,7 +27,7 @@ function validIso(value){return typeof value==='string'&&Number.isFinite(Date.pa
 function cleanText(value,max){return typeof value==='string'?value.trim().slice(0,max):'';}
 function captureReadError(label,raw,error){storageReadError=label+'读取异常：'+error.message;recoveryRaw+=(recoveryRaw?'\n\n':'')+'【'+label+'】\n'+raw;recoveryError=storageReadError;}
 
-function defaultSettings(){return {schemaVersion:SCHEMA_VERSION,updatedAt:'',defaultBeneficiaryId:'family',beneficiaries:defaultBeneficiaries(),categories:defaultCategoryConfig()};}
+function defaultSettings(){return {schemaVersion:SCHEMA_VERSION,updatedAt:'',defaultBeneficiaryId:'family',beneficiaries:defaultBeneficiaries()};}
 function normalizeSettings(source){
   if(!source||typeof source!=='object'||source.schemaVersion!==SCHEMA_VERSION)throw new Error('设置版本不受支持');
   const beneficiaries=[],beneficiaryIds=new Set(),names=new Set();
@@ -41,22 +41,8 @@ function normalizeSettings(source){
   });
   if(!beneficiaryIds.has('family'))throw new Error('缺少共同获益方');
   if(beneficiaries.filter(item=>item.active).length>8)throw new Error('启用的获益方不能超过 8 个');
-  if(!Array.isArray(source.categories)||!source.categories.length)throw new Error('分类不能为空');
-  const categories=[],groupIds=new Set(),itemIds=new Set();
-  source.categories.forEach((raw,index)=>{
-    if(!raw||!validId(raw.id)||groupIds.has(raw.id))throw new Error('大类 ID 无效或重复');
-    const name=cleanText(raw.name,12);if(!name||!Array.isArray(raw.items)||!raw.items.length)throw new Error('大类名称或细分类无效');
-    const items=[];raw.items.forEach(item=>{
-      if(!item||!validId(item.id)||itemIds.has(item.id))throw new Error('细分类 ID 无效或不唯一');
-      const itemName=cleanText(item.name,12);if(!itemName)throw new Error('细分类名称无效');
-      const ids=Array.isArray(item.beneficiaryIds)?[...new Set(item.beneficiaryIds)]:[];
-      if(!ids.length||ids.some(id=>!beneficiaryIds.has(id)))throw new Error('细分类获益方引用无效');
-      items.push({id:item.id,name:itemName,active:item.active!==false,beneficiaryIds:ids});itemIds.add(item.id);
-    });
-    categories.push({id:raw.id,name,color:/^#[0-9a-fA-F]{6}$/.test(raw.color||'')?raw.color:CATEGORY_COLORS[index%CATEGORY_COLORS.length],active:raw.active!==false,items});groupIds.add(raw.id);
-  });
   const defaultBeneficiaryId=beneficiaries.some(item=>item.id===source.defaultBeneficiaryId&&item.active)?source.defaultBeneficiaryId:'family';
-  return {schemaVersion:SCHEMA_VERSION,updatedAt:validIso(source.updatedAt)?new Date(source.updatedAt).toISOString():'',defaultBeneficiaryId,beneficiaries,categories};
+  return {schemaVersion:SCHEMA_VERSION,updatedAt:validIso(source.updatedAt)?new Date(source.updatedAt).toISOString():'',defaultBeneficiaryId,beneficiaries};
 }
 function readSettings(){
   const raw=localStorage.getItem(SETTINGS_KEY);if(!raw)return defaultSettings();
@@ -130,12 +116,12 @@ function normalizeRecord(raw,settings=prefs,plans=decisions){
   if(!validId(raw.id))throw new Error('记录 ID 无效');
   const date=String(raw.date||'');if(!validDate(date))throw new Error('日期无效');
   if(!Number.isSafeInteger(raw.amountCents)||raw.amountCents<=0)throw new Error('金额无效');
-  const categories=categoryMap(settings.categories).items;if(!categories[raw.categoryId])throw new Error('分类引用无效');
+  if(!SPENDING_TYPES[raw.spendingType])throw new Error('支出属性无效');
   if(!settings.beneficiaries.some(item=>item.id===raw.beneficiaryId))throw new Error('获益方引用无效');
   const projectId=raw.projectId||'';if(projectId&&!plans.projects.some(item=>item.id===projectId))throw new Error('专项引用无效');
   const createdAt=validIso(raw.createdAt)?new Date(raw.createdAt).toISOString():'';if(!createdAt)throw new Error('创建时间无效');
   const updatedAt=validIso(raw.updatedAt)?new Date(raw.updatedAt).toISOString():'';if(!updatedAt)throw new Error('更新时间无效');
-  return {id:raw.id,date,amountCents:raw.amountCents,categoryId:raw.categoryId,beneficiaryId:raw.beneficiaryId,projectId,note:cleanText(raw.note,20),createdAt,updatedAt};
+  return {id:raw.id,date,amountCents:raw.amountCents,spendingType:raw.spendingType,beneficiaryId:raw.beneficiaryId,projectId,note:cleanText(raw.note,20),createdAt,updatedAt};
 }
 function normalizeRecords(input,settings=prefs,plans=decisions){
   if(!Array.isArray(input))throw new Error('账本记录不是数组');
@@ -184,5 +170,5 @@ function backupStatus(){
   const days=Math.max(0,Math.floor((Date.now()-Date.parse(backupMeta.lastBackupAt))/86400000));
   const added=Math.max(0,state.records.length-(backupMeta.recordCount||0)),settingsChanged=!!prefs.updatedAt&&prefs.updatedAt!==backupMeta.settingsUpdatedAt,plansChanged=!!decisions.updatedAt&&decisions.updatedAt!==backupMeta.plansUpdatedAt,warn=days>=14||added>=30||settingsChanged||plansChanged;
   const date=new Date(backupMeta.lastBackupAt).toLocaleDateString('zh-CN');
-  return {warn,text:'上次完整备份：'+date+(added?'，之后新增 '+added+' 笔':'')+(settingsChanged?'，家庭或分类设置有变更':'')+(plansChanged?'，规划数据有变更':'')+(warn?'，建议重新导出。':'。')};
+  return {warn,text:'上次完整备份：'+date+(added?'，之后新增 '+added+' 笔':'')+(settingsChanged?'，家庭成员设置有变更':'')+(plansChanged?'，规划数据有变更':'')+(warn?'，建议重新导出。':'。')};
 }

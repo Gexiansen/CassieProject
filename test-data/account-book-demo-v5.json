@@ -1,0 +1,431 @@
+{
+  "appName": "CassieProject",
+  "backupVersion": 5,
+  "schemaVersion": 5,
+  "exportedAt": "2026-07-22T14:34:41.697Z",
+  "summary": {
+    "recordCount": 34,
+    "expenseCents": 1886980
+  },
+  "records": {
+    "schemaVersion": 5,
+    "updatedAt": "2026-07-22T14:34:41.697Z",
+    "records": [
+      {
+        "id": "11111111-1111-4111-8111-000000000002",
+        "date": "2026-01-06",
+        "amountCents": 520000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "一月房租",
+        "createdAt": "2026-01-06T02:00:00.000Z",
+        "updatedAt": "2026-01-06T02:00:00.000Z",
+        "spendingType": "fixed"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000003",
+        "date": "2026-01-10",
+        "amountCents": 18650,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "周末买菜",
+        "createdAt": "2026-01-10T03:00:00.000Z",
+        "updatedAt": "2026-01-10T03:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000004",
+        "date": "2026-01-18",
+        "amountCents": 32800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭聚餐",
+        "createdAt": "2026-01-18T11:00:00.000Z",
+        "updatedAt": "2026-01-18T11:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000007",
+        "date": "2026-02-09",
+        "amountCents": 88000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "春节红包",
+        "createdAt": "2026-02-09T04:00:00.000Z",
+        "updatedAt": "2026-02-09T04:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000008",
+        "date": "2026-02-15",
+        "amountCents": 236000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "春节往返车票",
+        "createdAt": "2026-02-15T05:00:00.000Z",
+        "updatedAt": "2026-02-15T05:00:00.000Z",
+        "spendingType": "exceptional"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000009",
+        "date": "2026-02-16",
+        "amountCents": 69900,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "返程住宿",
+        "createdAt": "2026-02-16T05:00:00.000Z",
+        "updatedAt": "2026-02-16T05:00:00.000Z",
+        "spendingType": "exceptional"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000012",
+        "date": "2026-03-08",
+        "amountCents": 45900,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭日用品",
+        "createdAt": "2026-03-08T06:00:00.000Z",
+        "updatedAt": "2026-03-08T06:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000013",
+        "date": "2026-03-12",
+        "amountCents": 68000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "年度体检",
+        "createdAt": "2026-03-12T01:00:00.000Z",
+        "updatedAt": "2026-03-12T01:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000015",
+        "date": "2026-04-04",
+        "amountCents": 42000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "自驾加油",
+        "createdAt": "2026-04-04T01:00:00.000Z",
+        "updatedAt": "2026-04-04T01:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000016",
+        "date": "2026-04-04",
+        "amountCents": 75800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "湖边酒店",
+        "createdAt": "2026-04-04T13:00:00.000Z",
+        "updatedAt": "2026-04-04T13:00:00.000Z",
+        "spendingType": "exceptional"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000017",
+        "date": "2026-04-05",
+        "amountCents": 26000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "景区门票",
+        "createdAt": "2026-04-05T03:00:00.000Z",
+        "updatedAt": "2026-04-05T03:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000018",
+        "date": "2026-04-05",
+        "amountCents": 46800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "杭帮菜",
+        "createdAt": "2026-04-05T10:00:00.000Z",
+        "updatedAt": "2026-04-05T10:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000020",
+        "date": "2026-05-02",
+        "amountCents": 19900,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "儿童积木",
+        "createdAt": "2026-05-02T07:00:00.000Z",
+        "updatedAt": "2026-05-02T07:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000021",
+        "date": "2026-05-11",
+        "amountCents": 89900,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭路由器",
+        "createdAt": "2026-05-11T07:00:00.000Z",
+        "updatedAt": "2026-05-11T07:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000022",
+        "date": "2026-05-18",
+        "amountCents": 35680,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "水电燃气",
+        "createdAt": "2026-05-18T02:00:00.000Z",
+        "updatedAt": "2026-05-18T02:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000025",
+        "date": "2026-06-07",
+        "amountCents": 36800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "夏季衣物",
+        "createdAt": "2026-06-07T08:00:00.000Z",
+        "updatedAt": "2026-06-07T08:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000026",
+        "date": "2026-06-14",
+        "amountCents": 12650,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "常用药品",
+        "createdAt": "2026-06-14T03:00:00.000Z",
+        "updatedAt": "2026-06-14T03:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000027",
+        "date": "2026-06-22",
+        "amountCents": 98000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "季度健身卡",
+        "createdAt": "2026-06-22T07:00:00.000Z",
+        "updatedAt": "2026-06-22T07:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000030",
+        "date": "2026-07-01",
+        "amountCents": 12860,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "超市蔬菜",
+        "createdAt": "2026-07-01T10:00:00.000Z",
+        "updatedAt": "2026-07-01T10:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000031",
+        "date": "2026-07-02",
+        "amountCents": 23680,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "肉类海鲜",
+        "createdAt": "2026-07-02T10:00:00.000Z",
+        "updatedAt": "2026-07-02T10:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000032",
+        "date": "2026-07-03",
+        "amountCents": 1200,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "地铁通勤",
+        "createdAt": "2026-07-03T00:30:00.000Z",
+        "updatedAt": "2026-07-03T00:30:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000033",
+        "date": "2026-07-04",
+        "amountCents": 3260,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "午餐外卖",
+        "createdAt": "2026-07-04T04:00:00.000Z",
+        "updatedAt": "2026-07-04T04:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000034",
+        "date": "2026-07-05",
+        "amountCents": 25800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "清洁用品",
+        "createdAt": "2026-07-05T08:00:00.000Z",
+        "updatedAt": "2026-07-05T08:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000035",
+        "date": "2026-07-06",
+        "amountCents": 16800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "学习文具",
+        "createdAt": "2026-07-06T08:00:00.000Z",
+        "updatedAt": "2026-07-06T08:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000036",
+        "date": "2026-07-07",
+        "amountCents": 9800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "家庭电影夜",
+        "createdAt": "2026-07-07T11:00:00.000Z",
+        "updatedAt": "2026-07-07T11:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000037",
+        "date": "2026-07-08",
+        "amountCents": 4860,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "雨天打车",
+        "createdAt": "2026-07-08T09:00:00.000Z",
+        "updatedAt": "2026-07-08T09:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000038",
+        "date": "2026-07-08",
+        "amountCents": 68800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "商务酒店",
+        "createdAt": "2026-07-08T13:00:00.000Z",
+        "updatedAt": "2026-07-08T13:00:00.000Z",
+        "spendingType": "exceptional"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000039",
+        "date": "2026-07-09",
+        "amountCents": 36800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "出差晚餐",
+        "createdAt": "2026-07-09T11:00:00.000Z",
+        "updatedAt": "2026-07-09T11:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000040",
+        "date": "2026-07-10",
+        "amountCents": 15800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "当季水果",
+        "createdAt": "2026-07-10T10:00:00.000Z",
+        "updatedAt": "2026-07-10T10:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000041",
+        "date": "2026-07-11",
+        "amountCents": 50000,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "朋友婚礼红包",
+        "createdAt": "2026-07-11T04:00:00.000Z",
+        "updatedAt": "2026-07-11T04:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000042",
+        "date": "2026-07-12",
+        "amountCents": 31240,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "本月水电燃气",
+        "createdAt": "2026-07-12T02:00:00.000Z",
+        "updatedAt": "2026-07-12T02:00:00.000Z",
+        "spendingType": "flexible"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000043",
+        "date": "2026-07-13",
+        "amountCents": 6800,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "周末零食",
+        "createdAt": "2026-07-13T08:00:00.000Z",
+        "updatedAt": "2026-07-13T08:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000044",
+        "date": "2026-07-14",
+        "amountCents": 3600,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "咖啡饮料",
+        "createdAt": "2026-07-14T03:00:00.000Z",
+        "updatedAt": "2026-07-14T03:00:00.000Z",
+        "spendingType": "discretionary"
+      },
+      {
+        "id": "11111111-1111-4111-8111-000000000045",
+        "date": "2026-07-14",
+        "amountCents": 12900,
+        "beneficiaryId": "family",
+        "projectId": "",
+        "note": "羽毛球拍",
+        "createdAt": "2026-07-14T05:00:00.000Z",
+        "updatedAt": "2026-07-14T05:00:00.000Z",
+        "spendingType": "discretionary"
+      }
+    ]
+  },
+  "settings": {
+    "schemaVersion": 5,
+    "updatedAt": "",
+    "defaultBeneficiaryId": "family",
+    "beneficiaries": [
+      {
+        "id": "family",
+        "name": "共同",
+        "kind": "shared",
+        "active": true
+      },
+      {
+        "id": "wife",
+        "name": "妻子",
+        "kind": "member",
+        "active": true
+      },
+      {
+        "id": "husband",
+        "name": "丈夫",
+        "kind": "member",
+        "active": true
+      },
+      {
+        "id": "son",
+        "name": "儿子",
+        "kind": "member",
+        "active": true
+      }
+    ]
+  },
+  "plans": {
+    "schemaVersion": 5,
+    "updatedAt": "",
+    "budgets": {},
+    "projects": [],
+    "currentProjectId": "",
+    "goals": [],
+    "reviews": {},
+    "noSpendDates": []
+  }
+}

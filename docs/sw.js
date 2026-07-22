@@ -1,4 +1,4 @@
-const CACHE_NAME='cassie-account-v4-20260719-6';
+const CACHE_NAME='cassie-account-v5-20260722-1';
 const APP_SHELL=['./','./index.html','./styles.css','./js/model.js','./js/storage.js','./js/app.js','./manifest.webmanifest','./icons/icon.svg','./icons/icon-192.png','./icons/icon-512.png'];
 
 self.addEventListener('install',event=>{
