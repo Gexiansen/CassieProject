@@ -121,7 +121,7 @@ function normalizeRecord(raw,settings=prefs,plans=decisions){
   const projectId=raw.projectId||'';if(projectId&&!plans.projects.some(item=>item.id===projectId))throw new Error('专项引用无效');
   const createdAt=validIso(raw.createdAt)?new Date(raw.createdAt).toISOString():'';if(!createdAt)throw new Error('创建时间无效');
   const updatedAt=validIso(raw.updatedAt)?new Date(raw.updatedAt).toISOString():'';if(!updatedAt)throw new Error('更新时间无效');
-  return {id:raw.id,date,amountCents:raw.amountCents,spendingType:raw.spendingType,beneficiaryId:raw.beneficiaryId,projectId,note:cleanText(raw.note,20),createdAt,updatedAt};
+  return {id:raw.id,date,amountCents:raw.amountCents,spendingType:raw.spendingType,beneficiaryId:raw.beneficiaryId,projectId,note:cleanText(String(raw.note||'').replace(/\s+/g,' '),40),createdAt,updatedAt};
 }
 function normalizeRecords(input,settings=prefs,plans=decisions){
   if(!Array.isArray(input))throw new Error('账本记录不是数组');

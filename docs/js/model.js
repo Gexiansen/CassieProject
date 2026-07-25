@@ -64,6 +64,15 @@ function quickRecordScenes(records,recentLimit=3){
   const frequent=values.filter(item=>!recentKeys.has(item.key)).sort((a,b)=>b.count-a.count||b.latest.localeCompare(a.latest)||a.key.localeCompare(b.key));
   return [...recent,...frequent].map(({key,...item})=>item);
 }
+function normalizeQuickQuery(value){return String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('zh-CN');}
+function rankQuickRecordScenes(scenes,query='',beneficiaryId='',projectId=''){
+  const normalized=normalizeQuickQuery(query),matchLevel=scene=>{const note=normalizeQuickQuery(scene.note);if(!normalized)return 0;if(note===normalized)return 3;if(note.startsWith(normalized))return 2;return note.includes(normalized)?1:0;};
+  return scenes.filter(scene=>!normalized||matchLevel(scene)>0).sort((a,b)=>{
+    if(normalized){const matchDiff=matchLevel(b)-matchLevel(a);if(matchDiff)return matchDiff;}
+    const relevance=scene=>(scene.beneficiaryId===beneficiaryId?4:0)+((scene.projectId||'')===(projectId||'')?2:0)+(scene.count>1?3:0),relevanceDiff=relevance(b)-relevance(a);
+    return relevanceDiff||b.count-a.count||b.latest.localeCompare(a.latest)||normalizeQuickQuery(a.note).localeCompare(normalizeQuickQuery(b.note),'zh-CN');
+  });
+}
 function calculateProjectMetrics(project,records){
   const items=records.filter(record=>record.projectId===project.id),actualCents=items.reduce((sum,item)=>sum+item.amountCents,0),days=Math.max(1,Math.round((new Date(project.endDate)-new Date(project.startDate))/86400000)+1),people=project.people||1;
   return {items,actualCents,remainingCents:project.budgetCents?project.budgetCents-actualCents:null,percent:project.budgetCents?actualCents/project.budgetCents*100:null,days,people,perPersonCents:Math.round(actualCents/people),perPersonDayCents:Math.round(actualCents/people/days)};

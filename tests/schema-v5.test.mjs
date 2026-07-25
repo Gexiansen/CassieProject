@@ -126,5 +126,16 @@ assert.equal(scenes[0].spendingType,'flexible');
 assert.equal(scenes[1].beneficiaryId,'husband');
 assert.equal(scenes[1].count,3);
 assert.equal(scenes[2].count,2);
+context.quickScenes=scenes;
+const wifeScenes=vm.runInContext("rankQuickRecordScenes(quickScenes,'', 'wife','')",context);
+assert.equal(wifeScenes[0].note,'奶茶');
+assert.equal(wifeScenes[0].count,2);
+const searchedScenes=vm.runInContext("rankQuickRecordScenes(quickScenes,'奶', 'family','')",context);
+assert.equal(searchedScenes.length,1);
+assert.equal(searchedScenes[0].note,'奶茶');
+assert.equal(vm.runInContext("rankQuickRecordScenes(quickScenes,'不存在', 'family','').length",context),0);
+context.longRecordNote='  这是一个用于验证备注长度和连续空格规范化的测试内容，超过四十个字符也不能破坏记录  ';
+assert.equal(vm.runInContext("normalizeRecord({...backupInput.records.records[0],note:longRecordNote},backupInput.settings,backupInput.plans).note.length",context),40);
+assert.equal(vm.runInContext("normalizeRecord({...backupInput.records.records[0],note:'工作   午餐'},backupInput.settings,backupInput.plans).note",context),'工作 午餐');
 
 console.log('schema v5 converter, storage and decision validation passed');

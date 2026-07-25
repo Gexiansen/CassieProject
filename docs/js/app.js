@@ -493,6 +493,10 @@ function setGoalStatus(value){
   render();toast(status==='paused'?'目标已暂停':status==='completed'?'目标已完成':'目标已重新启用');
 }
 let deletedUndo=null,addedUndo=null,noSpendUndo=null;
+function dismissAddedUndo(){
+  if(addedUndo){clearTimeout(addedUndo.timer);addedUndo=null;}
+  const button=document.getElementById('toastUndo');if(button.dataset.action==='undo-add')hideToast();
+}
 function openRecordActions(id){
   const record=state.records.find(item=>item.id===id);if(!record)return;const spendingType=getSpendingType(record.spendingType),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';
   const content=`<div class="record-action-list"><button data-action="copy-record" data-value="${record.id}">复制为新记录</button><button data-action="edit-record" data-value="${record.id}">编辑这笔记录</button><button class="danger" data-action="delete-record" data-value="${record.id}">删除，可在 12 秒内撤销</button></div>`;
@@ -543,9 +547,9 @@ function undoNoSpend(){
 }
 
 /* ============ 记账弹窗 ============ */
-const QUICK_SCENE_LIMIT=8;
+const QUICK_SCENE_LIMIT=6;
 let renderedQuickScenes=[];
-let form={id:null,date:'',spendingType:'flexible',beneficiaryId:'family',projectId:'',projectTouched:false,showMore:false,quickExpanded:false,noSpendArmed:false};
+let form={id:null,date:'',spendingType:'',beneficiaryId:'family',projectId:'',projectTouched:false,projectPickerOpen:false,quickExpanded:false,noSpendArmed:false};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function recordFormDate(){const input=document.getElementById('fDate');return input?input.value:form.date||todayStr();}
 function recordDateLabel(value){const date=dateFromString(value),week=['星期日','星期一','星期二','星期三','星期四','星期五','星期六'][date.getDay()];return`${value===todayStr()?'今天 · ':''}${date.getMonth()+1}月${date.getDate()}日 · ${week}`;}
@@ -553,69 +557,77 @@ function quickSceneVisible(scene){
   const beneficiary=prefs.beneficiaries.find(item=>item.id===scene.beneficiaryId&&item.active);if(!SPENDING_TYPES[scene.spendingType]||!beneficiary)return false;
   if(!scene.projectId)return true;const project=projectForId(scene.projectId);return projectAppliesOn(project,recordFormDate());
 }
-function contextProject(){const selected=projectForId(form.projectId);if(selected)return selected;const current=projectForId(decisions.currentProjectId);return projectAppliesOn(current,recordFormDate())?current:null;}
 function renderRecordContext(){
-  const container=document.getElementById('recordContext'),project=contextProject(),items=prefs.beneficiaries.filter(item=>item.active).map(item=>({value:item.id,name:item.name,on:!form.projectId&&form.beneficiaryId===item.id}));if(project)items.push({value:`project:${project.id}`,name:project.name,on:form.projectId===project.id});const columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${item.on?'on':''}" data-action="select-record-context" data-value="${item.value}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
+  const container=document.getElementById('recordContext'),items=prefs.beneficiaries.filter(item=>item.active),columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${form.beneficiaryId===item.id?'on':''}" data-action="select-record-context" data-value="${item.id}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
 }
 function selectRecordContext(value){
-  if(value.startsWith('project:')){const project=projectForId(value.slice(8));if(!project)return;form.projectId=project.id;}
-  else{if(!prefs.beneficiaries.some(item=>item.id===value&&item.active))return;form.beneficiaryId=value;form.projectId='';}
-  form.projectTouched=true;const select=document.getElementById('fProject');if(select)select.value=form.projectId;renderRecordContext();renderQuickChoices();
+  if(!prefs.beneficiaries.some(item=>item.id===value&&item.active))return;form.beneficiaryId=value;renderRecordContext();renderQuickChoices();syncRecordSaveButton();
+}
+function availableRecordProjects(){return decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId);}
+function renderRecordProject(){
+  const container=document.getElementById('recordProject');if(!container)return;const projects=availableRecordProjects(),selected=projectForId(form.projectId);
+  if(!projects.length&&!selected){container.innerHTML='';return;}
+  container.innerHTML=`<div class="record-project-row"><button class="record-project-chip ${selected?'on':''}" data-action="toggle-project-picker">${selected?`专项：${esc(selected.name)}`:'选择专项'}</button>${selected?`<button class="record-project-clear" data-action="select-record-project" data-value="" aria-label="取消关联 ${esc(selected.name)}">×</button>`:''}</div><div class="record-project-picker ${form.projectPickerOpen?'':'hidden'}"><button class="${form.projectId?'':'on'}" data-action="select-record-project" data-value="">不关联专项</button>${projects.map(project=>`<button class="${form.projectId===project.id?'on':''}" data-action="select-record-project" data-value="${project.id}">${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</button>`).join('')}</div>`;
+}
+function toggleProjectPicker(){form.projectPickerOpen=!form.projectPickerOpen;renderRecordProject();}
+function selectRecordProject(value){
+  if(value&&!availableRecordProjects().some(project=>project.id===value))return;form.projectId=value;form.projectTouched=true;form.projectPickerOpen=false;renderRecordProject();renderQuickChoices();syncRecordSaveButton();
 }
 function openRecordForm(id=null,preset=null){
   if(storageLocked){toast(upgradeRequired?'请先导入转换后的 v5 完整备份':'请先处理数据救援');return;}
+  if(!id)dismissAddedUndo();
   const record=id?state.records.find(r=>r.id===id):null;
   const source=record||preset;
   form.id=record?record.id:null;
   const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate),sourceBeneficiary=prefs.beneficiaries.find(item=>item.id===(source&&source.beneficiaryId)&&item.active),defaultBeneficiary=prefs.beneficiaries.find(item=>item.id===prefs.defaultBeneficiaryId&&item.active)||prefs.beneficiaries.find(item=>item.id==='family');
-  form.date=sourceDate;form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.spendingType=source&&SPENDING_TYPES[source.spendingType]?source.spendingType:form.spendingType;form.projectTouched=false;form.quickExpanded=false;form.noSpendArmed=false;
-  form.showMore=!!record||!!(source&&(source.date&&source.date!==todayStr()||sourceProject));
-  const availableProjects=decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId),projectOptions=availableProjects.map(project=>`<option value="${project.id}"${project.id===form.projectId?' selected':''}>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}${project.id===decisions.currentProjectId?' · 当前':''}</option>`).join('');
+  form.date=sourceDate;form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.spendingType=source&&SPENDING_TYPES[source.spendingType]?source.spendingType:'';form.projectTouched=false;form.projectPickerOpen=false;form.quickExpanded=false;form.noSpendArmed=false;
   const hasDateRecords=state.records.some(item=>item.date===sourceDate),confirmedNoSpend=decisions.noSpendDates.includes(sourceDate),noSpendAction=!record&&!hasDateRecords?`<button class="record-no-spend ${confirmedNoSpend?'on':''}" id="noSpendButton" data-action="toggle-form-no-spend">${confirmedNoSpend?'取消确认':'✓ 无支出'}</button>`:'',dateMarkup=record?`<div class="record-date-edit"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div>`:`<div class="record-date-tag">📅 ${recordDateLabel(sourceDate)}</div>`;
-  const h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
-    <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record?'修改属性后点击底部保存':'输入金额后，点击支出属性即可完成'}</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
+  const h=`<div class="overlay" data-action="close-overlay"><div class="sheet record-sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
+    <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">选择内容后，点击底部保存</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
     <div class="record-sticky-body">${dateMarkup}
-      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注</label><input id="fNote" type="text" maxlength="20" placeholder="选填" value="${source?esc(source.note||''):''}"></div></div>
-      <div class="record-context" id="recordContext"></div></div></div>
+      <div class="field record-context-field"><label>获益方</label><div class="record-context" id="recordContext"></div></div>
+      <div class="field record-type-field"><label>支出属性</label><div class="spending-type-choices" id="spendingTypeChoices"></div></div>
+      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注／搜索</label><input id="fNote" type="text" maxlength="40" placeholder="如：午餐" value="${source?esc(source.note||''):''}"></div></div>
+      <div id="recordProject"></div></div></div>
     <div class="sheet-body record-scroll-body">
       <div class="field" id="quickField"><label>快捷记录</label><div class="quick-picks" id="quickPicks"></div><button class="quick-picks-more" id="quickPicksMore" data-action="toggle-quick-scenes"></button></div>
-      <div class="field"><label>支出属性</label><div class="spending-type-choices" id="spendingTypeChoices"></div></div>
-      <button class="record-toggle" data-action="toggle-record-section" data-value="more">${form.showMore?'收起所属专项':'所属专项'}</button>
-      <div id="recordMore" class="record-more ${form.showMore?'':'hidden'}"><div class="field" style="margin:0"><label for="fProject">所属专项 <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><select id="fProject"><option value="">${availableProjects.length?'日常支出，不关联专项':'暂无进行中的正式专项'}</option>${projectOptions}</select></div></div>
-    </div>${record?`<div class="sheet-foot"><button class="save-btn e" data-action="save-record">保存修改</button></div>`:''}
+    </div><div class="sheet-foot record-save-foot"><button class="save-btn e" id="recordSaveButton" data-action="save-record" disabled>${record?'保存修改':'保存支出'}</button></div>
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
-  renderRecordContext();renderQuickChoices();renderSpendingTypeChoices();refreshNoSpendButton();document.querySelector('#modals .x').focus({preventScroll:true});
+  renderRecordContext();renderRecordProject();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function renderQuickChoices(){
-  const all=quickRecordScenes(state.records).filter(quickSceneVisible),values=form.quickExpanded?all:all.slice(0,QUICK_SCENE_LIMIT);
+  const input=document.getElementById('fNote'),query=input?input.value:'',all=rankQuickRecordScenes(quickRecordScenes(state.records).filter(quickSceneVisible),query,form.beneficiaryId,form.projectId),values=form.quickExpanded?all:all.slice(0,QUICK_SCENE_LIMIT);
   renderedQuickScenes=all;
   const field=document.getElementById('quickField');
-  if(!values.length){field.style.display='none';return;}
+  if(!values.length){if(query.trim()){field.style.display='block';document.getElementById('quickPicks').innerHTML=`<div class="quick-empty">没有历史匹配，将把“${esc(query.trim())}”作为新备注保存</div>`;document.getElementById('quickPicksMore').style.display='none';}else field.style.display='none';return;}
   field.style.display='block';
-  document.getElementById('quickPicks').innerHTML=values.map(scene=>{const index=all.indexOf(scene),spendingType=getSpendingType(scene.spendingType),project=projectForId(scene.projectId),beneficiary=BENEFICIARIES[scene.beneficiaryId]||'未标注',title=scene.note||spendingType.name,detail=[spendingType.name,project&&project.name,beneficiary].filter(Boolean).join(' · ');return`<button data-action="${form.id?'select-quick-scene':'save-quick-scene'}" data-value="${index}" title="${esc(title+' · '+detail)}"><b>${esc(title)}</b><span>${esc(detail)}</span></button>`;}).join('');
+  document.getElementById('quickPicks').innerHTML=values.map(scene=>{const index=all.indexOf(scene),spendingType=getSpendingType(scene.spendingType),project=projectForId(scene.projectId),beneficiary=BENEFICIARIES[scene.beneficiaryId]||'未标注',title=scene.note||spendingType.name,detail=[spendingType.name,project&&project.name,beneficiary].filter(Boolean).join(' · ');return`<button data-action="select-quick-scene" data-value="${index}" title="${esc(title+' · '+detail)}"><span class="quick-count ${scene.count===1?'single':''}" aria-label="使用 ${scene.count} 次">${scene.count}</span><b>${esc(title)}</b><span class="quick-detail">${esc(detail)}</span></button>`;}).join('');
   const more=document.getElementById('quickPicksMore');more.style.display=all.length>QUICK_SCENE_LIMIT?'block':'none';more.textContent=form.quickExpanded?'收起快捷记录':`展开更多（${all.length-QUICK_SCENE_LIMIT}）`;
 }
 function toggleQuickScenes(){form.quickExpanded=!form.quickExpanded;renderQuickChoices();}
-function applyQuickScene(value,save=false){
+function applyQuickScene(value){
   const scene=renderedQuickScenes[Number(value)];if(!scene||!quickSceneVisible(scene)){toast('这条快捷记录当前不可用');renderQuickChoices();return;}
   form.spendingType=scene.spendingType;form.beneficiaryId=scene.beneficiaryId;form.projectId=scene.projectId;form.projectTouched=true;
-  const select=document.getElementById('fProject'),note=document.getElementById('fNote');if(select)select.value=form.projectId;if(note&&!note.value.trim()&&scene.note)note.value=scene.note;
-  renderRecordContext();renderSpendingTypeChoices();if(save)doSave();
+  const note=document.getElementById('fNote');if(note)note.value=scene.note;
+  renderRecordContext();renderRecordProject();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();if(!document.getElementById('fAmt').value.trim())document.getElementById('fAmt').focus({preventScroll:true});
 }
 function renderSpendingTypeChoices(){
   const container=document.getElementById('spendingTypeChoices');if(!container)return;container.innerHTML=SPENDING_TYPE_IDS.map(id=>{const item=SPENDING_TYPES[id],on=form.spendingType===id;return`<button class="${on?'on':''}" style="--type-color:${item.color}" data-action="select-spending-type" data-value="${id}"><b>${item.name}</b><span>${item.description}</span></button>`;}).join('');
 }
-function toggleRecordSection(value){
-  if(value==='more'){form.showMore=!form.showMore;document.getElementById('recordMore').classList.toggle('hidden',!form.showMore);const button=document.querySelector('[data-action="toggle-record-section"][data-value="more"]');if(button)button.textContent=form.showMore?'收起所属专项':'所属专项';}
-}
 function refreshProjectForDate(){
   const date=recordFormDate();form.date=date;refreshNoSpendButton();if(form.id||form.projectTouched){renderQuickChoices();return;}
-  const current=projectForId(decisions.currentProjectId),select=document.getElementById('fProject'),applies=projectAppliesOn(current,date);
-  select.value=applies?current.id:'';form.projectId=select.value;renderRecordContext();renderQuickChoices();
+  const current=projectForId(decisions.currentProjectId),applies=projectAppliesOn(current,date);
+  form.projectId=applies?current.id:'';renderRecordProject();renderQuickChoices();syncRecordSaveButton();
 }
 function refreshNoSpendButton(){const button=document.getElementById('noSpendButton');if(!button)return;const date=recordFormDate(),confirmed=decisions.noSpendDates.includes(date);button.classList.toggle('on',confirmed);button.classList.toggle('armed',form.noSpendArmed);button.textContent=confirmed?'取消确认':form.noSpendArmed?'再次确认':'✓ 无支出';}
-function selectSpendingType(value,save=false){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();if(save)doSave();}
+function selectSpendingType(value){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();syncRecordSaveButton();}
+function parsedRecordAmount(){
+  const input=document.getElementById('fAmt');if(!input)return null;const raw=input.value.trim();if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return null;const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;
+}
+function syncRecordSaveButton(){
+  const button=document.getElementById('recordSaveButton');if(!button)return;const cents=parsedRecordAmount(),ready=cents!==null&&!!SPENDING_TYPES[form.spendingType];button.disabled=!ready;button.textContent=ready?`${form.id?'保存修改':'保存支出'} ¥${fmt(cents)}`:form.id?'保存修改':'保存支出';
+}
 function readAmount(){
   const rawAmount=document.getElementById('fAmt').value.trim();
   if(!/^\d+(?:\.\d{1,2})?$/.test(rawAmount)){toast('金额最多保留两位小数');return false;}
@@ -627,8 +639,8 @@ function doSave(){
   const amountCents=readAmount();if(amountCents===false)return;
   const date=recordFormDate();form.date=date;
   if(!validDate(date)||!form.id&&date>todayStr()){toast(date>todayStr()?'不能记录未来支出':'请输入正确的日期');return;}
-  const note=document.getElementById('fNote').value.trim().slice(0,20);
-  const selectedProjectId=document.getElementById('fProject').value,projectId=projectForId(selectedProjectId)?selectedProjectId:'';
+  const note=document.getElementById('fNote').value.trim().replace(/\s+/g,' ').slice(0,40);
+  const projectId=projectForId(form.projectId)?form.projectId:'';
   const nowIso=new Date().toISOString(),old=form.id?state.records.find(r=>r.id===form.id):null;
   if(!SPENDING_TYPES[form.spendingType]){toast('请选择支出属性');return;}
   const record={id:old?old.id:uuid(),date,spendingType:form.spendingType,amountCents,note,projectId,beneficiaryId:form.beneficiaryId,
@@ -639,8 +651,8 @@ function doSave(){
   const removedNoSpend=decisions.noSpendDates.includes(date);if(removedNoSpend){const oldDates=decisions.noSpendDates;decisions.noSpendDates=oldDates.filter(item=>item!==date);if(!saveDecisions())decisions.noSpendDates=oldDates;}
   state.openYears[date.slice(0,4)]=true;state.openMonths[date.slice(0,7)]=true;
   state.calendarAnchor=date;const savedDate=dateFromString(date);state.year=savedDate.getFullYear();state.month=savedDate.getMonth();
-  if(!old){if(addedUndo)clearTimeout(addedUndo.timer);addedUndo={record,removedNoSpend,timer:setTimeout(()=>{addedUndo=null;},12000)};}
-  closeModals();render();toast(old?'修改已保存':'已记录，可撤销',old?'':'undo-add');
+  if(!old){if(addedUndo)clearTimeout(addedUndo.timer);addedUndo={record,removedNoSpend,timer:setTimeout(()=>{addedUndo=null;},5000)};}
+  closeModals();render();toast(old?'修改已保存':`已记录 ¥${fmt(record.amountCents)}`,old?'':'undo-add');
 }
 function copyRecord(id){const record=state.records.find(item=>item.id===id);if(record)openRecordForm(null,{...record,date:todayStr()});}
 let modalReturnFocus=null;
@@ -740,7 +752,8 @@ function applyImport(mode){
   closeModals();render();toast(`完整恢复成功，共 ${count} 笔`);
 }
 let toastTimer;
-function toast(msg,undoAction=''){const t=document.getElementById('toast'),button=document.getElementById('toastUndo');document.getElementById('toastMsg').textContent=msg;button.dataset.action=undoAction;t.classList.toggle('undo',!!undoAction);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),undoAction?12000:1800);}
+function hideToast(){const t=document.getElementById('toast'),button=document.getElementById('toastUndo');clearTimeout(toastTimer);t.classList.remove('show','undo');button.dataset.action='';}
+function toast(msg,undoAction=''){const t=document.getElementById('toast'),button=document.getElementById('toastUndo');document.getElementById('toastMsg').textContent=msg;button.dataset.action=undoAction;t.classList.toggle('undo',!!undoAction);t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(hideToast,undoAction==='undo-add'?5000:undoAction?12000:1800);}
 
 document.addEventListener('click',event=>{
   const el=event.target.closest('[data-action]');if(!el)return;
@@ -758,8 +771,8 @@ document.addEventListener('click',event=>{
     'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(),'add-for-date':()=>openRecordForm(null,{date:value}),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
     'undo-delete':undoDelete,'undo-add':undoAdd,'undo-no-spend':undoNoSpend,'close-modal':closeModals,'close-overlay':closeModals,
-    'select-record-context':()=>selectRecordContext(value),'select-spending-type':()=>selectSpendingType(value,!form.id),'select-quick-scene':()=>applyQuickScene(value),'save-quick-scene':()=>applyQuickScene(value,true),'toggle-quick-scenes':toggleQuickScenes,
-    'toggle-record-section':()=>toggleRecordSection(value),'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
+    'select-record-context':()=>selectRecordContext(value),'select-record-project':()=>selectRecordProject(value||''),'toggle-project-picker':toggleProjectPicker,'select-spending-type':()=>selectSpendingType(value),'select-quick-scene':()=>applyQuickScene(value),'toggle-quick-scenes':toggleQuickScenes,
+    'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
     'open-data-management':openDataManagement,'open-start-fresh':openStartFresh,'confirm-start-fresh':confirmStartFresh,
     'open-beneficiary-manager':openBeneficiaryManager,'open-beneficiary-name':()=>openBeneficiaryNameForm(value),'save-beneficiary-name':saveBeneficiaryName,'move-beneficiary':()=>moveBeneficiary(value),'toggle-beneficiary':()=>toggleBeneficiary(value),'set-default-beneficiary':()=>setDefaultBeneficiary(value),
     'export':()=>exportData(),'import-trigger':()=>document.getElementById('importFile').click(),
@@ -769,8 +782,8 @@ document.addEventListener('click',event=>{
   if(actions[action]){actions[action]();if(!hadModal&&document.querySelector('#modals [role="dialog"]'))modalReturnFocus=el;}
 });
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
-document.addEventListener('change',event=>{if(event.target.id==='fProject'){form.projectId=event.target.value;form.projectTouched=true;renderRecordContext();renderQuickChoices();}if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
-document.addEventListener('input',event=>{if((event.target.id==='fAmt'||event.target.id==='fNote')&&form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}});
+document.addEventListener('change',event=>{if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
+document.addEventListener('input',event=>{if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderQuickChoices();}syncRecordSaveButton();}});
 new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
 document.addEventListener('keydown',event=>{
   const dialog=document.querySelector('#modals [role="dialog"]');if(!dialog)return;
