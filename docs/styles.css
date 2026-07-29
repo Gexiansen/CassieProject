@@ -209,6 +209,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 @media(min-width:640px){.fab{right:calc(50% - 320px + 24px);}}
 /* modal */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:50;}
+.record-overlay{top:var(--record-viewport-top,0);bottom:auto;height:var(--record-viewport-height,100dvh);}
 @media(min-width:640px){.overlay{align-items:center;padding:16px;}}
 .sheet{background:#fff;border-radius:24px 24px 0 0;width:100%;max-width:448px;max-height:94vh;max-height:94dvh;overflow:auto;}
 @media(min-width:640px){.sheet{border-radius:24px;}}
@@ -217,7 +218,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .sheet-head h3{font-size:18px;font-weight:800;color:#475569;}
 .sheet-head .x{width:44px;height:44px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:22px;line-height:1;}
 .sheet-body{padding:16px 24px;}
-.record-sheet{display:flex;flex-direction:column;height:94vh;height:94dvh;overflow:hidden;}
+.record-sheet{display:flex;flex-direction:column;height:94vh;height:94dvh;max-height:var(--record-viewport-height,94dvh);overflow:hidden;}
 .record-sticky{position:relative;z-index:5;flex:none;background:#fff;box-shadow:0 8px 14px rgba(15,23,42,.06);}
 .record-sticky .sheet-head{padding-bottom:6px;border-bottom:none;}
 .record-sticky .sheet-head .r1{margin-bottom:4px;}
@@ -243,6 +244,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .record-context{display:grid;grid-template-columns:repeat(var(--context-count,4),minmax(0,1fr));gap:6px;background:#fff;padding:4px 0 0;}
 .record-context button{min-width:0;min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:6px 3px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .record-context button.on{border-color:#6366f1;background:#6366f1;color:#fff;}
+.record-search-summary{display:none;min-height:32px;margin-bottom:8px;padding:6px 10px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-size:12px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .record-context-field{margin-bottom:10px;}
 .record-type-field{margin-bottom:10px;}
 .spending-type-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
@@ -263,6 +265,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .sheet-foot{padding:0 24px 20px;}
 .record-save-foot{flex:none;padding:10px 24px max(12px,env(safe-area-inset-bottom));background:#fff;box-shadow:0 -8px 14px rgba(15,23,42,.06);}
 .record-save-foot .save-btn{min-height:52px;padding:10px;font-size:16px;}
+.record-sheet.note-search-mode .record-sticky .sheet-head{padding:2px 16px 0;}
+.record-sheet.note-search-mode .record-sticky .sheet-head .r1{justify-content:flex-end;margin:0;}
+.record-sheet.note-search-mode .record-sticky .sheet-head .r1>div:first-child,.record-sheet.note-search-mode .record-no-spend,.record-sheet.note-search-mode .record-date-tag,.record-sheet.note-search-mode .record-date-edit,.record-sheet.note-search-mode .record-context-field,.record-sheet.note-search-mode .record-type-field,.record-sheet.note-search-mode #recordProject{display:none;}
+.record-sheet.note-search-mode .record-sticky-body{padding-top:0;}
+.record-sheet.note-search-mode .record-search-summary{display:block;}
+.record-sheet.note-search-mode .record-main .field{margin-bottom:8px;}
+.record-sheet.note-search-mode .record-scroll-body{min-height:120px;padding-top:10px;}
+.record-sheet.note-search-mode .record-scroll-body .field{margin-bottom:8px;}
+.record-sheet.note-search-mode .record-save-foot{padding-top:8px;}
 .save-btn:disabled{background:#cbd5e1;cursor:not-allowed;}
 .record-toggle{min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:8px 11px;font-size:12px;font-weight:800;font-family:inherit;cursor:pointer;}
 .record-toggle{width:100%;margin-top:8px;}
