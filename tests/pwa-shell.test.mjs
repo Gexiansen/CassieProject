@@ -25,7 +25,7 @@ vm.runInContext(await readFile(new URL('../docs/sw.js',import.meta.url),'utf8'),
 let installPromise;
 listeners.install({waitUntil:promise=>{installPromise=promise;}});
 await installPromise;
-assert.deepEqual(opened,['cassie-account-v5-20260725-1']);
+assert.deepEqual(opened,['cassie-account-v5-20260729-1']);
 assert.equal(cachedShell.includes('./styles.css'),true);
 assert.equal(cachedShell.includes('./js/model.js'),true);
 assert.equal(cachedShell.includes('./js/storage.js'),true);
@@ -37,7 +37,15 @@ for(const entry of cachedShell){
 let activatePromise;
 listeners.activate({waitUntil:promise=>{activatePromise=promise;}});
 await activatePromise;
-assert.deepEqual(deleted,['cassie-account-v2','cassie-account-v3','cassie-account-v4-20260719-6','cassie-account-v5-20260722-1','cassie-account-v5-20260724-1']);
+assert.deepEqual(deleted,['cassie-account-v2','cassie-account-v3','cassie-account-v4-20260719-6','cassie-account-v5-20260722-1','cassie-account-v5-20260724-1','cassie-account-v5-20260725-1']);
+
+const appSource=await readFile(new URL('../docs/js/app.js',import.meta.url),'utf8');
+const stylesSource=await readFile(new URL('../docs/styles.css',import.meta.url),'utf8');
+assert.match(appSource,/record-overlay/);
+assert.match(appSource,/setRecordNoteSearchMode/);
+assert.match(appSource,/visualViewport/);
+assert.match(appSource,/enterkeyhint="done"/);
+assert.match(stylesSource,/\.record-sheet\.note-search-mode/);
 
 fetchImpl=async()=>{throw new Error('offline');};
 let navigationResponse;

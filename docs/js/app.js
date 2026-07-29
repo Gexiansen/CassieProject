@@ -561,7 +561,7 @@ function renderRecordContext(){
   const container=document.getElementById('recordContext'),items=prefs.beneficiaries.filter(item=>item.active),columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${form.beneficiaryId===item.id?'on':''}" data-action="select-record-context" data-value="${item.id}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
 }
 function selectRecordContext(value){
-  if(!prefs.beneficiaries.some(item=>item.id===value&&item.active))return;form.beneficiaryId=value;renderRecordContext();renderQuickChoices();syncRecordSaveButton();
+  if(!prefs.beneficiaries.some(item=>item.id===value&&item.active))return;form.beneficiaryId=value;renderRecordContext();renderRecordSearchSummary();renderQuickChoices();syncRecordSaveButton();
 }
 function availableRecordProjects(){return decisions.projects.filter(project=>project.status==='active'||project.id===form.projectId);}
 function renderRecordProject(){
@@ -571,7 +571,16 @@ function renderRecordProject(){
 }
 function toggleProjectPicker(){form.projectPickerOpen=!form.projectPickerOpen;renderRecordProject();}
 function selectRecordProject(value){
-  if(value&&!availableRecordProjects().some(project=>project.id===value))return;form.projectId=value;form.projectTouched=true;form.projectPickerOpen=false;renderRecordProject();renderQuickChoices();syncRecordSaveButton();
+  if(value&&!availableRecordProjects().some(project=>project.id===value))return;form.projectId=value;form.projectTouched=true;form.projectPickerOpen=false;renderRecordProject();renderRecordSearchSummary();renderQuickChoices();syncRecordSaveButton();
+}
+function renderRecordSearchSummary(){
+  const summary=document.getElementById('recordSearchSummary');if(!summary)return;const beneficiary=BENEFICIARIES[form.beneficiaryId]||'未标注',spendingType=getSpendingType(form.spendingType),project=projectForId(form.projectId);summary.textContent=[beneficiary,spendingType?spendingType.name:'未选属性',project?project.name:'无专项'].join(' · ');
+}
+function syncRecordViewport(){
+  const overlay=document.querySelector('.record-overlay');if(!overlay)return;const viewport=window.visualViewport,height=viewport?viewport.height:window.innerHeight,top=viewport?viewport.offsetTop:0;overlay.style.setProperty('--record-viewport-height',`${Math.round(height)}px`);overlay.style.setProperty('--record-viewport-top',`${Math.round(top)}px`);
+}
+function setRecordNoteSearchMode(active){
+  const sheet=document.querySelector('.record-sheet');if(!sheet)return;sheet.classList.toggle('note-search-mode',active);if(active){form.projectPickerOpen=false;renderRecordProject();renderRecordSearchSummary();const scrollBody=sheet.querySelector('.record-scroll-body');if(scrollBody)scrollBody.scrollTop=0;}syncRecordViewport();
 }
 function openRecordForm(id=null,preset=null){
   if(storageLocked){toast(upgradeRequired?'请先导入转换后的 v5 完整备份':'请先处理数据救援');return;}
@@ -582,19 +591,20 @@ function openRecordForm(id=null,preset=null){
   const sourceDate=source&&validDate(source.date||'')?source.date:todayStr(),sourceProject=source&&projectForId(source.projectId),currentProject=projectForId(decisions.currentProjectId),autoProject=!record&&!sourceProject&&projectAppliesOn(currentProject,sourceDate),sourceBeneficiary=prefs.beneficiaries.find(item=>item.id===(source&&source.beneficiaryId)&&item.active),defaultBeneficiary=prefs.beneficiaries.find(item=>item.id===prefs.defaultBeneficiaryId&&item.active)||prefs.beneficiaries.find(item=>item.id==='family');
   form.date=sourceDate;form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.spendingType=source&&SPENDING_TYPES[source.spendingType]?source.spendingType:'';form.projectTouched=false;form.projectPickerOpen=false;form.quickExpanded=false;form.noSpendArmed=false;
   const hasDateRecords=state.records.some(item=>item.date===sourceDate),confirmedNoSpend=decisions.noSpendDates.includes(sourceDate),noSpendAction=!record&&!hasDateRecords?`<button class="record-no-spend ${confirmedNoSpend?'on':''}" id="noSpendButton" data-action="toggle-form-no-spend">${confirmedNoSpend?'取消确认':'✓ 无支出'}</button>`:'',dateMarkup=record?`<div class="record-date-edit"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div>`:`<div class="record-date-tag">📅 ${recordDateLabel(sourceDate)}</div>`;
-  const h=`<div class="overlay" data-action="close-overlay"><div class="sheet record-sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
+  const h=`<div class="overlay record-overlay" data-action="close-overlay"><div class="sheet record-sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
     <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">选择内容后，点击底部保存</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
     <div class="record-sticky-body">${dateMarkup}
       <div class="field record-context-field"><label>获益方</label><div class="record-context" id="recordContext"></div></div>
       <div class="field record-type-field"><label>支出属性</label><div class="spending-type-choices" id="spendingTypeChoices"></div></div>
-      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注／搜索</label><input id="fNote" type="text" maxlength="40" placeholder="如：午餐" value="${source?esc(source.note||''):''}"></div></div>
+      <div class="record-search-summary" id="recordSearchSummary" role="status"></div>
+      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注／搜索</label><input id="fNote" type="text" maxlength="40" enterkeyhint="done" placeholder="如：午餐" value="${source?esc(source.note||''):''}"></div></div>
       <div id="recordProject"></div></div></div>
     <div class="sheet-body record-scroll-body">
       <div class="field" id="quickField"><label>快捷记录</label><div class="quick-picks" id="quickPicks"></div><button class="quick-picks-more" id="quickPicksMore" data-action="toggle-quick-scenes"></button></div>
     </div><div class="sheet-foot record-save-foot"><button class="save-btn e" id="recordSaveButton" data-action="save-record" disabled>${record?'保存修改':'保存支出'}</button></div>
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
-  renderRecordContext();renderRecordProject();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();document.querySelector('#modals .x').focus({preventScroll:true});
+  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();syncRecordViewport();document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function renderQuickChoices(){
   const input=document.getElementById('fNote'),query=input?input.value:'',all=rankQuickRecordScenes(quickRecordScenes(state.records).filter(quickSceneVisible),query,form.beneficiaryId,form.projectId),values=form.quickExpanded?all:all.slice(0,QUICK_SCENE_LIMIT);
@@ -610,7 +620,7 @@ function applyQuickScene(value){
   const scene=renderedQuickScenes[Number(value)];if(!scene||!quickSceneVisible(scene)){toast('这条快捷记录当前不可用');renderQuickChoices();return;}
   form.spendingType=scene.spendingType;form.beneficiaryId=scene.beneficiaryId;form.projectId=scene.projectId;form.projectTouched=true;
   const note=document.getElementById('fNote');if(note)note.value=scene.note;
-  renderRecordContext();renderRecordProject();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();if(!document.getElementById('fAmt').value.trim())document.getElementById('fAmt').focus({preventScroll:true});
+  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();if(note)note.blur();setRecordNoteSearchMode(false);
 }
 function renderSpendingTypeChoices(){
   const container=document.getElementById('spendingTypeChoices');if(!container)return;container.innerHTML=SPENDING_TYPE_IDS.map(id=>{const item=SPENDING_TYPES[id],on=form.spendingType===id;return`<button class="${on?'on':''}" style="--type-color:${item.color}" data-action="select-spending-type" data-value="${id}"><b>${item.name}</b><span>${item.description}</span></button>`;}).join('');
@@ -621,7 +631,7 @@ function refreshProjectForDate(){
   form.projectId=applies?current.id:'';renderRecordProject();renderQuickChoices();syncRecordSaveButton();
 }
 function refreshNoSpendButton(){const button=document.getElementById('noSpendButton');if(!button)return;const date=recordFormDate(),confirmed=decisions.noSpendDates.includes(date);button.classList.toggle('on',confirmed);button.classList.toggle('armed',form.noSpendArmed);button.textContent=confirmed?'取消确认':form.noSpendArmed?'再次确认':'✓ 无支出';}
-function selectSpendingType(value){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();syncRecordSaveButton();}
+function selectSpendingType(value){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();renderRecordSearchSummary();syncRecordSaveButton();}
 function parsedRecordAmount(){
   const input=document.getElementById('fAmt');if(!input)return null;const raw=input.value.trim();if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return null;const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;
 }
@@ -784,9 +794,12 @@ document.addEventListener('click',event=>{
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
 document.addEventListener('change',event=>{if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
 document.addEventListener('input',event=>{if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderQuickChoices();}syncRecordSaveButton();}});
+document.addEventListener('focusin',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(true);});
+document.addEventListener('focusout',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(false);});
 new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
 document.addEventListener('keydown',event=>{
   const dialog=document.querySelector('#modals [role="dialog"]');if(!dialog)return;
+  if(event.target.id==='fNote'&&event.key==='Enter'){event.preventDefault();event.target.blur();return;}
   if(event.key==='Escape'){closeModals();return;}
   if(event.key!=='Tab')return;
   const focusable=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')].filter(item=>item.getClientRects().length);
@@ -795,6 +808,8 @@ document.addEventListener('keydown',event=>{
   if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
   else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
 });
+window.addEventListener('resize',syncRecordViewport);
+if(window.visualViewport){window.visualViewport.addEventListener('resize',syncRecordViewport);window.visualViewport.addEventListener('scroll',syncRecordViewport);}
 
 render();
 if(loaded.notice)setTimeout(()=>toast(loaded.notice),0);
