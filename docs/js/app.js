@@ -548,7 +548,9 @@ function undoNoSpend(){
 
 /* ============ 记账弹窗 ============ */
 const QUICK_SCENE_LIMIT=6;
+const RECORD_KEYBOARD_OPEN_GAP=140,RECORD_KEYBOARD_CLOSE_GAP=80;
 let renderedQuickScenes=[];
+let recordViewportBaseline=0,recordKeyboardSeen=false;
 let form={id:null,date:'',spendingType:'',beneficiaryId:'family',projectId:'',projectTouched:false,projectPickerOpen:false,quickExpanded:false,noSpendArmed:false};
 function todayStr(){const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 function recordFormDate(){const input=document.getElementById('fDate');return input?input.value:form.date||todayStr();}
@@ -576,11 +578,17 @@ function selectRecordProject(value){
 function renderRecordSearchSummary(){
   const summary=document.getElementById('recordSearchSummary');if(!summary)return;const beneficiary=BENEFICIARIES[form.beneficiaryId]||'未标注',spendingType=getSpendingType(form.spendingType),project=projectForId(form.projectId);summary.textContent=[beneficiary,spendingType?spendingType.name:'未选属性',project?project.name:'无专项'].join(' · ');
 }
+function recordKeyboardViewportState(baseline,height,seen){
+  const keyboardGap=Math.max(0,baseline-height),keyboardSeen=seen||keyboardGap>=RECORD_KEYBOARD_OPEN_GAP;return{keyboardSeen,keyboardClosed:seen&&keyboardGap<=RECORD_KEYBOARD_CLOSE_GAP};
+}
 function syncRecordViewport(){
-  const overlay=document.querySelector('.record-overlay');if(!overlay)return;const viewport=window.visualViewport,height=viewport?viewport.height:window.innerHeight,top=viewport?viewport.offsetTop:0;overlay.style.setProperty('--record-viewport-height',`${Math.round(height)}px`);overlay.style.setProperty('--record-viewport-top',`${Math.round(top)}px`);
+  const overlay=document.querySelector('.record-overlay');if(!overlay)return;const viewport=window.visualViewport,height=viewport?viewport.height:window.innerHeight,top=viewport?viewport.offsetTop:0,sheet=overlay.querySelector('.record-sheet');overlay.style.setProperty('--record-viewport-height',`${Math.round(height)}px`);overlay.style.setProperty('--record-viewport-top',`${Math.round(top)}px`);
+  if(!sheet||!sheet.classList.contains('note-search-mode')){recordViewportBaseline=height;recordKeyboardSeen=false;return;}
+  const keyboardState=recordKeyboardViewportState(recordViewportBaseline,height,recordKeyboardSeen);recordKeyboardSeen=keyboardState.keyboardSeen;
+  if(keyboardState.keyboardClosed){recordKeyboardSeen=false;const note=document.getElementById('fNote');if(note===document.activeElement)note.blur();setRecordNoteSearchMode(false);}
 }
 function setRecordNoteSearchMode(active){
-  const sheet=document.querySelector('.record-sheet');if(!sheet)return;sheet.classList.toggle('note-search-mode',active);if(active){form.projectPickerOpen=false;renderRecordProject();renderRecordSearchSummary();const scrollBody=sheet.querySelector('.record-scroll-body');if(scrollBody)scrollBody.scrollTop=0;}syncRecordViewport();
+  const sheet=document.querySelector('.record-sheet');if(!sheet)return;if(active&&!sheet.classList.contains('note-search-mode'))recordKeyboardSeen=false;sheet.classList.toggle('note-search-mode',active);if(active){form.projectPickerOpen=false;renderRecordProject();renderRecordSearchSummary();const scrollBody=sheet.querySelector('.record-scroll-body');if(scrollBody)scrollBody.scrollTop=0;}else recordKeyboardSeen=false;syncRecordViewport();
 }
 function openRecordForm(id=null,preset=null){
   if(storageLocked){toast(upgradeRequired?'请先导入转换后的 v5 完整备份':'请先处理数据救援');return;}
@@ -603,7 +611,7 @@ function openRecordForm(id=null,preset=null){
       <div class="field" id="quickField"><label>快捷记录</label><div class="quick-picks" id="quickPicks"></div><button class="quick-picks-more" id="quickPicksMore" data-action="toggle-quick-scenes"></button></div>
     </div><div class="sheet-foot record-save-foot"><button class="save-btn e" id="recordSaveButton" data-action="save-record" disabled>${record?'保存修改':'保存支出'}</button></div>
   </div></div>`;
-  document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
+  document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';recordViewportBaseline=0;recordKeyboardSeen=false;
   renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();syncRecordViewport();document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function renderQuickChoices(){
