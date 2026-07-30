@@ -11,6 +11,19 @@ function defaultFilters(){return {keyword:'',range:'all',start:'',end:''};}
 let state={records:loaded.records,view:'month',tab:'home',filtersExpanded:false,year:now.getFullYear(),month:now.getMonth(),calendarExpanded:false,calendarAnchor:todayStr(),
   openYears:{[now.getFullYear()]:true},
   openMonths:{[now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')]:true},filters:defaultFilters(),planningView:'budget'};
+const REVIEW_DRAFTS_KEY='cassie_review_drafts_v1';
+function readReviewDrafts(){try{const parsed=JSON.parse(localStorage.getItem(REVIEW_DRAFTS_KEY)||'null');return parsed&&parsed.version===1&&parsed.drafts&&typeof parsed.drafts==='object'?parsed.drafts:{};}catch(error){return {};}}
+let reviewDrafts=readReviewDrafts(),reviewDraftTimer=null,reviewDraftErrorShown=false;
+function persistReviewDrafts(){
+  try{if(Object.keys(reviewDrafts).length)localStorage.setItem(REVIEW_DRAFTS_KEY,JSON.stringify({version:1,drafts:reviewDrafts}));else localStorage.removeItem(REVIEW_DRAFTS_KEY);reviewDraftErrorShown=false;return true;}
+  catch(error){if(!reviewDraftErrorShown){reviewDraftErrorShown=true;toast('月结草稿保存失败：'+error.message);}return false;}
+}
+function saveReviewDraft(){
+  const highlight=document.getElementById('reviewHighlight'),action=document.getElementById('reviewAction');if(!highlight||!action)return;
+  const key=monthKey(),saved=decisions.reviews[key]||{highlight:'',action:null},draft={highlight:highlight.value.slice(0,120),action:action.value.slice(0,40)};
+  if(draft.highlight===(saved.highlight||'')&&draft.action===(saved.action?saved.action.text:''))delete reviewDrafts[key];else reviewDrafts[key]=draft;
+  clearTimeout(reviewDraftTimer);persistReviewDrafts();
+}
 
 /* ============ 计算辅助 ============ */
 function inPeriod(r){const[y,m]=r.date.split('-').map(Number);return state.view==='year'?y===state.year:y===state.year&&m-1===state.month;}
@@ -112,7 +125,7 @@ function trendSVG(){
   const X=i=>pL+i*cw/11, Y=v=>base-(v/max)*ch;
   const points=arr.map((value,index)=>`${X(index)},${Y(value)}`).join(' '),area=`M${pL},${base} L${points.split(' ').join(' L')} L${pL+cw},${base} Z`;
   let grid='';for(let g=0;g<=3;g++){const y=pT+ch*g/3;grid+=`<line x1="${pL}" y1="${y}" x2="${W-pR}" y2="${y}" stroke="#f1f5f9" stroke-width="1"/>`;}
-  let labels='';arr.forEach((a,i)=>{if(i%2===0)labels+=`<text x="${X(i)}" y="${H-8}" font-size="9" fill="#94a3b8" text-anchor="middle">${i+1}月</text>`;});
+  let labels='';arr.forEach((a,i)=>{if(i%2===0)labels+=`<text x="${X(i)}" y="${H-8}" font-size="10" fill="#64748b" text-anchor="middle">${i+1}月</text>`;});
   const dots=arr.map((value,index)=>`<circle cx="${X(index)}" cy="${Y(value)}" r="2.5" fill="#6366f1"/>`).join('');
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" preserveAspectRatio="xMidYMid meet">
     <defs><linearGradient id="gE" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#818cf8" stop-opacity=".35"/><stop offset="100%" stop-color="#818cf8" stop-opacity="0"/></linearGradient></defs>
@@ -126,19 +139,16 @@ function render(){
   const currentBudget=state.view==='month'?decisions.budgets[monthKey()]||null:null,availableCents=currentBudget&&currentBudget.availableCents!==undefined?currentBudget.availableCents:null;
   const periodLabel=state.view==='year'?`${state.year}年`:`${state.year}年${state.month+1}月`;
   const showToday=state.view==='year'||state.year!==now.getFullYear()||state.month!==now.getMonth();
+  const isCurrentMonth=state.view==='month'&&state.year===now.getFullYear()&&state.month===now.getMonth();
   const backup=backupStatus();
 
   let html=`
   <div class="top">
     <div class="logo"><div class="pig">🐷</div><h1>我的小账本</h1></div>
-    <div class="top-actions"><button class="data-button" data-action="open-data-management" aria-label="数据与备份">☁️<span>数据</span></button></div>
+    <div class="top-actions"><button class="data-button" data-action="open-data-management" aria-label="数据与备份">数据</button></div>
   </div>`;
-  html+=`<div class="tabs">
-    <button class="${state.tab==='home'?'on':''}" data-action="set-tab" data-value="home">🏠 首页</button>
-    <button class="${state.tab==='details'?'on':''}" data-action="set-tab" data-value="details">📋 明细</button>
-    <button class="${state.tab==='planning'?'on':''}" data-action="set-tab" data-value="planning">🧭 计划</button>
-  </div>`;
-  if(state.tab!=='home')html+=`<div class="compact-period"><button data-action="shift" data-value="-1" aria-label="上一${state.view==='year'?'年':'月'}">‹</button><div class="period-label">${periodLabel}</div>${showToday?`<button class="today" data-action="go-today">回本月</button>`:''}<button data-action="shift" data-value="1" aria-label="下一${state.view==='year'?'年':'月'}">›</button>${state.tab==='details'?`<div class="view-toggle"><button class="${state.view==='month'?'on':''}" data-action="set-view" data-value="month">月</button><button class="${state.view==='year'?'on':''}" data-action="set-view" data-value="year">年</button></div>`:''}</div>`;
+  const showPlanningPeriod=state.tab==='planning'&&(state.planningView==='budget'||state.planningView==='summary');
+  if(showPlanningPeriod)html+=`<div class="compact-period"><button data-action="shift" data-value="-1" aria-label="上一月">‹</button><div class="period-label">${periodLabel}</div>${showToday?`<button class="today" data-action="go-today">回本月</button>`:''}<button data-action="shift" data-value="1" aria-label="下一月">›</button></div>`;
   if(state.tab==='home'&&(backup.warn||storageLocked))html+=`<button class="backup-notice" data-action="open-data-management"><span>${upgradeRequired?'检测到旧版账本，需要先完成断代升级。':storageLocked?'检测到本地数据异常，记账已暂停。':esc(backup.text)}</span><b>${storageLocked?'处理':'去备份'} ›</b></button>`;
 
   if(state.tab==='home')html+=renderHomeCalendar()+`<div class="card-sum">
@@ -146,26 +156,31 @@ function render(){
     <div class="blob" style="width:64px;height:64px;right:-8px;top:64px;"></div>
     <div class="big"><div class="t">${periodLabel}支出 💸</div><div class="n">¥${fmt(totalExp)}</div></div>
     <div class="duo">
-      <div class="mini"><div class="h"><span>本月可支配</span></div><div class="v lg">${availableCents!==null?`¥${fmt(availableCents)}`:'未设置'}</div></div>
+      <div class="mini"><div class="h"><span>${isCurrentMonth?'本月':'当月'}可支配</span></div><div class="v lg">${availableCents!==null?`¥${fmt(availableCents)}`:'未设置'}</div></div>
       <div class="mini"><div class="h"><span>↗ 较${pExp.label}支出</span></div>${diffPct!==null?`<div class="pill big-pill ${diff>0?'up':diff<0?'down':'flat'}">${diff>0?'▲':diff<0?'▼':'–'}${diff>0?'+':diff<0?'-':''}${Math.abs(diffPct).toFixed(1)}%</div>`:`<div class="v lg" style="opacity:.6">—</div>`}</div>
     </div>
   </div>`+renderOverview(recs);
   if(state.tab==='details')html+=renderDetails();
   if(state.tab==='planning')html+=renderPlanning();
 
-  html+=`<div class="fab"><button class="exp" data-action="open-add">＋ 记一笔</button></div>`;
+  html+=`<nav class="tabs" aria-label="主要导航">
+    <button class="${state.tab==='home'?'on':''}" data-action="set-tab" data-value="home"${state.tab==='home'?' aria-current="page"':''}><span>🏠</span>首页</button>
+    <button class="${state.tab==='details'?'on':''}" data-action="set-tab" data-value="details"${state.tab==='details'?' aria-current="page"':''}><span>📋</span>明细</button>
+    <button class="record-nav" data-action="open-add" aria-label="记一笔"><span>＋</span>记一笔</button>
+    <button class="${state.tab==='planning'?'on':''}" data-action="set-tab" data-value="planning"${state.tab==='planning'?' aria-current="page"':''}><span>🧭</span>计划</button>
+  </nav>`;
   document.getElementById('app').innerHTML=html;
 }
 
 function renderBudgetCard(showAction=true){
   if(state.view!=='month')return '';
-  const key=monthKey(),metrics=calculateBudget(key),label=`${state.year}年${state.month+1}月`;
-  if(!metrics.configured)return `<div class="card"><h3>🎯 本月日常预算 <span class="sub">${label}</span></h3><div class="empty" style="padding:16px 0">还没有设置本月日常预算<br><span style="font-size:12px;font-weight:500">专项支出会由各自的专项预算单独管理</span></div>${showAction?`<div class="budget-actions"><button class="primary" data-action="open-planning">设置日常预算</button></div>`:''}</div>`;
-  let h=`<div class="card"><h3>🎯 本月日常预算 <span class="sub">${label}</span></h3>`;
+  const key=monthKey(),metrics=calculateBudget(key),label=`${state.year}年${state.month+1}月`,current=state.year===now.getFullYear()&&state.month===now.getMonth(),periodName=current?'本月':'当月';
+  if(!metrics.configured)return `<div class="card"><h3>🎯 ${periodName}日常预算 <span class="sub">${label}</span></h3><div class="empty" style="padding:16px 0">还没有设置${periodName}日常预算<br><span style="font-size:12px;font-weight:500">专项支出会由各自的专项预算单独管理</span></div>${showAction?`<div class="budget-actions"><button class="primary" data-action="open-planning">设置日常预算</button></div>`:''}</div>`;
+  let h=`<div class="card"><h3>🎯 ${periodName}日常预算 <span class="sub">${label}</span></h3>`;
   if(metrics.totalCents!==null){const level=budgetLevel(metrics.percent),remaining=metrics.remainingCents;
     h+=`<div class="budget-hero"><div class="budget-head"><div><div class="label">日常预算总额</div><div class="value">¥${fmt(metrics.totalCents)}</div></div><div class="remain">${remaining>=0?'剩余':'已超出'}<b class="${remaining<0?'ex-c':''}">¥${fmt(Math.abs(remaining))}</b></div></div><div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>日常已用 ¥${fmt(metrics.spentCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div></div>`;
   }
-  if(showAction)h+=`<div class="budget-actions"><button data-action="open-planning">管理本月预算</button></div>`;
+  if(showAction)h+=`<div class="budget-actions"><button data-action="open-planning">管理${periodName}预算</button></div>`;
   return h+`</div>`;
 }
 
@@ -207,7 +222,7 @@ function renderGoalsPlanning(){
 function renderReviewPlanning(){
   const key=monthKey(),today=new Date(),currentKey=monthKey(today.getFullYear(),today.getMonth()),label=`${state.year}年${state.month+1}月`;
   if(key>currentKey)return `<div class="card"><h3>📝 月度复盘 <span class="sub">${label}</span></h3><div class="empty">这个月还没有发生<br><span style="font-size:12px;font-weight:500">到当月再根据实际支出进行复盘</span></div></div>`;
-  const metrics=calculateMonthReview(key),review=decisions.reviews[key]||{highlight:'',action:null},observations=reviewObservations(metrics);
+  const metrics=calculateMonthReview(key),review=decisions.reviews[key]||{highlight:'',action:null},draft=reviewDrafts[key]||null,draftHighlight=draft?draft.highlight:review.highlight,draftAction=draft?draft.action:review.action?review.action.text:'',observations=reviewObservations(metrics);
   let h=`<div class="card"><h3>📊 本月结果 <span class="sub">${label}</span></h3><div class="review-summary"><div>可支配<b>${metrics.availableCents===null?'未设置':`¥${fmt(metrics.availableCents)}`}</b></div><div>支出<b>¥${fmt(metrics.expenseCents)}</b></div><div>剩余<b class="${metrics.balanceCents!==null&&metrics.balanceCents<0?'negative':''}">${metrics.balanceCents===null?'—':`${metrics.balanceCents<0?'-':''}¥${fmt(Math.abs(metrics.balanceCents))}`}</b></div></div><p class="planning-note" style="margin:0">目标投入：¥${fmt(metrics.goalContributionCents)}，共 ${metrics.goalContributionCount} 次。</p></div>`;
   h+=`<div class="card"><h3>🔎 系统观察 <span class="sub">根据当前本地数据</span></h3><div class="review-observations">${observations.map(item=>`<div class="review-observation ${item.warn?'warn':''}">${item.warn?'⚠️':'✓'} ${item.text}</div>`).join('')}</div></div>`;
   const followMonth=previousMonthKey(key);
@@ -215,7 +230,7 @@ function renderReviewPlanning(){
   if(!metrics.followActions.length)h+=`<div class="empty" style="padding:14px 0">上月没有设置行动事项</div>`;
   else h+=`<div class="follow-actions">${metrics.followActions.map(item=>`<button class="follow-action ${item.done?'done':''}" data-action="toggle-review-action" data-value="${followMonth}/${item.id}"><span class="check">${item.done?'✓':''}</span><span>${esc(item.text)}</span></button>`).join('')}</div>`;
   const firstAction=review.action;
-  h+=`</div><div class="card review-form"><h3>✍️ 本月一个结论 ${review.updatedAt?'<span class="sub">已保存</span>':''}</h3><div class="field"><label for="reviewHighlight">最值得记住的发现</label><textarea id="reviewHighlight" maxlength="120" placeholder="例如：外卖是本月最容易失控的支出">${esc(review.highlight)}</textarea></div><div class="field"><label for="reviewAction">下个月只做一件事</label><div class="action-input"><span>1</span><input id="reviewAction" class="review-action-input" data-id="${firstAction?firstAction.id:''}" type="text" maxlength="40" placeholder="例如：每周外卖不超过 2 次" value="${firstAction?esc(firstAction.text):''}"></div></div><div class="budget-actions"><button class="primary" data-action="save-review">保存月度结论</button></div></div>`;
+  h+=`</div><div class="card review-form"><h3>✍️ 本月一个结论 ${draft?'<span class="sub">草稿已保留</span>':review.updatedAt?'<span class="sub">已保存</span>':''}</h3><div class="field"><label for="reviewHighlight">最值得记住的发现</label><textarea id="reviewHighlight" maxlength="120" placeholder="例如：外卖是本月最容易失控的支出">${esc(draftHighlight)}</textarea></div><div class="field"><label for="reviewAction">下个月只做一件事</label><div class="action-input"><span>1</span><input id="reviewAction" class="review-action-input" data-id="${firstAction?firstAction.id:''}" type="text" maxlength="40" placeholder="例如：每周外卖不超过 2 次" value="${esc(draftAction)}"></div></div><div class="budget-actions"><button class="primary" data-action="save-review">保存月度结论</button></div></div>`;
   return h;
 }
 
@@ -230,7 +245,8 @@ function renderCashflowPlanning(){
 
 function renderPlanning(){
   const content=state.planningView==='projects'?renderProjectsPlanning():state.planningView==='goals'?renderGoalsPlanning():state.planningView==='summary'?renderReviewPlanning():renderBudgetPlanning()+renderCashflowPlanning();
-  return `<div class="planning-seg"><button class="${state.planningView==='budget'?'on':''}" data-action="set-planning-view" data-value="budget">🎯 预算</button><button class="${state.planningView==='projects'?'on':''}" data-action="set-planning-view" data-value="projects">🧳 专项</button><button class="${state.planningView==='goals'?'on':''}" data-action="set-planning-view" data-value="goals">🏁 目标</button><button class="${state.planningView==='summary'?'on':''}" data-action="set-planning-view" data-value="summary">📝 月结</button></div>${content}`;
+  const tab=(value,label)=>`<button role="tab" aria-selected="${state.planningView===value}" class="${state.planningView===value?'on':''}" data-action="set-planning-view" data-value="${value}">${label}</button>`;
+  return `<div class="planning-seg" role="tablist" aria-label="计划类型">${tab('budget','🎯 预算')}${tab('projects','🧳 专项')}${tab('goals','🏁 目标')}${tab('summary','📝 月结')}</div>${content}`;
 }
 
 function renderDetails(){
@@ -239,13 +255,14 @@ function renderDetails(){
 
 function renderOverview(recs){
   const exp=recs;
+  const isCurrentMonth=state.view==='month'&&state.year===now.getFullYear()&&state.month===now.getMonth();
   if(!state.records.length)return `<div class="card"><h3>👋 从第一笔开始</h3><p style="font-size:14px;color:#64748b;line-height:1.7">先记录今天的一笔支出，再设置本月日常预算。</p><div class="budget-actions"><button class="primary" data-action="open-add" data-value="expense">＋ 记录第一笔支出</button></div></div>`;
   let h=renderBudgetCard();
   const currentProject=projectForId(decisions.currentProjectId);
-  if(currentProject){const type=PROJECT_TYPES[currentProject.type],metrics=calculateProject(currentProject),auto=projectAppliesOn(currentProject,todayStr()),budget=currentProject.budgetCents?`<div class="budget-progress"><div class="fill ${budgetLevel(metrics.percent)}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ${metrics.percent.toFixed(1)}％</span></div>`:`<div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>未设置预算</span></div>`;h+=`<div class="card"><h3>📍 当前专项 <span class="sub">${auto?'今天记账时自动带入':'当前不在专项日期内'}</span></h3><div class="project-card current"><div class="goal-title"><div class="name">${type.emoji} ${esc(currentProject.name)}<span class="project-current">当前</span><span class="meta">${currentProject.startDate} 至 ${currentProject.endDate}</span></div></div>${budget}<div class="budget-actions"><button data-action="open-project" data-value="${currentProject.id}">查看专项</button></div></div></div>`;}
+  if(isCurrentMonth&&currentProject){const type=PROJECT_TYPES[currentProject.type],metrics=calculateProject(currentProject),auto=projectAppliesOn(currentProject,todayStr()),budget=currentProject.budgetCents?`<div class="budget-progress"><div class="fill ${budgetLevel(metrics.percent)}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ${metrics.percent.toFixed(1)}％</span></div>`:`<div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>未设置预算</span></div>`;h+=`<div class="card"><h3>📍 当前专项 <span class="sub">${auto?'今天记账时自动带入':'当前不在专项日期内'}</span></h3><div class="project-card current"><div class="goal-title"><div class="name">${type.emoji} ${esc(currentProject.name)}<span class="project-current">当前</span><span class="meta">${currentProject.startDate} 至 ${currentProject.endDate}</span></div></div>${budget}<div class="budget-actions"><button data-action="open-project" data-value="${currentProject.id}">查看专项</button></div></div></div>`;}
   const breakdown=spendingTypeBreakdown(exp),forecast=spendingForecast(state.records,decisions.projects,todayStr());
   if(exp.length){h+=`<div class="card"><h3>🧩 支出结构 <span class="sub">按可调整程度</span></h3><div class="spending-type-grid">${breakdown.items.map(item=>`<div><span><i style="background:${item.color}"></i>${item.name}</span><b>¥${fmt(item.amountCents)}</b><small>${item.percent.toFixed(1)}％</small></div>`).join('')}</div><div class="decision-summary"><div>基础生活支出<b>¥${fmt(breakdown.baselineCents)}</b><span>固定必需＋弹性必需</span></div><div>保守可结余空间<b>¥${fmt(breakdown.adjustableCents)}</b><span>仅计算可选消费</span></div></div></div>`;}
-  if(state.view==='month'){const nextLabel=forecast.nextMonth.replace('-','年')+'月';h+=`<div class="card"><h3>🔭 下月支出参考 <span class="sub">${nextLabel}</span></h3>${forecast.ready?`<div class="forecast-total"><span>常态支出参考</span><b>¥${fmt(forecast.normalCents)}</b></div><div class="forecast-parts"><span>固定必需 ¥${fmt(forecast.typical.fixed)}</span><span>弹性必需 ¥${fmt(forecast.typical.flexible)}</span><span>可选消费 ¥${fmt(forecast.typical.discretionary)}</span></div>${forecast.projectBudgetCents?`<p class="planning-note">另有已知专项预算 ¥${fmt(forecast.projectBudgetCents)}，未计入常态支出。</p>`:'<p class="planning-note">专项和突发支出不计入常态参考。</p>'}`:`<div class="empty" style="padding:12px 0">至少需要最近 3 个完整月份的普通支出<br><span style="font-size:12px;font-weight:500">当前有 ${forecast.sampleCount} 个月有效样本，不输出低可信度预测</span></div>`}</div>`;}
+  if(isCurrentMonth){const nextLabel=forecast.nextMonth.replace('-','年')+'月';h+=`<div class="card"><h3>🔭 下月支出参考 <span class="sub">${nextLabel}</span></h3>${forecast.ready?`<div class="forecast-total"><span>常态支出参考</span><b>¥${fmt(forecast.normalCents)}</b></div><div class="forecast-parts"><span>固定必需 ¥${fmt(forecast.typical.fixed)}</span><span>弹性必需 ¥${fmt(forecast.typical.flexible)}</span><span>可选消费 ¥${fmt(forecast.typical.discretionary)}</span></div>${forecast.projectBudgetCents?`<p class="planning-note">另有已知专项预算 ¥${fmt(forecast.projectBudgetCents)}，未计入常态支出。</p>`:'<p class="planning-note">专项和突发支出不计入常态参考。</p>'}`:`<div class="empty" style="padding:12px 0">至少需要最近 3 个完整月份的普通支出<br><span style="font-size:12px;font-weight:500">当前有 ${forecast.sampleCount} 个月有效样本，不输出低可信度预测</span></div>`}</div>`;}
   const budget=state.view==='month'?calculateBudget(monthKey()):null;
   let insight='继续记录一段时间后，这里会给出更有针对性的月度观察。',warn=false;
   if(breakdown.adjustableCents>0){insight=`本期可选消费 ¥${fmt(breakdown.adjustableCents)}，占支出的 ${(breakdown.adjustableCents/breakdown.totalCents*100).toFixed(1)}％，这是最明确的主动调整空间。`;}
@@ -275,27 +292,27 @@ function renderHomeCalendar(){
   for(let index=0;index<count;index++){
     const date=new Date(start);date.setDate(start.getDate()+index);const value=dateString(date),amount=monthMap[value]||state.records.filter(record=>record.date===value).reduce((sum,record)=>sum+record.amountCents,0),future=value>today,confirmed=noSpend.has(value)&&!amount,otherMonth=state.calendarExpanded&&(date.getFullYear()!==state.year||date.getMonth()!==state.month);
     const status=amount?'recorded':future?'future':confirmed?'no-spend':'unrecorded',label=amount?calendarAmountLabel(amount):future?'':confirmed?'✓ 无支出':value===today?'今天':'无记录';
-    cells+=`<button class="day ${status} ${value===today?'today':''} ${otherMonth?'other-month':''}" data-action="open-calendar-day" data-value="${value}" aria-label="${date.getMonth()+1}月${date.getDate()}日，${amount?`支出 ${fmt(amount)} 元`:confirmed?'已确认无支出':future?'未来日期':'无记录'}"><span class="dn">${date.getDate()}</span>${label?`<span class="amt">${label}</span>`:''}</button>`;
+    cells+=`<button class="day ${status} ${value===today?'today':''} ${otherMonth?'other-month':''}" data-action="open-calendar-day" data-value="${value}"${value===today?' aria-current="date"':''} aria-label="${date.getMonth()+1}月${date.getDate()}日，${amount?`支出 ${fmt(amount)} 元`:confirmed?'已确认无支出':future?'未来日期':'无记录'}"><span class="dn">${date.getDate()}</span>${label?`<span class="amt">${label}</span>`:''}</button>`;
   }
   return `<div class="card calendar-card"><div class="cal-nav"><button data-action="calendar-shift" data-value="-1" aria-label="${state.calendarExpanded?'上个月':'上一周'}">‹</button><div class="cal-title"><b>${title}</b><span>${state.calendarExpanded?'点击日期查看或记账':'本周记账'}</span></div><button data-action="calendar-shift" data-value="1" aria-label="${state.calendarExpanded?'下个月':'下一周'}">›</button></div>
     <div class="week"><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div><div>日</div></div><div class="days">${cells}</div>
-    <button class="calendar-expand" data-action="toggle-calendar"><b>${state.calendarExpanded?'⌃':'•••'}</b>${state.calendarExpanded?'收起到本周':'展开整月'}</button>
+    <button class="calendar-expand" data-action="toggle-calendar" aria-expanded="${state.calendarExpanded}"><b>${state.calendarExpanded?'⌃':'•••'}</b>${state.calendarExpanded?'收起到本周':'展开整月'}</button>
     <div class="cal-hint"><span><i class="dot recorded"></i>已记录</span><span><i class="dot unrecorded"></i>无记录</span><span><i class="dot no-spend"></i>已确认无支出</span></div></div>`;
 }
 
 function renderFilterPanel(){
   const filters=state.filters,selected=(value,current)=>value===current?' selected':'',active=hasActiveFilters();
   return `<div class="card filter-card"><h3>🔎 查找明细 ${active?`<span class="sub">筛选已生效</span>`:''}</h3><form id="filterForm">
-    <div class="filter-search"><input id="filterKeyword" type="search" maxlength="40" placeholder="搜索备注、专项或支出属性" value="${esc(filters.keyword)}"><button type="button" data-action="apply-filters">搜索</button></div><button class="record-toggle" type="button" data-action="toggle-filters">${state.filtersExpanded||active?'收起筛选条件':'更多筛选条件'}</button>
+    <div class="filter-search"><input id="filterKeyword" type="search" maxlength="40" placeholder="搜索备注、获益方、专项或支出属性" value="${esc(filters.keyword)}"><button type="button" data-action="apply-filters">搜索</button></div><button class="record-toggle" type="button" data-action="toggle-filters" aria-expanded="${state.filtersExpanded||active}">${state.filtersExpanded||active?'收起筛选条件':'更多筛选条件'}</button>
     <div class="filter-advanced ${state.filtersExpanded||active?'':'hidden'}"><div class="filter-grid" style="margin-top:12px">
       <div class="filter-field"><label for="filterRange">日期范围</label><select id="filterRange"><option value="all"${selected('all',filters.range)}>全部日期</option><option value="month"${selected('month',filters.range)}>本月</option><option value="lastMonth"${selected('lastMonth',filters.range)}>上月</option><option value="year"${selected('year',filters.range)}>今年</option><option value="custom"${selected('custom',filters.range)}>自定义</option></select></div>
-      <div class="filter-field wide"><label>自定义日期</label><div class="filter-dates"><input id="filterStart" type="date" aria-label="开始日期" value="${filters.start}"><input id="filterEnd" type="date" aria-label="结束日期" value="${filters.end}"></div></div>
+      <div class="filter-field wide custom-date-field ${filters.range==='custom'?'':'hidden'}"><label>自定义日期</label><div class="filter-dates"><input id="filterStart" type="date" aria-label="开始日期" value="${filters.start}"><input id="filterEnd" type="date" aria-label="结束日期" value="${filters.end}"></div></div>
     </div><div class="filter-actions">${active?`<button type="button" class="clear" data-action="clear-filters">清空筛选</button>`:''}<button type="button" data-action="apply-filters">应用筛选</button></div></div>
   </form></div>`;
 }
 
 function renderList(){
-  if(!state.records.length)return `<div class="card"><div class="empty">还没有任何记录<br><span style="font-size:13px;font-weight:500">点右下角「记一笔」开始吧 ✨</span></div></div>`;
+  if(!state.records.length)return `<div class="card"><div class="empty">还没有任何记录<br><span style="font-size:13px;font-weight:500">点底部「记一笔」开始吧 ✨</span></div></div>`;
   const active=hasActiveFilters(),records=filterRecords(state.records,state.filters);
   let h=renderFilterPanel();
   if(active){const expense=sumType(records);h+=`<div class="filter-summary"><div>结果<b>${records.length} 笔</b></div><div>支出合计<b class="ex-c">-${fmt(expense)}</b></div></div>`;}
@@ -310,10 +327,10 @@ function renderList(){
     months:Object.values(g.months).map(m=>({...m,items:m.items.sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt))})).sort((a,b)=>b.ym.localeCompare(a.ym))})).sort((a,b)=>b.year.localeCompare(a.year));
   h+=`<div class="hint">${active?'筛选结果已自动展开，可直接查看明细':'默认按年折叠，点年展开月份、再点月份看明细 👇'}</div>`;
   groups.forEach(yg=>{const yo=active||!!state.openYears[yg.year];
-    h+=`<div class="acc"><button class="acc-head" data-action="toggle-year" data-value="${yg.year}"><span class="l"><span class="chev ${yo?'':'closed'}">▾</span>${yg.year}年<span class="c">(${yg.count}笔 · ${yg.months.length}个月)</span></span><span class="r"><div class="ex">支 -${fmt(yg.exp)}</div></span></button>`;
+    h+=`<div class="acc"><button class="acc-head" data-action="toggle-year" data-value="${yg.year}" aria-expanded="${yo}"><span class="l"><span class="chev ${yo?'':'closed'}">▾</span>${yg.year}年<span class="c">(${yg.count}笔 · ${yg.months.length}个月)</span></span><span class="r"><div class="ex">支 -${fmt(yg.exp)}</div></span></button>`;
     if(yo){h+=`<div class="months">`;
       yg.months.forEach(g=>{const gm=+g.ym.split('-')[1],mo=active||!!state.openMonths[g.ym];
-        h+=`<div class="macc"><button class="macc-head" data-action="toggle-month" data-value="${g.ym}"><span class="l"><span class="chev ${mo?'':'closed'}">▾</span>${gm}月<span class="c">(${g.items.length}笔)</span></span><span class="r"><span class="ex" style="font-size:12px;font-weight:700">-${fmt(g.exp)}</span></span></button>`;
+        h+=`<div class="macc"><button class="macc-head" data-action="toggle-month" data-value="${g.ym}" aria-expanded="${mo}"><span class="l"><span class="chev ${mo?'':'closed'}">▾</span>${gm}月<span class="c">(${g.items.length}笔)</span></span><span class="r"><span class="ex" style="font-size:12px;font-weight:700">-${fmt(g.exp)}</span></span></button>`;
         if(mo){h+=`<div class="items">`;
           g.items.forEach(r=>{const spendingType=getSpendingType(r.spendingType),project=projectForId(r.projectId),scene=project?project.name:'';
             const beneficiary=BENEFICIARIES[r.beneficiaryId]||'未标注';h+=`<div class="item"><div class="mid"><div class="tt">${r.note?esc(r.note):esc(spendingType.name)}<span class="cat">${esc(spendingType.name)}</span><span class="tagmini">${esc(beneficiary)}</span>${scene?`<span class="tagmini">${esc(scene)}</span>`:''}</div><div class="sub">${+r.date.slice(8)}日</div></div><div class="amt ex-c">-¥${fmt(r.amountCents)}</div><button class="more" data-action="open-record-actions" data-value="${r.id}" aria-label="管理这笔支出">⋯</button></div>`;});
@@ -325,7 +342,6 @@ function renderList(){
 }
 
 /* ============ 交互 ============ */
-function setView(v){state.view=v;render();}
 function setTab(t){if(!['home','details','planning'].includes(t))return;state.tab=t;if(t==='home'){state.view='month';const anchor=dateFromString(state.calendarAnchor);if(anchor.getFullYear()!==state.year||anchor.getMonth()!==state.month)state.calendarAnchor=dateString(new Date(state.year,state.month,1));}else if(t==='planning')state.view='month';render();}
 function openPlanning(){state.tab='planning';state.planningView='budget';state.view='month';render();}
 function setPlanningView(value){if(!['budget','projects','goals','summary'].includes(value))return;state.planningView=value;render();}
@@ -349,7 +365,8 @@ function applyFilters(){
   }else{start='';end='';}
   state.filters={keyword,range,start,end};render();
 }
-function toggleFilters(){const box=document.querySelector('.filter-advanced'),button=document.querySelector('[data-action="toggle-filters"]'),willOpen=box?box.classList.contains('hidden'):!state.filtersExpanded;state.filtersExpanded=willOpen;if(box)box.classList.toggle('hidden',!willOpen);if(button)button.textContent=willOpen?'收起筛选条件':'更多筛选条件';}
+function toggleFilters(){const box=document.querySelector('.filter-advanced'),button=document.querySelector('[data-action="toggle-filters"]'),willOpen=box?box.classList.contains('hidden'):!state.filtersExpanded;state.filtersExpanded=willOpen;if(box)box.classList.toggle('hidden',!willOpen);if(button){button.textContent=willOpen?'收起筛选条件':'更多筛选条件';button.setAttribute('aria-expanded',String(willOpen));}}
+function syncCustomDateFields(){const range=document.getElementById('filterRange'),field=document.querySelector('.custom-date-field');if(field)field.classList.toggle('hidden',!range||range.value!=='custom');}
 function clearFilters(){state.filters=defaultFilters();state.filtersExpanded=false;render();}
 function readBudgetInput(element){
   const raw=element.value.trim();if(!raw)return null;
@@ -378,6 +395,7 @@ function saveReview(){
   if(!highlight&&!action){toast('请至少填写一项复盘内容');return;}
   decisions.reviews[key]={highlight,action,updatedAt:nowIso};
   if(!saveDecisions()){if(old)decisions.reviews[key]=old;else delete decisions.reviews[key];return;}
+  delete reviewDrafts[key];clearTimeout(reviewDraftTimer);persistReviewDrafts();
   render();toast('本月复盘已保存');
 }
 function toggleReviewAction(value){
@@ -397,7 +415,7 @@ function projectReferenceMarkup(type){
 function renderProjectReference(type){const container=document.getElementById('projectHistoryReference');if(container)container.innerHTML=projectFormId?'':projectReferenceMarkup(type);}
 function openProjectForm(id=null){
   const project=id?decisions.projects.find(item=>item.id===id):null;projectFormId=project?project.id:null;const options=Object.entries(PROJECT_TYPES).map(([key,item])=>`<option value="${key}"${project&&project.type===key?' selected':''}>${item.emoji} ${item.name}</option>`).join('');
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${project?'编辑专项计划':'新建专项计划'}"><div class="sheet-head"><div class="r1"><h3>🧳 ${project?'编辑专项':'新建专项'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="projectName">专项名称</label><input id="projectName" type="text" maxlength="20" placeholder="如：2026 北京旅行" value="${project?esc(project.name):''}"></div><div class="field"><label for="projectType">专项类型</label><select id="projectType">${options}</select></div><div id="projectHistoryReference" aria-live="polite">${project?'':projectReferenceMarkup('travel')}</div><div class="field" id="projectPeopleField" style="display:${!project||project.type==='travel'?'block':'none'}"><label for="projectPeople">旅行参与人数</label><input id="projectPeople" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="1 至 20 人" value="${project&&project.type==='travel'&&project.people?project.people:''}"></div><div class="field"><label for="projectBudget">专项预算（元） <span style="color:#cbd5e1;font-weight:500">（选填）</span></label><input id="projectBudget" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="暂不设置" value="${project&&project.budgetCents?(project.budgetCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="projectStart">开始日期</label><input id="projectStart" type="date" value="${project?project.startDate:todayStr()}"></div><div class="field"><label for="projectEnd">结束日期</label><input id="projectEnd" type="date" value="${project?project.endDate:todayStr()}"></div></div><p class="planning-note" style="margin:0">旅行专项需要参与人数计算人均费用；未设置预算时仍可归集实际支出。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-project">保存专项计划</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${project?'编辑专项计划':'新建专项计划'}"><div class="sheet-head"><div class="r1"><h3>🧳 ${project?'编辑专项':'新建专项'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="projectName">专项名称</label><input id="projectName" type="text" maxlength="20" placeholder="如：2026 北京旅行" value="${project?esc(project.name):''}"></div><div class="field"><label for="projectType">专项类型</label><select id="projectType">${options}</select></div><div id="projectHistoryReference" aria-live="polite">${project?'':projectReferenceMarkup('travel')}</div><div class="field" id="projectPeopleField" style="display:${!project||project.type==='travel'?'block':'none'}"><label for="projectPeople">旅行参与人数</label><input id="projectPeople" type="number" inputmode="numeric" min="1" max="20" step="1" placeholder="1 至 20 人" value="${project&&project.type==='travel'&&project.people?project.people:''}"></div><div class="field"><label for="projectBudget">专项预算（元） <span style="color:#64748b;font-weight:500">（选填）</span></label><input id="projectBudget" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="暂不设置" value="${project&&project.budgetCents?(project.budgetCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="projectStart">开始日期</label><input id="projectStart" type="date" value="${project?project.startDate:todayStr()}"></div><div class="field"><label for="projectEnd">结束日期</label><input id="projectEnd" type="date" value="${project?project.endDate:todayStr()}"></div></div><p class="planning-note" style="margin:0">旅行专项需要参与人数计算人均费用；未设置预算时仍可归集实际支出。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-project">保存专项计划</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});guardModalInputs(['projectName','projectType','projectPeople','projectBudget','projectStart','projectEnd']);
 }
 function saveProject(){
   const name=document.getElementById('projectName').value.trim().slice(0,20),type=document.getElementById('projectType').value,budgetInput=readBudgetInput(document.getElementById('projectBudget')),budgetCents=budgetInput===null?0:budgetInput,startDate=document.getElementById('projectStart').value,endDate=document.getElementById('projectEnd').value,peopleRaw=document.getElementById('projectPeople').value.trim(),people=type==='travel'&&peopleRaw?Number(peopleRaw):null;
@@ -424,20 +442,20 @@ function projectHistoryComparisonMarkup(project){
 function openProject(id){
   const project=decisions.projects.find(item=>item.id===id);if(!project)return;const type=PROJECT_TYPES[project.type],metrics=calculateProject(project),breakdown=spendingTypeBreakdown(metrics.items),types=breakdown.items.filter(item=>item.amountCents>0).sort((a,b)=>b.amountCents-a.amountCents),items=[...metrics.items].sort((a,b)=>b.date.localeCompare(a.date)||b.updatedAt.localeCompare(a.updatedAt)),level=budgetLevel(metrics.percent);
   const stats=project.type==='travel'?`<div>天数<b>${metrics.days} 天</b></div><div>人均<b>¥${fmt(metrics.perPersonCents)}</b></div><div>人均每天<b>¥${fmt(metrics.perPersonDayCents)}</b></div>`:`<div>周期<b>${metrics.days} 天</b></div><div>记录<b>${metrics.items.length} 笔</b></div><div>${project.budgetCents?'剩余':'预算'}<b>${project.budgetCents?`¥${fmt(Math.max(0,metrics.remainingCents))}`:'未设置'}</b></div>`,budget=project.budgetCents?`<div class="budget-progress"><div class="fill ${level}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>预算 ¥${fmt(project.budgetCents)}</span><span>${metrics.percent.toFixed(1)}%</span></div>`:`<div class="budget-caption"><span>未设置专项预算</span><span>只统计实际支出</span></div>`;
-  let h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="专项详情"><div class="sheet-head"><div class="r1"><div><h3>${type.emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="td-box"><div class="l">专项总花费</div><div class="n">¥${fmt(metrics.actualCents)}</div></div>${budget}<div class="project-stats">${stats}</div>${projectHistoryComparisonMarkup(project)}`;
+  let h=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="专项详情"><div class="sheet-head"><div class="r1"><div><h3>${type.emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${project.startDate} 至 ${project.endDate} · ${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="td-box"><div class="l">专项总花费</div><div class="n">¥${fmt(metrics.actualCents)}</div></div>${budget}<div class="project-stats">${stats}</div>${projectHistoryComparisonMarkup(project)}`;
   if(types.length){h+=`<div class="field"><label>支出属性构成</label>`;types.forEach(item=>{h+=`<div class="bar-item"><div class="row"><span class="l">${esc(item.name)}</span><span class="r">¥${fmt(item.amountCents)}</span></div><div class="track"><div class="fill" style="width:${item.amountCents/metrics.actualCents*100}%;background:${item.color}"></div></div></div>`;});h+=`</div>`;}
   h+=`<div class="field"><label>支出明细（${items.length}）</label>`;if(!items.length)h+=`<div class="empty" style="padding:14px 0">还没有关联支出</div>`;items.forEach(item=>{const spendingType=getSpendingType(item.spendingType),beneficiary=BENEFICIARIES[item.beneficiaryId]||'未标注';h+=`<button class="drow" data-action="open-record-actions" data-value="${item.id}"><span><span style="display:block;color:#475569;font-weight:600">${item.note?esc(item.note):spendingType.name}<span class="tagmini">${esc(spendingType.name)}</span></span><span style="font-size:12px;color:#64748b">${item.date} · ${esc(beneficiary)}</span></span><span class="amt" style="color:#475569">¥${fmt(item.amountCents)}</span></button>`;});h+=`</div></div></div></div>`;document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';
 }
 function openProjectActions(id){
   const project=decisions.projects.find(item=>item.id===id);if(!project)return;const current=project.id===decisions.currentProjectId;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理专项"><div class="sheet-head"><div class="r1"><div><h3>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="record-action-list"><button data-action="edit-project" data-value="${project.id}">编辑计划</button>${project.status==='active'?`<button data-action="set-current-project" data-value="${current?'':project.id}">${current?'取消当前专项':'设为当前专项'}</button><button data-action="set-project-status" data-value="${project.id}/completed">完成专项</button>`:`<button data-action="set-project-status" data-value="${project.id}/active">重新启用专项</button>`}</div></div></div></div>`;document.body.style.overflow='hidden';
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理专项"><div class="sheet-head"><div class="r1"><div><h3>${PROJECT_TYPES[project.type].emoji} ${esc(project.name)}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${PROJECT_STATUSES[project.status]}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="record-action-list"><button data-action="edit-project" data-value="${project.id}">编辑计划</button>${project.status==='active'?`<button data-action="set-current-project" data-value="${current?'':project.id}">${current?'取消当前专项':'设为当前专项'}</button><button data-action="set-project-status" data-value="${project.id}/completed">完成专项</button>`:`<button data-action="set-project-status" data-value="${project.id}/active">重新启用专项</button>`}</div></div></div></div>`;document.body.style.overflow='hidden';
 }
 let goalFormId=null;
 function openGoalForm(id=null){
   const goal=id?decisions.goals.find(item=>item.id===id):null;goalFormId=goal?goal.id:null;
   const options=Object.entries(GOAL_TYPES).map(([key,item])=>`<option value="${key}"${goal&&goal.type===key?' selected':''}>${item.emoji} ${item.name}</option>`).join('');
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${goal?'编辑财务目标':'新建财务目标'}"><div class="sheet-head"><div class="r1"><h3>🏁 ${goal?'编辑目标':'新建目标'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="goalName">目标名称</label><input id="goalName" type="text" maxlength="20" placeholder="如：家庭应急金" value="${goal?esc(goal.name):''}"></div><div class="field"><label for="goalType">目标类型</label><select id="goalType">${options}</select></div><div class="field"><label for="goalAmount">目标金额（元）</label><input id="goalAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${goal?(goal.targetCents/100).toFixed(2):''}"></div><div class="field"><label for="goalDate">目标日期</label><input id="goalDate" type="date" value="${goal?goal.targetDate:''}"></div><p class="planning-note" style="margin:0">保存后会根据剩余金额和目标日期计算建议月投入；已有投入记录不会因编辑目标而丢失。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-goal">保存目标</button></div></div></div>`;
-  document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});guardModalInputs(['goalName','goalType','goalAmount','goalDate']);
 }
 function saveGoal(){
   const name=document.getElementById('goalName').value.trim().slice(0,20),type=document.getElementById('goalType').value,targetCents=readBudgetInput(document.getElementById('goalAmount')),targetDate=document.getElementById('goalDate').value;
@@ -450,15 +468,15 @@ function saveGoal(){
 }
 function openGoalActions(id){
   const goal=decisions.goals.find(item=>item.id===id);if(!goal)return;const metrics=calculateGoal(goal),statusAction=goal.status==='completed'?`<button data-action="set-goal-status" data-value="${goal.id}/active">重新启用目标</button>`:goal.status==='paused'?`<button data-action="set-goal-status" data-value="${goal.id}/active">恢复目标</button>`:metrics.remainingCents===0?`<button data-action="set-goal-status" data-value="${goal.id}/completed">标记目标完成</button>`:`<button data-action="set-goal-status" data-value="${goal.id}/paused">暂停目标</button>`;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理财务目标"><div class="sheet-head"><div class="r1"><div><h3>${GOAL_TYPES[goal.type].emoji} ${esc(goal.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${GOAL_STATUSES[goal.status]} · 已投入 ¥${fmt(metrics.savedCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="record-action-list"><button data-action="edit-goal" data-value="${goal.id}">编辑目标</button>${goal.contributions.length?`<button data-action="open-contribution-history" data-value="${goal.id}">查看和纠正投入记录</button>`:''}${statusAction}</div></div></div></div>`;document.body.style.overflow='hidden';
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理财务目标"><div class="sheet-head"><div class="r1"><div><h3>${GOAL_TYPES[goal.type].emoji} ${esc(goal.name)}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${GOAL_STATUSES[goal.status]} · 已投入 ¥${fmt(metrics.savedCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="record-action-list"><button data-action="edit-goal" data-value="${goal.id}">编辑目标</button>${goal.contributions.length?`<button data-action="open-contribution-history" data-value="${goal.id}">查看和纠正投入记录</button>`:''}${statusAction}</div></div></div></div>`;document.body.style.overflow='hidden';
 }
 let contributionForm={goalId:null,id:null};
 function splitContributionValue(value){const slash=value.lastIndexOf('/');return slash>0?[value.slice(0,slash),value.slice(slash+1)]:[value,''];}
 function openContribution(goalId,contributionId=null){
   const goal=decisions.goals.find(item=>item.id===goalId),contribution=goal&&contributionId?goal.contributions.find(item=>item.id===contributionId):null;if(!goal||contributionId&&!contribution||!contribution&&goal.status!=='active')return;
   contributionForm={goalId:goal.id,id:contribution?contribution.id:null};const metrics=calculateGoal(goal);
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${contribution?'编辑目标投入':'记录目标投入'}"><div class="sheet-head"><div class="r1"><div><h3>💰 ${contribution?'编辑目标投入':'记录目标投入'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${esc(goal.name)} · 还差 ¥${fmt(metrics.remainingCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="contributionAmount">本次已留出金额（元）</label><input id="contributionAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${contribution?(contribution.amountCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="contributionDate">投入日期</label><input id="contributionDate" type="date" value="${contribution?contribution.date:todayStr()}"></div><div class="field"><label for="contributionNote">备注</label><input id="contributionNote" type="text" maxlength="20" placeholder="选填" value="${contribution?esc(contribution.note):''}"></div></div><p class="planning-note" style="margin:0">${contribution?'修改后会同步更新目标进度和对应月份复盘。':'这是一条独立的目标投入确认，不会新增支出记录。'}</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-contribution">${contribution?'保存修改':'确认已投入'}</button></div></div></div>`;
-  document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${contribution?'编辑目标投入':'记录目标投入'}"><div class="sheet-head"><div class="r1"><div><h3>💰 ${contribution?'编辑目标投入':'记录目标投入'}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${esc(goal.name)} · 还差 ¥${fmt(metrics.remainingCents)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="contributionAmount">本次已留出金额（元）</label><input id="contributionAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${contribution?(contribution.amountCents/100).toFixed(2):''}"></div><div class="two"><div class="field"><label for="contributionDate">投入日期</label><input id="contributionDate" type="date" value="${contribution?contribution.date:todayStr()}"></div><div class="field"><label for="contributionNote">备注</label><input id="contributionNote" type="text" maxlength="20" placeholder="选填" value="${contribution?esc(contribution.note):''}"></div></div><p class="planning-note" style="margin:0">${contribution?'修改后会同步更新目标进度和对应月份复盘。':'这是一条独立的目标投入确认，不会新增支出记录。'}</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-contribution">${contribution?'保存修改':'确认已投入'}</button></div></div></div>`;
+  document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});guardModalInputs(['contributionAmount','contributionDate','contributionNote']);
 }
 function saveContribution(){
   const index=decisions.goals.findIndex(item=>item.id===contributionForm.goalId);if(index<0)return;
@@ -474,7 +492,7 @@ function saveContribution(){
 function openContributionHistory(goalId){
   const goal=decisions.goals.find(item=>item.id===goalId);if(!goal)return;const metrics=calculateGoal(goal),items=[...goal.contributions].sort((a,b)=>b.date.localeCompare(a.date)||b.createdAt.localeCompare(a.createdAt));
   const rows=items.map(item=>`<div class="contribution-row"><div class="info"><div class="date">${item.date}</div><div class="note">${item.note?esc(item.note):'无备注'}</div></div><div class="amount">¥${fmt(item.amountCents)}</div><button data-action="edit-contribution" data-value="${goal.id}/${item.id}" aria-label="编辑 ${item.date} 的投入">✎</button><button data-action="confirm-delete-contribution" data-value="${goal.id}/${item.id}" aria-label="撤销 ${item.date} 的投入">🗑</button></div>`).join('');
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="目标投入明细"><div class="sheet-head"><div class="r1"><div><h3>📒 投入明细</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${esc(goal.name)} · ${items.length} 次</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="contribution-summary">累计已投入<b>¥${fmt(metrics.savedCents)}</b></div>${items.length?`<div class="contribution-list">${rows}</div>`:'<div class="empty" style="padding:14px 0">还没有投入记录</div>'}</div></div></div>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="目标投入明细"><div class="sheet-head"><div class="r1"><div><h3>📒 投入明细</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${esc(goal.name)} · ${items.length} 次</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="contribution-summary">累计已投入<b>¥${fmt(metrics.savedCents)}</b></div>${items.length?`<div class="contribution-list">${rows}</div>`:'<div class="empty" style="padding:14px 0">还没有投入记录</div>'}</div></div></div>`;
   document.body.style.overflow='hidden';
 }
 function confirmDeleteContribution(value){
@@ -500,7 +518,7 @@ function dismissAddedUndo(){
 function openRecordActions(id){
   const record=state.records.find(item=>item.id===id);if(!record)return;const spendingType=getSpendingType(record.spendingType),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';
   const content=`<div class="record-action-list"><button data-action="copy-record" data-value="${record.id}">复制为新记录</button><button data-action="edit-record" data-value="${record.id}">编辑这笔记录</button><button class="danger" data-action="delete-record" data-value="${record.id}">删除，可在 12 秒内撤销</button></div>`;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理记录"><div class="sheet-head"><div class="r1"><div><h3>${record.note?esc(record.note):esc(spendingType.name)}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${record.date} · ¥${fmt(record.amountCents)} · ${esc(spendingType.name)} · ${esc(beneficiary)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${content}</div></div></div>`;document.body.style.overflow='hidden';
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="管理记录"><div class="sheet-head"><div class="r1"><div><h3>${record.note?esc(record.note):esc(spendingType.name)}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${record.date} · ¥${fmt(record.amountCents)} · ${esc(spendingType.name)} · ${esc(beneficiary)}</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${content}</div></div></div>`;document.body.style.overflow='hidden';
 }
 function delRec(id){
   const index=state.records.findIndex(r=>r.id===id);if(index<0)return;
@@ -529,7 +547,7 @@ function openCalendarDay(date){
 function openDayDetails(date){
   const records=state.records.filter(record=>record.date===date).sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)),total=records.reduce((sum,record)=>sum+record.amountCents,0),label=dateFromString(date).toLocaleDateString('zh-CN',{month:'long',day:'numeric',weekday:'long'});
   let rows='';records.forEach(record=>{const spendingType=getSpendingType(record.spendingType),project=projectForId(record.projectId),beneficiary=BENEFICIARIES[record.beneficiaryId]||'未标注';rows+=`<button class="drow" data-action="open-record-actions" data-value="${record.id}"><span style="color:#475569;font-weight:700">${record.note?esc(record.note):esc(spendingType.name)}</span><span class="tagmini">${esc(spendingType.name)}</span><span class="tagmini">${esc(beneficiary)}</span>${project?`<span class="tagmini">${esc(project.name)}</span>`:''}<span class="amt ex-c">-¥${fmt(record.amountCents)}</span></button>`;});
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="当日支出"><div class="sheet-head"><div class="r1"><div><h3>📅 ${label}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">${records.length} 笔支出</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="day-sheet-total">当日支出<b>¥${fmt(total)}</b></div>${rows}</div><div class="sheet-foot"><button class="save-btn e" data-action="add-for-date" data-value="${date}">＋ 再记一笔</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="当日支出"><div class="sheet-head"><div class="r1"><div><h3>📅 ${label}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${records.length} 笔支出</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="day-sheet-total">当日支出<b>¥${fmt(total)}</b></div>${rows}</div><div class="sheet-foot"><button class="save-btn e" data-action="add-for-date" data-value="${date}">＋ 再记一笔</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
 function persistNoSpendState(date,confirmed){
   const oldDates=decisions.noSpendDates,exists=oldDates.includes(date);if(exists===confirmed)return true;
@@ -560,7 +578,7 @@ function quickSceneVisible(scene){
   if(!scene.projectId)return true;const project=projectForId(scene.projectId);return projectAppliesOn(project,recordFormDate());
 }
 function renderRecordContext(){
-  const container=document.getElementById('recordContext'),items=prefs.beneficiaries.filter(item=>item.active),columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${form.beneficiaryId===item.id?'on':''}" data-action="select-record-context" data-value="${item.id}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
+  const container=document.getElementById('recordContext'),items=prefs.beneficiaries.filter(item=>item.active),columns=items.length<=4?items.length:items.length<=6?3:items.length<=8?4:3;container.style.setProperty('--context-count',String(columns));container.className=`record-context count-${items.length}`;container.innerHTML=items.map(item=>`<button class="${form.beneficiaryId===item.id?'on':''}" aria-pressed="${form.beneficiaryId===item.id}" data-action="select-record-context" data-value="${item.id}" title="${esc(item.name)}">${esc(item.name)}</button>`).join('');
 }
 function selectRecordContext(value){
   if(!prefs.beneficiaries.some(item=>item.id===value&&item.active))return;form.beneficiaryId=value;renderRecordContext();renderRecordSearchSummary();renderQuickChoices();syncRecordSaveButton();
@@ -600,7 +618,7 @@ function openRecordForm(id=null,preset=null){
   form.date=sourceDate;form.projectId=sourceProject?sourceProject.id:autoProject?currentProject.id:'';form.beneficiaryId=sourceBeneficiary?sourceBeneficiary.id:defaultBeneficiary.id;form.spendingType=source&&SPENDING_TYPES[source.spendingType]?source.spendingType:'';form.projectTouched=false;form.projectPickerOpen=false;form.quickExpanded=false;form.noSpendArmed=false;
   const hasDateRecords=state.records.some(item=>item.date===sourceDate),confirmedNoSpend=decisions.noSpendDates.includes(sourceDate),noSpendAction=!record&&!hasDateRecords?`<button class="record-no-spend ${confirmedNoSpend?'on':''}" id="noSpendButton" data-action="toggle-form-no-spend">${confirmedNoSpend?'取消确认':'✓ 无支出'}</button>`:'',dateMarkup=record?`<div class="record-date-edit"><label for="fDate">日期</label><input id="fDate" type="date" value="${sourceDate}"></div>`:`<div class="record-date-tag">📅 ${recordDateLabel(sourceDate)}</div>`;
   const h=`<div class="overlay record-overlay" data-action="close-overlay"><div class="sheet record-sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
-    <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">选择内容后，点击底部保存</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
+    <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">选择内容后，点击底部保存</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
     <div class="record-sticky-body">${dateMarkup}
       <div class="field record-context-field"><label>获益方</label><div class="record-context" id="recordContext"></div></div>
       <div class="field record-type-field"><label>支出属性</label><div class="spending-type-choices" id="spendingTypeChoices"></div></div>
@@ -612,7 +630,7 @@ function openRecordForm(id=null,preset=null){
     </div><div class="sheet-foot record-save-foot"><button class="save-btn e" id="recordSaveButton" data-action="save-record" disabled>${record?'保存修改':'保存支出'}</button></div>
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';recordViewportBaseline=0;recordKeyboardSeen=false;
-  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();syncRecordViewport();document.querySelector('#modals .x').focus({preventScroll:true});
+  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();syncRecordViewport();document.querySelector('#modals .x').focus({preventScroll:true});const initialRecordDraft=recordDraftSnapshot();modalDraftGuard=()=>recordDraftSnapshot()!==initialRecordDraft;
 }
 function renderQuickChoices(){
   const input=document.getElementById('fNote'),query=input?input.value:'',all=rankQuickRecordScenes(quickRecordScenes(state.records).filter(quickSceneVisible),query,form.beneficiaryId,form.projectId),values=form.quickExpanded?all:all.slice(0,QUICK_SCENE_LIMIT);
@@ -631,14 +649,14 @@ function applyQuickScene(value){
   renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();if(note)note.blur();setRecordNoteSearchMode(false);
 }
 function renderSpendingTypeChoices(){
-  const container=document.getElementById('spendingTypeChoices');if(!container)return;container.innerHTML=SPENDING_TYPE_IDS.map(id=>{const item=SPENDING_TYPES[id],on=form.spendingType===id;return`<button class="${on?'on':''}" style="--type-color:${item.color}" data-action="select-spending-type" data-value="${id}"><b>${item.name}</b><span>${item.description}</span></button>`;}).join('');
+  const container=document.getElementById('spendingTypeChoices');if(!container)return;container.innerHTML=SPENDING_TYPE_IDS.map(id=>{const item=SPENDING_TYPES[id],on=form.spendingType===id;return`<button class="${on?'on':''}" aria-pressed="${on}" style="--type-color:${item.color}" data-action="select-spending-type" data-value="${id}"><b>${item.name}</b><span>${item.description}</span></button>`;}).join('');
 }
 function refreshProjectForDate(){
   const date=recordFormDate();form.date=date;refreshNoSpendButton();if(form.id||form.projectTouched){renderQuickChoices();return;}
   const current=projectForId(decisions.currentProjectId),applies=projectAppliesOn(current,date);
   form.projectId=applies?current.id:'';renderRecordProject();renderQuickChoices();syncRecordSaveButton();
 }
-function refreshNoSpendButton(){const button=document.getElementById('noSpendButton');if(!button)return;const date=recordFormDate(),confirmed=decisions.noSpendDates.includes(date);button.classList.toggle('on',confirmed);button.classList.toggle('armed',form.noSpendArmed);button.textContent=confirmed?'取消确认':form.noSpendArmed?'再次确认':'✓ 无支出';}
+function refreshNoSpendButton(){const button=document.getElementById('noSpendButton');if(!button)return;const date=recordFormDate(),confirmed=decisions.noSpendDates.includes(date);button.classList.toggle('on',confirmed);button.classList.toggle('armed',form.noSpendArmed);button.setAttribute('aria-pressed',String(confirmed));button.textContent=confirmed?'取消确认':form.noSpendArmed?'再次确认':'✓ 无支出';}
 function selectSpendingType(value){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();renderRecordSearchSummary();syncRecordSaveButton();}
 function parsedRecordAmount(){
   const input=document.getElementById('fAmt');if(!input)return null;const raw=input.value.trim();if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return null;const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;
@@ -674,6 +692,18 @@ function doSave(){
 }
 function copyRecord(id){const record=state.records.find(item=>item.id===id);if(record)openRecordForm(null,{...record,date:todayStr()});}
 let modalReturnFocus=null;
+let modalDraftGuard=null;
+function modalInputSnapshot(ids){return JSON.stringify(ids.map(id=>{const element=document.getElementById(id);return element?element.value:null;}));}
+function guardModalInputs(ids){const initial=modalInputSnapshot(ids);modalDraftGuard=()=>modalInputSnapshot(ids)!==initial;}
+function recordDraftSnapshot(){
+  const amount=document.getElementById('fAmt'),note=document.getElementById('fNote');
+  return JSON.stringify({date:recordFormDate(),spendingType:form.spendingType,beneficiaryId:form.beneficiaryId,projectId:form.projectId,amount:amount?amount.value:'',note:note?note.value:''});
+}
+function requestCloseModals(){
+  if(modalDraftGuard&&modalDraftGuard()&&!confirm('放弃未保存的内容？'))return false;
+  closeModals();return true;
+}
+function requestModalTransition(next){if(modalDraftGuard&&modalDraftGuard()&&!confirm('放弃未保存的内容？'))return false;modalDraftGuard=null;next();return true;}
 function syncModalState(){
   const modals=document.getElementById('modals'),app=document.getElementById('app'),dialog=modals.querySelector('[role="dialog"]'),hasModal=!!dialog;
   app.inert=hasModal;document.body.style.overflow=hasModal?'hidden':'';
@@ -684,6 +714,7 @@ function syncModalState(){
 }
 function closeModals(){
   const previous=modalReturnFocus,action=previous&&previous.dataset?previous.dataset.action:'',value=previous&&previous.dataset?previous.dataset.value:'';
+  modalDraftGuard=null;pendingBackupPurpose='';
   document.getElementById('modals').innerHTML='';syncModalState();
   const restore=()=>{const replacement=action?[...document.querySelectorAll(`[data-action="${action}"]`)].find(item=>(item.dataset.value||'')===(value||'')):null,target=replacement||previous;if(target&&document.contains(target))target.focus({preventScroll:true});};
   restore();setTimeout(restore,0);
@@ -693,13 +724,13 @@ function closeModals(){
 /* ============ 家庭成员管理 ============ */
 let beneficiaryEditorId='';
 function cloneSettings(){return JSON.parse(JSON.stringify(prefs));}
-function persistBeneficiaryChange(previous,message){if(!saveSettings()){prefs=previous;refreshDerivedSettings(prefs);return false;}render();openBeneficiaryManager();toast(message);return true;}
+function persistBeneficiaryChange(previous,message){if(!saveSettings()){prefs=previous;refreshDerivedSettings(prefs);return false;}modalDraftGuard=null;render();openBeneficiaryManager();toast(message);return true;}
 function openBeneficiaryManager(){
   const active=prefs.beneficiaries.filter(item=>item.active),inactive=prefs.beneficiaries.filter(item=>!item.active),rows=active.map((item,index)=>`<div class="category-manage-sub"><span class="name">${esc(item.name)}<span class="meta">${item.id===prefs.defaultBeneficiaryId?'默认获益方':item.kind==='shared'?'家庭共同':'家庭成员'}</span></span><div class="category-manage-actions"><button data-action="move-beneficiary" data-value="${item.id}/-1"${index===0?' disabled':''} aria-label="上移 ${esc(item.name)}">↑</button><button data-action="move-beneficiary" data-value="${item.id}/1"${index===active.length-1?' disabled':''} aria-label="下移 ${esc(item.name)}">↓</button>${item.id===prefs.defaultBeneficiaryId?'':`<button data-action="set-default-beneficiary" data-value="${item.id}">设为默认</button>`}<button data-action="open-beneficiary-name" data-value="${item.id}">改名</button>${item.kind==='shared'?'':`<button data-action="toggle-beneficiary" data-value="${item.id}">停用</button>`}</div></div>`).join('');
   const inactiveRows=inactive.length?`<div class="inactive-list"><div class="planning-note" style="margin:0 0 4px">已停用成员</div>${inactive.map(item=>`<div class="inactive-row"><span>${esc(item.name)}</span><button data-action="toggle-beneficiary" data-value="${item.id}">恢复</button></div>`).join('')}</div>`:'';
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="家庭成员管理"><div class="sheet-head"><div class="r1"><div><h3>家庭成员</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">顺序会同步到快速记账；最多启用 8 个获益方</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><section class="category-manage-group"><div class="category-manage-subs">${rows}</div><button class="category-manage-add" data-action="open-beneficiary-name" data-value="">＋ 新增家庭成员</button></section>${inactiveRows}<p class="planning-note" style="margin:12px 0 0">“共同”不能停用；停用成员仍保留在历史账目和完整备份中。</p></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="家庭成员管理"><div class="sheet-head"><div class="r1"><div><h3>家庭成员</h3><p style="font-size:12px;color:#64748b;margin-top:3px">顺序会同步到快速记账；最多启用 8 个获益方</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><section class="category-manage-group"><div class="category-manage-subs">${rows}</div><button class="category-manage-add" data-action="open-beneficiary-name" data-value="">＋ 新增家庭成员</button></section>${inactiveRows}<p class="planning-note" style="margin:12px 0 0">“共同”不能停用；停用成员仍保留在历史账目和完整备份中。</p></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});
 }
-function openBeneficiaryNameForm(id=''){const member=id?prefs.beneficiaries.find(item=>item.id===id):null;if(id&&!member)return;beneficiaryEditorId=id;const title=member?'修改成员名称':'新增家庭成员';document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="sheet-head"><div class="r1"><h3>${title}</h3><button class="x" data-action="open-beneficiary-manager" aria-label="返回家庭成员">✕</button></div></div><div class="sheet-body"><div class="field"><label for="beneficiaryName">成员名称</label><input id="beneficiaryName" type="text" maxlength="6" value="${member?esc(member.name):''}" placeholder="1 至 6 个字"></div></div><div class="sheet-foot"><button class="save-btn e" data-action="save-beneficiary-name">保存</button></div></div></div>`;document.body.style.overflow='hidden';document.getElementById('beneficiaryName').focus({preventScroll:true});}
+function openBeneficiaryNameForm(id=''){const member=id?prefs.beneficiaries.find(item=>item.id===id):null;if(id&&!member)return;beneficiaryEditorId=id;const title=member?'修改成员名称':'新增家庭成员';document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${title}"><div class="sheet-head"><div class="r1"><h3>${title}</h3><button class="x back" data-action="open-beneficiary-manager" aria-label="返回家庭成员">‹</button></div></div><div class="sheet-body"><div class="field"><label for="beneficiaryName">成员名称</label><input id="beneficiaryName" type="text" maxlength="6" value="${member?esc(member.name):''}" placeholder="1 至 6 个字"></div></div><div class="sheet-foot"><button class="save-btn e" data-action="save-beneficiary-name">保存</button></div></div></div>`;document.body.style.overflow='hidden';document.getElementById('beneficiaryName').focus({preventScroll:true});guardModalInputs(['beneficiaryName']);}
 function saveBeneficiaryName(){const name=document.getElementById('beneficiaryName').value.trim().slice(0,6);if(!name){toast('请输入成员名称');return;}if(prefs.beneficiaries.some(item=>item.id!==beneficiaryEditorId&&item.name===name)){toast('成员名称不能重复');return;}const previous=cloneSettings();if(beneficiaryEditorId){const member=prefs.beneficiaries.find(item=>item.id===beneficiaryEditorId);if(!member)return;member.name=name;}else{if(prefs.beneficiaries.filter(item=>item.active).length>=8){toast('最多启用 8 个获益方');return;}prefs.beneficiaries.push({id:uuid(),name,kind:'member',active:true});}beneficiaryEditorId='';persistBeneficiaryChange(previous,'家庭成员已保存');}
 function moveBeneficiary(value){const slash=value.lastIndexOf('/'),id=value.slice(0,slash),direction=Number(value.slice(slash+1)),active=prefs.beneficiaries.filter(item=>item.active),member=prefs.beneficiaries.find(item=>item.id===id),position=active.indexOf(member),target=active[position+direction];if(!member||!target)return;const previous=cloneSettings(),from=prefs.beneficiaries.indexOf(member),to=prefs.beneficiaries.indexOf(target);prefs.beneficiaries.splice(from,1);prefs.beneficiaries.splice(to,0,member);persistBeneficiaryChange(previous,'成员顺序已更新');}
 function toggleBeneficiary(id){const member=prefs.beneficiaries.find(item=>item.id===id);if(!member||member.kind==='shared')return;if(!member.active&&prefs.beneficiaries.filter(item=>item.active).length>=8){toast('最多启用 8 个获益方');return;}const previous=cloneSettings();member.active=!member.active;if(!member.active&&prefs.defaultBeneficiaryId===id)prefs.defaultBeneficiaryId='family';persistBeneficiaryChange(previous,member.active?'成员已恢复':'成员已停用');}
@@ -707,22 +738,33 @@ function setDefaultBeneficiary(id){if(!prefs.beneficiaries.some(item=>item.id===
 
 /* ============ 备份 ============ */
 function openDataManagement(){
-  const backup=backupStatus(),upgrade=`<div class="rescue">检测到 schema v4 或更早版本的本地数据。v5 不会读取、覆盖或删除旧数据；可以导入转换后的 v5 备份，也可以保留旧数据并从空白 v5 账本开始。</div>`;document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据管理"><div class="sheet-head"><div class="r1"><div><h3>☁️ 数据管理</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">账目、家庭设置和规划都保存在当前浏览器</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${upgradeRequired?upgrade:`<p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>`}${storageLocked&&!upgradeRequired?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}<div class="backup">${!storageLocked?`<button data-action="export">⬆️ 导出完整备份</button>`:''}${storageLocked&&!upgradeRequired?`<button data-action="open-recovery">🛟 数据救援</button>`:''}<button data-action="import-trigger">⬇️ 导入 v5 备份</button>${upgradeRequired?`<button data-action="open-start-fresh">开始空白 v5 账本</button>`:''}${!storageLocked?`<button data-action="open-beneficiary-manager">家庭成员</button>`:''}</div></div></div></div>`;document.body.style.overflow='hidden';
+  const backup=backupStatus(),upgrade=`<div class="rescue">检测到 schema v4 或更早版本的本地数据。v5 不会读取、覆盖或删除旧数据；可以导入转换后的 v5 备份，也可以保留旧数据并从空白 v5 账本开始。</div>`;document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据管理"><div class="sheet-head"><div class="r1"><div><h3>数据管理</h3><p style="font-size:12px;color:#64748b;margin-top:3px">账目、家庭设置和规划都保存在当前浏览器</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${upgradeRequired?upgrade:`<p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>`}${storageLocked&&!upgradeRequired?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}<div class="backup">${!storageLocked?`<button data-action="export">⬆️ 导出完整备份</button>`:''}${storageLocked&&!upgradeRequired?`<button data-action="open-recovery">🛟 数据救援</button>`:''}<button data-action="import-trigger">⬇️ 导入 v5 备份</button>${upgradeRequired?`<button data-action="open-start-fresh">开始空白 v5 账本</button>`:''}${!storageLocked?`<button data-action="open-beneficiary-manager">家庭成员</button>`:''}</div></div></div></div>`;document.body.style.overflow='hidden';
 }
-function openStartFresh(){document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="开始空白 v5 账本"><div class="sheet-head"><div class="r1"><div><h3>开始空白 v5 账本</h3><p style="font-size:12px;color:#94a3b8;margin-top:3px">旧版本地数据会原样保留</p></div><button class="x" data-action="open-data-management" aria-label="返回数据管理">✕</button></div></div><div class="sheet-body"><div class="rescue">新账本会从 0 笔支出和默认家庭设置开始。应用不会删除旧数据，但 v5 页面之后只读取新存储。</div><p style="font-size:13px;color:#64748b;line-height:1.7">如果还要保留历史账目，请先退出并使用一次性转换工具；确认不需要后再继续。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-start-fresh">确认开始空白账本</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});}
+function openStartFresh(){document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="开始空白 v5 账本"><div class="sheet-head"><div class="r1"><div><h3>开始空白 v5 账本</h3><p style="font-size:12px;color:#64748b;margin-top:3px">旧版本地数据会原样保留</p></div><button class="x back" data-action="open-data-management" aria-label="返回数据管理">‹</button></div></div><div class="sheet-body"><div class="rescue">新账本会从 0 笔支出和默认家庭设置开始。应用不会删除旧数据，但 v5 页面之后只读取新存储。</div><p style="font-size:13px;color:#64748b;line-height:1.7">如果还要保留历史账目，请先退出并使用一次性转换工具；确认不需要后再继续。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-start-fresh">确认开始空白账本</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});}
 function confirmStartFresh(){const nextSettings=defaultSettings(),nextPlans=defaultPlans();if(!persistFullRestore([],nextSettings,nextPlans,true))return;try{localStorage.removeItem(META_KEY);}catch(error){}prefs=nextSettings;decisions=nextPlans;state.records=[];refreshDerivedSettings(prefs);upgradeRequired=false;storageLocked=false;backupMeta={};closeModals();render();toast('空白 v5 账本已启用');}
 function downloadText(content,filename,type='application/json'){
   const blob=new Blob([content],{type}),url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),0);
 }
-function exportData(prefix='完整账本备份',showToast=true,mark=true){
+function exportData(prefix='完整账本备份',showToast=true){
   downloadText(JSON.stringify(backupEnvelope(state.records,prefs,decisions),null,2),`${prefix}_${todayStr()}.json`);
-  if(mark){
-    backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,settingsUpdatedAt:prefs.updatedAt,plansUpdatedAt:decisions.updatedAt};
-    try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份已下载，但备份时间记录失败');return;}
-    render();
-  }
-  if(showToast)toast('已导出完整备份');
+  if(showToast)toast('备份文件已生成');
+}
+let pendingBackupPurpose='';
+function openBackupSavedConfirmation(purpose){
+  pendingBackupPurpose=purpose;
+  const importing=purpose==='import';
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认备份已保存"><div class="sheet-head"><div class="r1"><div><h3>确认备份已保存</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${importing?'恢复前保护当前账本':'完成本次完整备份'}</p></div><button class="x ${importing?'back':''}" data-action="${importing?'open-import-preview':'close-modal'}" aria-label="${importing?'返回导入预览':'关闭'}">${importing?'‹':'✕'}</button></div></div><div class="sheet-body"><p style="font-size:14px;color:#64748b;line-height:1.7">备份文件已经生成。请先在手机“文件”或浏览器下载记录中确认文件真实存在，再继续。</p>${importing?'<div class="rescue" style="margin-top:12px">确认后会立即用待导入文件完整替换当前账本。</div>':''}</div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-backup-saved">${importing?'已保存，继续恢复':'我已确认保存'}</button></div></div></div>`;
+  document.body.style.overflow='hidden';
+}
+function startExport(){exportData('完整账本备份',false);openBackupSavedConfirmation('export');}
+function returnToImportPreview(){pendingBackupPurpose='';openImportPreview();}
+function confirmBackupSaved(){
+  const purpose=pendingBackupPurpose;pendingBackupPurpose='';
+  if(purpose==='import'){applyImport('full',true);return;}
+  backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,settingsUpdatedAt:prefs.updatedAt,plansUpdatedAt:decisions.updatedAt};
+  try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份确认时间记录失败：'+error.message);return;}
+  closeModals();render();toast('备份已确认保存');
 }
 function openRecovery(){
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据救援"><div class="sheet-head"><div class="r1"><h3>🛟 数据救援</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="rescue">检测结果：${esc(recoveryError)}。当前成功读取 ${state.records.length} 笔有效记录。</div><p style="font-size:13px;color:#64748b;line-height:1.7">请先下载未经处理的原始内容。确认文件已经保存后，才能用当前有效记录重建本地账本。</p></div><div class="sheet-foot"><div class="backup"><button data-action="download-recovery">⬇️ 下载原始数据</button><button data-action="accept-recovery">保留有效记录</button></div></div></div></div>`;
@@ -759,12 +801,12 @@ function openImportPreview(){
   const expense=sumType(records);
   const exportedAt=pendingImport.source.exportedAt&&Number.isFinite(Date.parse(pendingImport.source.exportedAt))?new Date(pendingImport.source.exportedAt).toLocaleString('zh-CN'):'未提供';
   const settings=pendingImport.settings,plans=pendingImport.plans;
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认完整恢复</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${pendingImport.source.format}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>支出记录<b>${records.length} 笔</b></div><div>支出合计<b>¥${fmt(expense)}</b></div><div>家庭成员<b>${settings.beneficiaries.length} 个</b></div><div>支出属性<b>4 种</b></div><div>正式专项<b>${plans.projects.length} 个</b></div><div>财务目标<b>${plans.goals.length} 个</b></div></div><p style="font-size:12px;color:#94a3b8;line-height:1.6;margin-top:12px">恢复会完整替换当前 v5 账目、家庭设置和规划。当前已有 v5 数据时，会先自动下载一份完整备份。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="apply-import" data-value="full">确认完整恢复</button></div></div></div>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认导入"><div class="sheet-head"><div class="r1"><h3>确认完整恢复</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><p style="font-size:13px;color:#64748b;line-height:1.7">文件：${esc(pendingImport.source.name)}<br>格式：${pendingImport.source.format}<br>导出时间：${exportedAt}<br>日期范围：${span}</p><div class="summary-grid"><div>支出记录<b>${records.length} 笔</b></div><div>支出合计<b>¥${fmt(expense)}</b></div><div>家庭成员<b>${settings.beneficiaries.length} 个</b></div><div>支出属性<b>4 种</b></div><div>正式专项<b>${plans.projects.length} 个</b></div><div>财务目标<b>${plans.goals.length} 个</b></div></div><p style="font-size:12px;color:#64748b;line-height:1.6;margin-top:12px">恢复会完整替换当前 v5 账目、家庭设置和规划。当前已有 v5 数据时，会先生成保护备份，并在你确认文件真实保存后继续。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="apply-import" data-value="full">确认完整恢复</button></div></div></div>`;
   document.body.style.overflow='hidden';
 }
-function applyImport(mode){
+function applyImport(mode,backupConfirmed=false){
   if(!pendingImport||mode!=='full')return;
-  if(!storageLocked&&(state.records.length||hasCustomSettings()||hasDecisionData()))exportData('导入前完整备份',false,false);
+  if(!backupConfirmed&&!storageLocked&&(state.records.length||hasCustomSettings()||hasDecisionData())){exportData('导入前完整备份',false);openBackupSavedConfirmation('import');return;}
   if(!persistFullRestore(pendingImport.records,pendingImport.settings,pendingImport.plans,true))return;
   const count=pendingImport.records.length;state.records=pendingImport.records;prefs=pendingImport.settings;decisions=pendingImport.plans;refreshDerivedSettings(prefs);pendingImport=null;storageLocked=false;upgradeRequired=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;backupMeta={};try{localStorage.removeItem(META_KEY);}catch(error){}
   closeModals();render();toast(`完整恢复成功，共 ${count} 笔`);
@@ -778,7 +820,7 @@ document.addEventListener('click',event=>{
   const action=el.dataset.action,value=el.dataset.value,hadModal=!!document.querySelector('#modals [role="dialog"]');
   if(action==='close-overlay'&&event.target!==el)return;
   const actions={
-    'set-view':()=>setView(value),'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,
+    'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,
     'open-project-form':()=>openProjectForm(),'edit-project':()=>openProjectForm(value),'save-project':saveProject,'open-project':()=>openProject(value),'open-project-actions':()=>openProjectActions(value),'set-current-project':()=>{closeModals();setCurrentProject(value);},'set-project-status':()=>{closeModals();setProjectStatus(value);},
     'set-planning-view':()=>setPlanningView(value),'open-goal-form':()=>openGoalForm(),'edit-goal':()=>openGoalForm(value),'save-goal':saveGoal,'open-goal-actions':()=>openGoalActions(value),
     'open-contribution':()=>openContribution(value),'open-contribution-history':()=>openContributionHistory(value),'edit-contribution':()=>{const ids=splitContributionValue(value);openContribution(ids[0],ids[1]);},
@@ -788,27 +830,27 @@ document.addEventListener('click',event=>{
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),
     'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(),'add-for-date':()=>openRecordForm(null,{date:value}),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
-    'undo-delete':undoDelete,'undo-add':undoAdd,'undo-no-spend':undoNoSpend,'close-modal':closeModals,'close-overlay':closeModals,
+    'undo-delete':undoDelete,'undo-add':undoAdd,'undo-no-spend':undoNoSpend,'close-modal':requestCloseModals,'close-overlay':requestCloseModals,
     'select-record-context':()=>selectRecordContext(value),'select-record-project':()=>selectRecordProject(value||''),'toggle-project-picker':toggleProjectPicker,'select-spending-type':()=>selectSpendingType(value),'select-quick-scene':()=>applyQuickScene(value),'toggle-quick-scenes':toggleQuickScenes,
     'toggle-form-no-spend':toggleFormNoSpend,'save-record':doSave,
     'open-data-management':openDataManagement,'open-start-fresh':openStartFresh,'confirm-start-fresh':confirmStartFresh,
-    'open-beneficiary-manager':openBeneficiaryManager,'open-beneficiary-name':()=>openBeneficiaryNameForm(value),'save-beneficiary-name':saveBeneficiaryName,'move-beneficiary':()=>moveBeneficiary(value),'toggle-beneficiary':()=>toggleBeneficiary(value),'set-default-beneficiary':()=>setDefaultBeneficiary(value),
-    'export':()=>exportData(),'import-trigger':()=>document.getElementById('importFile').click(),
+    'open-beneficiary-manager':()=>requestModalTransition(openBeneficiaryManager),'open-beneficiary-name':()=>openBeneficiaryNameForm(value),'save-beneficiary-name':saveBeneficiaryName,'move-beneficiary':()=>moveBeneficiary(value),'toggle-beneficiary':()=>toggleBeneficiary(value),'set-default-beneficiary':()=>setDefaultBeneficiary(value),
+    'export':startExport,'confirm-backup-saved':confirmBackupSaved,'open-import-preview':()=>requestModalTransition(returnToImportPreview),'import-trigger':()=>document.getElementById('importFile').click(),
     'apply-import':()=>applyImport(value),'open-recovery':openRecovery,'download-recovery':()=>downloadRecovery(),
     'accept-recovery':acceptRecovery
   };
   if(actions[action]){actions[action]();if(!hadModal&&document.querySelector('#modals [role="dialog"]'))modalReturnFocus=el;}
 });
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
-document.addEventListener('change',event=>{if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
-document.addEventListener('input',event=>{if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderQuickChoices();}syncRecordSaveButton();}});
+document.addEventListener('change',event=>{if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='filterRange')syncCustomDateFields();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
+document.addEventListener('input',event=>{if(event.target.id==='reviewHighlight'||event.target.id==='reviewAction')saveReviewDraft();if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderQuickChoices();}syncRecordSaveButton();}});
 document.addEventListener('focusin',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(true);});
 document.addEventListener('focusout',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(false);});
 new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
 document.addEventListener('keydown',event=>{
   const dialog=document.querySelector('#modals [role="dialog"]');if(!dialog)return;
   if(event.target.id==='fNote'&&event.key==='Enter'){event.preventDefault();event.target.blur();return;}
-  if(event.key==='Escape'){closeModals();return;}
+  if(event.key==='Escape'){requestCloseModals();return;}
   if(event.key!=='Tab')return;
   const focusable=[...dialog.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex]:not([tabindex="-1"])')].filter(item=>item.getClientRects().length);
   if(!focusable.length)return;
