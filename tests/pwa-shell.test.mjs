@@ -25,7 +25,7 @@ vm.runInContext(await readFile(new URL('../docs/sw.js',import.meta.url),'utf8'),
 let installPromise;
 listeners.install({waitUntil:promise=>{installPromise=promise;}});
 await installPromise;
-assert.deepEqual(opened,['cassie-account-v5-20260730-1']);
+assert.deepEqual(opened,['cassie-account-v5-20260730-2']);
 assert.equal(cachedShell.includes('./styles.css'),true);
 assert.equal(cachedShell.includes('./js/model.js'),true);
 assert.equal(cachedShell.includes('./js/storage.js'),true);
@@ -53,6 +53,8 @@ assert.doesNotMatch(appSource,/data-action="set-view"/);
 assert.match(appSource,/REVIEW_DRAFTS_KEY='cassie_review_drafts_v1'/);
 assert.match(appSource,/function requestCloseModals/);
 assert.match(appSource,/function openBackupSavedConfirmation/);
+assert.match(appSource,/closest\('\[data-action="select-quick-scene"\]'\)\)event\.preventDefault\(\)/);
+assert.match(appSource,/function startExport\(\)\{[\s\S]*closeModals\(\);render\(\);toast\('备份文件已生成'\)/);
 assert.match(appSource,/aria-pressed=/);
 assert.doesNotMatch(appSource,/☁️/);
 assert.match(stylesSource,/\.record-sheet\.note-search-mode/);

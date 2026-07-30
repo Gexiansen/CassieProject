@@ -714,7 +714,7 @@ function syncModalState(){
 }
 function closeModals(){
   const previous=modalReturnFocus,action=previous&&previous.dataset?previous.dataset.action:'',value=previous&&previous.dataset?previous.dataset.value:'';
-  modalDraftGuard=null;pendingBackupPurpose='';
+  modalDraftGuard=null;
   document.getElementById('modals').innerHTML='';syncModalState();
   const restore=()=>{const replacement=action?[...document.querySelectorAll(`[data-action="${action}"]`)].find(item=>(item.dataset.value||'')===(value||'')):null,target=replacement||previous;if(target&&document.contains(target))target.focus({preventScroll:true});};
   restore();setTimeout(restore,0);
@@ -750,21 +750,20 @@ function exportData(prefix='完整账本备份',showToast=true){
   downloadText(JSON.stringify(backupEnvelope(state.records,prefs,decisions),null,2),`${prefix}_${todayStr()}.json`);
   if(showToast)toast('备份文件已生成');
 }
-let pendingBackupPurpose='';
-function openBackupSavedConfirmation(purpose){
-  pendingBackupPurpose=purpose;
-  const importing=purpose==='import';
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认备份已保存"><div class="sheet-head"><div class="r1"><div><h3>确认备份已保存</h3><p style="font-size:12px;color:#64748b;margin-top:3px">${importing?'恢复前保护当前账本':'完成本次完整备份'}</p></div><button class="x ${importing?'back':''}" data-action="${importing?'open-import-preview':'close-modal'}" aria-label="${importing?'返回导入预览':'关闭'}">${importing?'‹':'✕'}</button></div></div><div class="sheet-body"><p style="font-size:14px;color:#64748b;line-height:1.7">备份文件已经生成。请先在手机“文件”或浏览器下载记录中确认文件真实存在，再继续。</p>${importing?'<div class="rescue" style="margin-top:12px">确认后会立即用待导入文件完整替换当前账本。</div>':''}</div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-backup-saved">${importing?'已保存，继续恢复':'我已确认保存'}</button></div></div></div>`;
+function openBackupSavedConfirmation(){
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="确认备份已保存"><div class="sheet-head"><div class="r1"><div><h3>确认备份已保存</h3><p style="font-size:12px;color:#64748b;margin-top:3px">恢复前保护当前账本</p></div><button class="x back" data-action="open-import-preview" aria-label="返回导入预览">‹</button></div></div><div class="sheet-body"><p style="font-size:14px;color:#64748b;line-height:1.7">备份文件已经生成。请先在手机“文件”或浏览器下载记录中确认文件真实存在，再继续。</p><div class="rescue" style="margin-top:12px">确认后会立即用待导入文件完整替换当前账本。</div></div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-backup-saved">已保存，继续恢复</button></div></div></div>`;
   document.body.style.overflow='hidden';
 }
-function startExport(){exportData('完整账本备份',false);openBackupSavedConfirmation('export');}
-function returnToImportPreview(){pendingBackupPurpose='';openImportPreview();}
-function confirmBackupSaved(){
-  const purpose=pendingBackupPurpose;pendingBackupPurpose='';
-  if(purpose==='import'){applyImport('full',true);return;}
+function startExport(){
+  exportData('完整账本备份',false);
   backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,settingsUpdatedAt:prefs.updatedAt,plansUpdatedAt:decisions.updatedAt};
-  try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}catch(error){toast('备份确认时间记录失败：'+error.message);return;}
-  closeModals();render();toast('备份已确认保存');
+  try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}
+  catch(error){closeModals();render();toast('备份已生成，但备份时间记录失败：'+error.message);return;}
+  closeModals();render();toast('备份文件已生成');
+}
+function returnToImportPreview(){openImportPreview();}
+function confirmBackupSaved(){
+  applyImport('full',true);
 }
 function openRecovery(){
   document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据救援"><div class="sheet-head"><div class="r1"><h3>🛟 数据救援</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="rescue">检测结果：${esc(recoveryError)}。当前成功读取 ${state.records.length} 笔有效记录。</div><p style="font-size:13px;color:#64748b;line-height:1.7">请先下载未经处理的原始内容。确认文件已经保存后，才能用当前有效记录重建本地账本。</p></div><div class="sheet-foot"><div class="backup"><button data-action="download-recovery">⬇️ 下载原始数据</button><button data-action="accept-recovery">保留有效记录</button></div></div></div></div>`;
@@ -806,7 +805,7 @@ function openImportPreview(){
 }
 function applyImport(mode,backupConfirmed=false){
   if(!pendingImport||mode!=='full')return;
-  if(!backupConfirmed&&!storageLocked&&(state.records.length||hasCustomSettings()||hasDecisionData())){exportData('导入前完整备份',false);openBackupSavedConfirmation('import');return;}
+  if(!backupConfirmed&&!storageLocked&&(state.records.length||hasCustomSettings()||hasDecisionData())){exportData('导入前完整备份',false);openBackupSavedConfirmation();return;}
   if(!persistFullRestore(pendingImport.records,pendingImport.settings,pendingImport.plans,true))return;
   const count=pendingImport.records.length;state.records=pendingImport.records;prefs=pendingImport.settings;decisions=pendingImport.plans;refreshDerivedSettings(prefs);pendingImport=null;storageLocked=false;upgradeRequired=false;recoveryRaw='';recoveryError='';recoveryDownloaded=false;backupMeta={};try{localStorage.removeItem(META_KEY);}catch(error){}
   closeModals();render();toast(`完整恢复成功，共 ${count} 笔`);
@@ -844,6 +843,7 @@ document.addEventListener('click',event=>{
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
 document.addEventListener('change',event=>{if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='filterRange')syncCustomDateFields();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
 document.addEventListener('input',event=>{if(event.target.id==='reviewHighlight'||event.target.id==='reviewAction')saveReviewDraft();if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderQuickChoices();}syncRecordSaveButton();}});
+document.addEventListener('pointerdown',event=>{if(document.activeElement&&document.activeElement.id==='fNote'&&event.target.closest('[data-action="select-quick-scene"]'))event.preventDefault();});
 document.addEventListener('focusin',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(true);});
 document.addEventListener('focusout',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(false);});
 new MutationObserver(syncModalState).observe(document.getElementById('modals'),{childList:true,subtree:true});
