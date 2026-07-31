@@ -166,9 +166,8 @@ function render(){
   html+=`<nav class="tabs" aria-label="主要导航">
     <button class="${state.tab==='home'?'on':''}" data-action="set-tab" data-value="home"${state.tab==='home'?' aria-current="page"':''}><span>🏠</span>首页</button>
     <button class="${state.tab==='details'?'on':''}" data-action="set-tab" data-value="details"${state.tab==='details'?' aria-current="page"':''}><span>📋</span>明细</button>
-    <button class="record-nav" data-action="open-add" aria-label="记一笔"><span>＋</span>记一笔</button>
     <button class="${state.tab==='planning'?'on':''}" data-action="set-tab" data-value="planning"${state.tab==='planning'?' aria-current="page"':''}><span>🧭</span>计划</button>
-  </nav>`;
+  </nav><button class="record-fab" data-action="open-add" aria-label="记一笔"><span aria-hidden="true">＋</span></button>`;
   document.getElementById('app').innerHTML=html;
 }
 
@@ -312,7 +311,7 @@ function renderFilterPanel(){
 }
 
 function renderList(){
-  if(!state.records.length)return `<div class="card"><div class="empty">还没有任何记录<br><span style="font-size:13px;font-weight:500">点底部「记一笔」开始吧 ✨</span></div></div>`;
+  if(!state.records.length)return `<div class="card"><div class="empty">还没有任何记录<br><span style="font-size:13px;font-weight:500">点右下角“＋”开始吧 ✨</span></div></div>`;
   const active=hasActiveFilters(),records=filterRecords(state.records,state.filters);
   let h=renderFilterPanel();
   if(active){const expense=sumType(records);h+=`<div class="filter-summary"><div>结果<b>${records.length} 笔</b></div><div>支出合计<b class="ex-c">-${fmt(expense)}</b></div></div>`;}
@@ -706,7 +705,7 @@ function requestCloseModals(){
 function requestModalTransition(next){if(modalDraftGuard&&modalDraftGuard()&&!confirm('放弃未保存的内容？'))return false;modalDraftGuard=null;next();return true;}
 function syncModalState(){
   const modals=document.getElementById('modals'),app=document.getElementById('app'),dialog=modals.querySelector('[role="dialog"]'),hasModal=!!dialog;
-  app.inert=hasModal;document.body.style.overflow=hasModal?'hidden':'';
+  app.inert=hasModal;document.body.classList.toggle('modal-open',hasModal);document.body.style.overflow=hasModal?'hidden':'';
   if(hasModal){
     if(!modalReturnFocus&&document.activeElement instanceof HTMLElement&&!modals.contains(document.activeElement))modalReturnFocus=document.activeElement;
     if(!dialog.contains(document.activeElement)){const initial=dialog.querySelector('.x,button,input,select,textarea');if(initial)initial.focus({preventScroll:true});}

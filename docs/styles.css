@@ -1,7 +1,7 @@
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
   background:linear-gradient(180deg,#eef2ff 0%,#fdf2f8 50%,#ecfeff 100%);min-height:100vh;color:#334155;}
-.wrap{max-width:640px;margin:0 auto;padding:16px 16px 112px;}
+.wrap{max-width:640px;margin:0 auto;padding:16px 16px calc(152px + env(safe-area-inset-bottom));}
 /* header */
 .top{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
 .top-actions{display:flex;align-items:center;gap:8px;}
@@ -28,12 +28,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .pill.down{background:#10b981;color:#fff;}
 .pill.flat{background:rgba(255,255,255,.8);color:#64748b;}
 /* bottom navigation */
-.tabs{position:fixed;left:50%;bottom:0;z-index:45;transform:translateX(-50%);width:min(100%,640px);display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin:0;padding:7px 10px max(7px,env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;box-shadow:0 -8px 24px rgba(15,23,42,.1);backdrop-filter:blur(12px);}
+.tabs{position:fixed;left:50%;bottom:0;z-index:45;transform:translateX(-50%);width:min(100%,640px);display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:0;padding:7px 10px max(7px,env(safe-area-inset-bottom));background:rgba(255,255,255,.96);border-top:1px solid #e2e8f0;box-shadow:0 -8px 24px rgba(15,23,42,.1);backdrop-filter:blur(12px);}
 .tabs button{min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:4px;border:none;border-radius:14px;background:none;color:#64748b;font-size:11px;font-weight:800;cursor:pointer;font-family:inherit;}
 .tabs button span{font-size:18px;line-height:1;}
 .tabs button.on{background:#eef2ff;color:#4f46e5;}
-.tabs .record-nav{background:#6366f1;color:#fff;box-shadow:0 5px 14px rgba(99,102,241,.3);}
-.tabs .record-nav span{font-size:24px;}
+.record-fab{position:fixed;right:max(16px,calc((100vw - 640px)/2 + 16px));bottom:calc(78px + env(safe-area-inset-bottom));z-index:46;width:56px;height:56px;display:flex;align-items:center;justify-content:center;border:none;border-radius:50%;background:#6366f1;color:#fff;box-shadow:0 8px 20px rgba(99,102,241,.4);cursor:pointer;font-family:inherit;transition:transform .15s,opacity .15s;}
+.record-fab span{font-size:34px;line-height:1;font-weight:500;transform:translateY(-1px);}
+.record-fab:active{transform:scale(.94);}
+body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .compact-period{display:flex;align-items:center;gap:8px;background:#fff;border:2px solid #f1f5f9;border-radius:18px;padding:8px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.04);}
 .compact-period .period-label{flex:1;text-align:center;color:#475569;font-size:14px;font-weight:800;}
 .compact-period button{min-width:44px;min-height:44px;border:none;background:#f8fafc;color:#64748b;border-radius:12px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;}
@@ -346,7 +348,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei
 .import-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
 .import-actions button{min-height:44px;background:#fff;border:2px solid #e2e8f0;color:#64748b;border-radius:14px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;}
 .import-actions .full{grid-column:1/-1;background:#6366f1;border-color:#6366f1;color:#fff;}
-.toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#334155;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:10px;white-space:nowrap;}
+.toast{position:fixed;bottom:calc(146px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:#334155;color:#fff;padding:10px 16px;border-radius:99px;font-size:14px;font-weight:600;z-index:99;opacity:0;transition:opacity .3s;pointer-events:none;display:flex;align-items:center;gap:10px;white-space:nowrap;}
 .toast.show{opacity:1;pointer-events:auto;}
 .toast button{display:none;min-width:44px;min-height:44px;border:none;background:#fff;color:#4f46e5;border-radius:99px;padding:4px 10px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;}
 .toast.undo button{display:block;}
