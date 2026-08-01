@@ -55,15 +55,21 @@ function noteAnalysisLabel(value){
   const note=String(value||'').trim().replace(/\s+/g,' ');if(!note)return '未填写备注';
   return NOTE_ALIAS_LOOKUP.get(note.toLocaleLowerCase('zh-CN'))||note;
 }
+function noteSuggestions(records,query='',limit=3){
+  const normalizedQuery=normalizeQuickQuery(query),groups=new Map();
+  records.forEach(record=>{const note=String(record.note||'').trim().replace(/\s+/g,' '),normalized=normalizeQuickQuery(note);if(!normalized||normalizedQuery&&!normalized.includes(normalizedQuery))return;const existing=groups.get(normalized)||{note,count:0,latest:''};existing.count++;existing.latest=existing.latest>String(record.updatedAt||'')?existing.latest:String(record.updatedAt||'');groups.set(normalized,existing);});
+  const items=[...groups.values()].sort((a,b)=>{const am=normalizeQuickQuery(a.note)===normalizedQuery?3:normalizeQuickQuery(a.note).startsWith(normalizedQuery)?2:1,bm=normalizeQuickQuery(b.note)===normalizedQuery?3:normalizeQuickQuery(b.note).startsWith(normalizedQuery)?2:1;return bm-am||b.count-a.count||b.latest.localeCompare(a.latest)||a.note.localeCompare(b.note,'zh-CN');});
+  return items.slice(0,Math.max(0,Number.isInteger(limit)?limit:3));
+}
 function spendingNoteBreakdown(records,limit=3){
   const groups=new Map();records.forEach(record=>{const label=noteAnalysisLabel(record.note),existing=groups.get(label)||{label,count:0,amountCents:0};existing.count++;existing.amountCents+=record.amountCents;groups.set(label,existing);});
   const totalCents=records.reduce((sum,record)=>sum+record.amountCents,0),items=[...groups.values()].sort((a,b)=>b.amountCents-a.amountCents||b.count-a.count||a.label.localeCompare(b.label,'zh-CN'));
   return {totalCents,items:items.slice(0,Math.max(0,limit)).map(item=>({...item,percent:totalCents?item.amountCents/totalCents*100:0}))};
 }
 function monthDayCount(value){const[y,m]=String(value).split('-').map(Number);return Number.isInteger(y)&&Number.isInteger(m)&&m>=1&&m<=12?new Date(y,m,0).getDate():0;}
-function monthRecordQuality(value,records,noSpendDates=[]){
-  const monthRecords=records.filter(record=>record.date.slice(0,7)===value),monthDays=monthDayCount(value),spendDates=new Set(monthRecords.map(record=>record.date)),confirmedNoSpendDates=[...new Set(noSpendDates)].filter(date=>date.slice(0,7)===value&&!spendDates.has(date)),coveredDays=new Set([...spendDates,...confirmedNoSpendDates]).size,emptyNoteRecords=monthRecords.filter(record=>!String(record.note||'').trim());
-  return {recordCount:monthRecords.length,expenseCents:monthRecords.reduce((sum,record)=>sum+record.amountCents,0),monthDays,spendDays:spendDates.size,confirmedNoSpendDays:confirmedNoSpendDates.length,coveredDays,coveragePercent:monthDays?coveredDays/monthDays*100:0,emptyNoteCount:emptyNoteRecords.length,emptyNoteCents:emptyNoteRecords.reduce((sum,record)=>sum+record.amountCents,0),topDrivers:spendingNoteBreakdown(monthRecords,3).items};
+function monthRecordQuality(value,records,noSpendDates=[],baseDate=''){
+  const monthDays=monthDayCount(value),progress=baseDate?monthProgress(value,baseDate):{elapsedDays:monthDays},base=String(baseDate||'').slice(0,10),baseMonth=base.slice(0,7),inReviewWindow=date=>!base||value<baseMonth||(value===baseMonth&&date<=base),monthRecords=records.filter(record=>record.date.slice(0,7)===value&&inReviewWindow(record.date)),reviewableDays=base?progress.elapsedDays:monthDays,spendDates=new Set(monthRecords.map(record=>record.date)),confirmedNoSpendDates=[...new Set(noSpendDates)].filter(date=>date.slice(0,7)===value&&inReviewWindow(date)&&!spendDates.has(date)),coveredDays=new Set([...spendDates,...confirmedNoSpendDates]).size,emptyNoteRecords=monthRecords.filter(record=>!String(record.note||'').trim()),missingDays=Math.max(0,reviewableDays-coveredDays),futureDays=Math.max(0,monthDays-reviewableDays);
+  return {recordCount:monthRecords.length,expenseCents:monthRecords.reduce((sum,record)=>sum+record.amountCents,0),monthDays,elapsedDays:reviewableDays,reviewableDays,futureDays,missingDays,spendDays:spendDates.size,confirmedNoSpendDays:confirmedNoSpendDates.length,coveredDays,coveragePercent:reviewableDays?coveredDays/reviewableDays*100:0,emptyNoteCount:emptyNoteRecords.length,emptyNoteCents:emptyNoteRecords.reduce((sum,record)=>sum+record.amountCents,0),topDrivers:spendingNoteBreakdown(monthRecords,3).items};
 }
 function monthProgress(value,baseDate){
   const monthDays=monthDayCount(value),base=String(baseDate||'').slice(0,10),baseMonth=base.slice(0,7),elapsedDays=value<baseMonth?monthDays:value>baseMonth?0:Math.min(monthDays,Math.max(0,Number(base.slice(8,10))||0));

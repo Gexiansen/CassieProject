@@ -262,6 +262,11 @@ body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .record-type-hint{margin-top:6px;padding:7px 9px;border-radius:10px;background:#f8fafc;color:#64748b;font-size:11px;line-height:1.45;}
 .record-note-hint{min-height:0;margin-top:4px;color:#6366f1;font-size:10px;line-height:1.35;}
 .record-note-hint:empty{display:none;}
+.record-note-suggestions{display:flex;align-items:center;gap:6px;overflow-x:auto;margin-top:5px;padding-bottom:2px;scrollbar-width:none;}
+.record-note-suggestions::-webkit-scrollbar{display:none;}
+.record-note-suggestion-title{flex:none;color:#64748b;font-size:10px;font-weight:700;}
+.record-note-suggestions button{flex:none;min-height:40px;max-width:150px;border:2px solid #e0e7ff;background:#eef2ff;color:#4f46e5;border-radius:12px;padding:7px 9px;font-size:11px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.record-note-suggestions button span{margin-left:4px;color:#818cf8;font-size:10px;font-weight:800;}
 .field input[type=text],.field input[type=date],.field input[type=number],.field select{width:100%;min-height:44px;background:#f8fafc;border:2px solid #f1f5f9;border-radius:16px;
   padding:10px 12px;font-size:14px;color:#475569;font-weight:500;outline:none;font-family:inherit;}
 .field input:focus{border-color:#c7d2fe;}

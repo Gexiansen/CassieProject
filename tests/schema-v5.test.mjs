@@ -111,6 +111,15 @@ const noteBreakdown=vm.runInContext('spendingNoteBreakdown(noteRecords,3)',conte
 assert.deepEqual(Array.from(noteBreakdown.items, item=>item.label),['叮咚买菜','未填写备注','电车充电']);
 assert.equal(noteBreakdown.items[0].count,2);
 assert.equal(noteBreakdown.items[0].amountCents,2000);
+context.noteSuggestionRecords=[
+  {note:'饮食｜午餐',updatedAt:'2026-07-01T10:00:00.000Z'},
+  {note:'饮食｜午餐',updatedAt:'2026-07-02T10:00:00.000Z'},
+  {note:'饮食｜晚餐',updatedAt:'2026-07-03T10:00:00.000Z'},
+  {note:'交通｜电车充电',updatedAt:'2026-07-04T10:00:00.000Z'},
+];
+const noteSuggestionResult=vm.runInContext("noteSuggestions(noteSuggestionRecords,'饮食',3)",context);
+assert.deepEqual(Array.from(noteSuggestionResult, item=>item.note),['饮食｜午餐','饮食｜晚餐']);
+assert.equal(noteSuggestionResult[0].count,2);
 const quality=vm.runInContext("monthRecordQuality('2026-07',noteRecords,['2026-07-05','2026-07-06'])",context);
 assert.equal(quality.monthDays,31);
 assert.equal(quality.spendDays,4);
@@ -118,6 +127,15 @@ assert.equal(quality.confirmedNoSpendDays,2);
 assert.equal(quality.coveredDays,6);
 assert.equal(quality.emptyNoteCount,1);
 assert.equal(quality.emptyNoteCents,500);
+const currentQuality=vm.runInContext("monthRecordQuality('2026-08',[{date:'2026-08-31',note:'未来测试',amountCents:999}],['2026-08-01'],'2026-08-01')",context);
+assert.equal(currentQuality.monthDays,31);
+assert.equal(currentQuality.reviewableDays,1);
+assert.equal(currentQuality.futureDays,30);
+assert.equal(currentQuality.spendDays,0);
+assert.equal(currentQuality.confirmedNoSpendDays,1);
+assert.equal(currentQuality.coveredDays,1);
+assert.equal(currentQuality.missingDays,0);
+assert.equal(currentQuality.coveragePercent,100);
 assert.deepEqual({...vm.runInContext("monthProgress('2026-07','2026-07-15')",context)},{monthDays:31,elapsedDays:15,elapsedPercent:15/31*100});
 context.ordinarySamples=[
   {spendingType:'fixed',projectId:''},
