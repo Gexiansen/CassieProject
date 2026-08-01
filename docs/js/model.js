@@ -1,11 +1,16 @@
 /* ============ schema v5 数据定义 ============ */
 const SPENDING_TYPES={
-  fixed:{name:'固定必需',shortName:'固定',color:'#6366f1',description:'稳定且短期难以减少'},
-  flexible:{name:'弹性必需',shortName:'弹性',color:'#22c55e',description:'必须发生但可以优化'},
-  discretionary:{name:'可选消费',shortName:'可选',color:'#f59e0b',description:'可以取消、推迟或降低'},
-  exceptional:{name:'专项突发',shortName:'专项',color:'#ef4444',description:'不进入普通月份基线'},
+  fixed:{name:'固定必需',shortName:'固定',color:'#6366f1',description:'稳定且短期难以减少',examples:'房租、保险、固定订阅'},
+  flexible:{name:'弹性必需',shortName:'弹性',color:'#22c55e',description:'必须发生但可以优化',examples:'买菜、餐饮、交通、充电'},
+  discretionary:{name:'可选消费',shortName:'可选',color:'#f59e0b',description:'可以取消、推迟或降低',examples:'奶茶、玩具、非必要购物'},
+  exceptional:{name:'专项突发',shortName:'专项',color:'#ef4444',description:'不进入普通月份基线',examples:'突发维修、急诊、临时大额支出'},
 };
 const SPENDING_TYPE_IDS=Object.keys(SPENDING_TYPES);
+const NOTE_ALIAS_GROUPS=[
+  {label:'叮咚买菜',aliases:['叮咚','叮咚买菜']},
+  {label:'电车充电',aliases:['电车充电','交通电车充电']},
+];
+const NOTE_ALIAS_LOOKUP=new Map(NOTE_ALIAS_GROUPS.flatMap(group=>group.aliases.map(alias=>[alias.toLocaleLowerCase('zh-CN'),group.label])));
 const DEFAULT_BENEFICIARIES=[
   {id:'family',name:'共同',kind:'shared',active:true},
   {id:'wife',name:'妻子',kind:'member',active:true},
@@ -45,6 +50,24 @@ function spendingTypeBreakdown(records){
   records.forEach(record=>{if(totals[record.spendingType]!==undefined)totals[record.spendingType]+=record.amountCents;});
   const totalCents=Object.values(totals).reduce((sum,value)=>sum+value,0),items=SPENDING_TYPE_IDS.map(id=>({id,...SPENDING_TYPES[id],amountCents:totals[id],percent:totalCents?totals[id]/totalCents*100:0}));
   return {totalCents,baselineCents:totals.fixed+totals.flexible,adjustableCents:totals.discretionary,totals,items};
+}
+function noteAnalysisLabel(value){
+  const note=String(value||'').trim().replace(/\s+/g,' ');if(!note)return '未填写备注';
+  return NOTE_ALIAS_LOOKUP.get(note.toLocaleLowerCase('zh-CN'))||note;
+}
+function spendingNoteBreakdown(records,limit=3){
+  const groups=new Map();records.forEach(record=>{const label=noteAnalysisLabel(record.note),existing=groups.get(label)||{label,count:0,amountCents:0};existing.count++;existing.amountCents+=record.amountCents;groups.set(label,existing);});
+  const totalCents=records.reduce((sum,record)=>sum+record.amountCents,0),items=[...groups.values()].sort((a,b)=>b.amountCents-a.amountCents||b.count-a.count||a.label.localeCompare(b.label,'zh-CN'));
+  return {totalCents,items:items.slice(0,Math.max(0,limit)).map(item=>({...item,percent:totalCents?item.amountCents/totalCents*100:0}))};
+}
+function monthDayCount(value){const[y,m]=String(value).split('-').map(Number);return Number.isInteger(y)&&Number.isInteger(m)&&m>=1&&m<=12?new Date(y,m,0).getDate():0;}
+function monthRecordQuality(value,records,noSpendDates=[]){
+  const monthRecords=records.filter(record=>record.date.slice(0,7)===value),monthDays=monthDayCount(value),spendDates=new Set(monthRecords.map(record=>record.date)),confirmedNoSpendDates=[...new Set(noSpendDates)].filter(date=>date.slice(0,7)===value&&!spendDates.has(date)),coveredDays=new Set([...spendDates,...confirmedNoSpendDates]).size,emptyNoteRecords=monthRecords.filter(record=>!String(record.note||'').trim());
+  return {recordCount:monthRecords.length,expenseCents:monthRecords.reduce((sum,record)=>sum+record.amountCents,0),monthDays,spendDays:spendDates.size,confirmedNoSpendDays:confirmedNoSpendDates.length,coveredDays,coveragePercent:monthDays?coveredDays/monthDays*100:0,emptyNoteCount:emptyNoteRecords.length,emptyNoteCents:emptyNoteRecords.reduce((sum,record)=>sum+record.amountCents,0),topDrivers:spendingNoteBreakdown(monthRecords,3).items};
+}
+function monthProgress(value,baseDate){
+  const monthDays=monthDayCount(value),base=String(baseDate||'').slice(0,10),baseMonth=base.slice(0,7),elapsedDays=value<baseMonth?monthDays:value>baseMonth?0:Math.min(monthDays,Math.max(0,Number(base.slice(8,10))||0));
+  return {monthDays,elapsedDays,elapsedPercent:monthDays?elapsedDays/monthDays*100:0};
 }
 function isOrdinarySpending(record){return !record.projectId&&record.spendingType!=='exceptional';}
 function median(values){if(!values.length)return 0;const sorted=[...values].sort((a,b)=>a-b),middle=Math.floor(sorted.length/2);return sorted.length%2?sorted[middle]:Math.round((sorted[middle-1]+sorted[middle])/2);}

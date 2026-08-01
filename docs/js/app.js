@@ -92,7 +92,7 @@ function calculateMonthReview(value,records=state.records,decisionData=decisions
   let goalContributionCents=0,goalContributionCount=0;
   decisionData.goals.forEach(goal=>goal.contributions.forEach(item=>{if(item.date.slice(0,7)===value){goalContributionCents+=item.amountCents;goalContributionCount++;}}));
   const followReview=decisionData.reviews[previousMonthKey(value)]||null,followActions=followReview&&followReview.action?[followReview.action]:[];
-  return {availableCents,availableSource:budget&&budget.availableCents?'plan':'none',expenseCents,balanceCents:availableCents===null?null:availableCents-expenseCents-goalContributionCents,budget:calculateBudget(value,records,decisionData),goalContributionCents,goalContributionCount,followActions};
+  return {availableCents,availableSource:budget&&budget.availableCents?'plan':'none',expenseCents,balanceCents:availableCents===null?null:availableCents-expenseCents-goalContributionCents,budget:calculateBudget(value,records,decisionData),goalContributionCents,goalContributionCount,followActions,quality:monthRecordQuality(value,records,decisionData.noSpendDates||[]),pace:monthProgress(value,todayStr())};
 }
 function reviewObservations(metrics,decisionData=decisions){
   const items=[];
@@ -100,8 +100,11 @@ function reviewObservations(metrics,decisionData=decisions){
   else if(metrics.balanceCents<0)items.push({warn:true,text:`扣除支出和目标投入后，本月超出可支配金额 ¥${fmt(Math.abs(metrics.balanceCents))}。`});
   else items.push({warn:false,text:`扣除支出和目标投入后，本月剩余 ¥${fmt(metrics.balanceCents)}，占可支配金额的 ${(metrics.balanceCents/metrics.availableCents*100).toFixed(1)}%。`});
   if(!metrics.budget.configured)items.push({warn:true,text:'本月没有预算，无法判断支出是否符合月初计划。'});
-  else if(metrics.budget.percent!==null&&metrics.budget.percent>=100)items.push({warn:true,text:`总预算已超出 ¥${fmt(Math.abs(metrics.budget.remainingCents))}。`});
-  else if(metrics.budget.percent!==null)items.push({warn:metrics.budget.percent>=80,text:`总预算执行率为 ${metrics.budget.percent.toFixed(1)}%，剩余 ¥${fmt(Math.max(0,metrics.budget.remainingCents))}。`});
+  else if(metrics.budget.percent!==null&&metrics.budget.percent>=100)items.push({warn:true,text:`日常预算已超出 ¥${fmt(Math.abs(metrics.budget.remainingCents))}；本月时间已过 ${metrics.pace.elapsedPercent.toFixed(1)}%。`});
+  else if(metrics.budget.percent!==null){const paceGap=metrics.budget.percent-metrics.pace.elapsedPercent;items.push({warn:metrics.budget.percent>=80||paceGap>=10,text:`日常预算已用 ${metrics.budget.percent.toFixed(1)}%，本月时间已过 ${metrics.pace.elapsedPercent.toFixed(1)}%，剩余 ¥${fmt(Math.max(0,metrics.budget.remainingCents))}${paceGap>=10?'，支出速度偏快':''}。`});}
+  if(metrics.quality.coveredDays<metrics.quality.monthDays)items.push({warn:false,text:`本月已覆盖 ${metrics.quality.coveredDays}/${metrics.quality.monthDays} 天，仍有 ${metrics.quality.monthDays-metrics.quality.coveredDays} 天没有记录或无支出确认。`});
+  else if(metrics.quality.monthDays)items.push({warn:false,text:`本月记录覆盖完整：${metrics.quality.coveredDays}/${metrics.quality.monthDays} 天。`});
+  if(metrics.quality.emptyNoteCount)items.push({warn:metrics.quality.emptyNoteCents>=10000,text:`有 ${metrics.quality.emptyNoteCount} 笔支出未填写备注，合计 ¥${fmt(metrics.quality.emptyNoteCents)}${metrics.quality.emptyNoteCents>=10000?'，建议补充以便月末复盘':''}。`});
   if(decisionData.goals.some(goal=>goal.status==='active'))items.push({warn:metrics.goalContributionCents===0,text:metrics.goalContributionCents?`本月完成 ${metrics.goalContributionCount} 次目标投入，共 ¥${fmt(metrics.goalContributionCents)}。`:'本月还没有目标投入记录。'});
   return items;
 }
@@ -223,11 +226,18 @@ function renderGoalsPlanning(){
   return h;
 }
 
+function renderReviewQuality(metrics){
+  const quality=metrics.quality,drivers=quality.topDrivers,max=drivers[0]?.amountCents||1;
+  const rows=drivers.length?drivers.map(item=>`<div class="bar-item"><div class="row"><span class="l">${esc(item.label)}<span class="cat"> · ${item.count}笔 · ${item.percent.toFixed(1)}％</span></span><span class="r">¥${fmt(item.amountCents)}</span></div><div class="track"><div class="fill" style="width:${item.amountCents/max*100}%;background:#818cf8"></div></div></div>`).join(''):'<div class="empty" style="padding:10px 0">还没有可分析的支出</div>';
+  return `<div class="card"><h3>🧭 本月支出线索 <span class="sub">按备注归并</span></h3><div class="review-summary review-quality-summary"><div>记录覆盖<b>${quality.coveredDays}/${quality.monthDays}天</b><small>${quality.spendDays}天支出 · ${quality.confirmedNoSpendDays}天确认无支出</small></div><div>支出记录<b>${quality.recordCount}笔</b><small>合计 ¥${fmt(quality.expenseCents)}</small></div><div>空备注<b>${quality.emptyNoteCount}笔</b><small>合计 ¥${fmt(quality.emptyNoteCents)}</small></div></div><p class="planning-note">仅在分析中归并明显别名，原始备注不会被改写。</p>${rows}</div>`;
+}
+
 function renderReviewPlanning(){
   const key=monthKey(),today=new Date(),currentKey=monthKey(today.getFullYear(),today.getMonth()),label=`${state.year}年${state.month+1}月`;
   if(key>currentKey)return `<div class="card"><h3>📝 月度复盘 <span class="sub">${label}</span></h3><div class="empty">这个月还没有发生<br><span style="font-size:12px;font-weight:500">到当月再根据实际支出进行复盘</span></div></div>`;
   const metrics=calculateMonthReview(key),review=decisions.reviews[key]||{highlight:'',action:null},draft=reviewDrafts[key]||null,draftHighlight=draft?draft.highlight:review.highlight,draftAction=draft?draft.action:review.action?review.action.text:'',observations=reviewObservations(metrics);
   let h=`<div class="card"><h3>📊 本月结果 <span class="sub">${label}</span></h3><div class="review-summary"><div>可支配<b>${metrics.availableCents===null?'未设置':`¥${fmt(metrics.availableCents)}`}</b></div><div>支出<b>¥${fmt(metrics.expenseCents)}</b></div><div>剩余<b class="${metrics.balanceCents!==null&&metrics.balanceCents<0?'negative':''}">${metrics.balanceCents===null?'—':`${metrics.balanceCents<0?'-':''}¥${fmt(Math.abs(metrics.balanceCents))}`}</b></div></div><p class="planning-note" style="margin:0">目标投入：¥${fmt(metrics.goalContributionCents)}，共 ${metrics.goalContributionCount} 次。</p></div>`;
+  h+=renderReviewQuality(metrics);
   h+=`<div class="card"><h3>🔎 系统观察 <span class="sub">根据当前本地数据</span></h3><div class="review-observations">${observations.map(item=>`<div class="review-observation ${item.warn?'warn':''}">${item.warn?'⚠️':'✓'} ${item.text}</div>`).join('')}</div></div>`;
   const followMonth=previousMonthKey(key);
   h+=`<div class="card"><h3>✅ 上月行动跟进 <span class="sub">来自 ${followMonth}</span></h3>`;
@@ -632,17 +642,17 @@ function openRecordForm(id=null,preset=null){
   const h=`<div class="overlay record-overlay" data-action="close-overlay"><div class="sheet record-sheet" role="dialog" aria-modal="true" aria-label="${record?'修改记录':'新增记录'}">
     <div class="record-sticky"><div class="sheet-head"><div class="r1"><div><h3>✏️ ${record?'修改支出':'快速记账'}</h3><p style="font-size:12px;color:#64748b;margin-top:3px">选择内容后，点击底部保存</p></div><div class="record-head-actions">${noSpendAction}<button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div></div>
     <div class="record-sticky-body">${dateMarkup}
-      <div class="field record-context-field"><label>获益方</label><div class="record-context" id="recordContext"></div></div>
-      <div class="field record-type-field"><label>支出属性</label><div class="spending-type-choices" id="spendingTypeChoices"></div></div>
+      <div class="field record-context-field"><label>获益方 <span class="field-help">多人共同受益时选“共同”</span></label><div class="record-context" id="recordContext"></div></div>
+      <div class="field record-type-field"><label>支出属性 <span class="field-help">按能否取消或优化判断</span></label><div class="spending-type-choices" id="spendingTypeChoices"></div><div class="record-type-hint" id="recordTypeHint" role="status"></div></div>
       <div class="record-search-summary" id="recordSearchSummary" role="status"></div>
-      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注／搜索</label><input id="fNote" type="text" maxlength="40" enterkeyhint="done" placeholder="如：午餐" value="${source?esc(source.note||''):''}"></div></div>
+      <div class="record-main"><div class="field"><label for="fAmt">金额</label><div class="amount-box e"><span class="y">¥</span><input id="fAmt" type="number" inputmode="decimal" step="0.01" min="0.01" placeholder="0.00" value="${source&&source.amountCents?(source.amountCents/100).toFixed(2):''}"></div></div><div class="field"><label for="fNote">备注／搜索</label><input id="fNote" type="text" maxlength="40" enterkeyhint="done" placeholder="如：饮食｜午餐" value="${source?esc(source.note||''):''}"><div class="record-note-hint" id="recordNoteHint" role="status"></div></div></div>
       <div id="recordProject"></div></div></div>
     <div class="sheet-body record-scroll-body">
       <div class="field" id="quickField"><label>快捷记录</label><div class="quick-picks" id="quickPicks"></div><button class="quick-picks-more" id="quickPicksMore" data-action="toggle-quick-scenes"></button></div>
     </div><div class="sheet-foot record-save-foot"><button class="save-btn e" id="recordSaveButton" data-action="save-record" disabled>${record?'保存修改':'保存支出'}</button></div>
   </div></div>`;
   document.getElementById('modals').innerHTML=h;document.body.style.overflow='hidden';recordViewportBaseline=0;recordKeyboardSeen=false;
-  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();syncRecordViewport();document.querySelector('#modals .x').focus({preventScroll:true});const initialRecordDraft=recordDraftSnapshot();modalDraftGuard=()=>recordDraftSnapshot()!==initialRecordDraft;
+  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderSpendingTypeHint();renderRecordNoteHint();renderQuickChoices();syncRecordSaveButton();refreshNoSpendButton();syncRecordViewport();document.querySelector('#modals .x').focus({preventScroll:true});const initialRecordDraft=recordDraftSnapshot();modalDraftGuard=()=>recordDraftSnapshot()!==initialRecordDraft;
 }
 function renderQuickChoices(){
   const input=document.getElementById('fNote'),query=input?input.value:'',all=rankQuickRecordScenes(quickRecordScenes(state.records).filter(quickSceneVisible),query,form.beneficiaryId,form.projectId),values=form.quickExpanded?all:all.slice(0,QUICK_SCENE_LIMIT);
@@ -658,10 +668,16 @@ function applyQuickScene(value){
   const scene=renderedQuickScenes[Number(value)];if(!scene||!quickSceneVisible(scene)){toast('这条快捷记录当前不可用');renderQuickChoices();return;}
   form.spendingType=scene.spendingType;form.beneficiaryId=scene.beneficiaryId;form.projectId=scene.projectId;form.projectTouched=true;
   const note=document.getElementById('fNote');if(note)note.value=scene.note;
-  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderQuickChoices();syncRecordSaveButton();if(note)note.blur();setRecordNoteSearchMode(false);
+  renderRecordContext();renderRecordProject();renderRecordSearchSummary();renderSpendingTypeChoices();renderSpendingTypeHint();renderRecordNoteHint();renderQuickChoices();syncRecordSaveButton();if(note)note.blur();setRecordNoteSearchMode(false);
 }
 function renderSpendingTypeChoices(){
-  const container=document.getElementById('spendingTypeChoices');if(!container)return;container.innerHTML=SPENDING_TYPE_IDS.map(id=>{const item=SPENDING_TYPES[id],on=form.spendingType===id;return`<button class="${on?'on':''}" aria-pressed="${on}" style="--type-color:${item.color}" data-action="select-spending-type" data-value="${id}"><b>${item.name}</b><span>${item.description}</span></button>`;}).join('');
+  const container=document.getElementById('spendingTypeChoices');if(!container)return;container.innerHTML=SPENDING_TYPE_IDS.map(id=>{const item=SPENDING_TYPES[id],on=form.spendingType===id;return`<button class="${on?'on':''}" aria-pressed="${on}" aria-label="${item.name}：${item.description}，例如${item.examples}" title="${item.description}，例如${item.examples}" style="--type-color:${item.color}" data-action="select-spending-type" data-value="${id}"><b>${item.name}</b><span>${item.description}</span></button>`;}).join('');
+}
+function renderSpendingTypeHint(){
+  const container=document.getElementById('recordTypeHint');if(!container)return;const item=getSpendingType(form.spendingType);container.textContent=item?`${item.name}：${item.description}。例如：${item.examples}。`:'固定账单选“固定必需”；必须但可以优化的支出选“弹性必需”；可以取消的支出选“可选消费”；临时突发事件选“专项突发”。';
+}
+function renderRecordNoteHint(){
+  const container=document.getElementById('recordNoteHint'),input=document.getElementById('fNote');if(!container||!input)return;const raw=input.value.trim().replace(/\s+/g,' '),label=noteAnalysisLabel(raw);container.textContent=raw&&label!==raw?`建议统一为“${label}”，只用于月结归并，原备注会保留。`:'';
 }
 function refreshProjectForDate(){
   const date=recordFormDate();form.date=date;refreshNoSpendButton();if(form.id||form.projectTouched){renderQuickChoices();return;}
@@ -669,7 +685,7 @@ function refreshProjectForDate(){
   form.projectId=applies?current.id:'';renderRecordProject();renderQuickChoices();syncRecordSaveButton();
 }
 function refreshNoSpendButton(){const button=document.getElementById('noSpendButton');if(!button)return;const date=recordFormDate(),confirmed=decisions.noSpendDates.includes(date);button.classList.toggle('on',confirmed);button.classList.toggle('armed',form.noSpendArmed);button.setAttribute('aria-pressed',String(confirmed));button.textContent=confirmed?'取消确认':form.noSpendArmed?'再次确认':'✓ 无支出';}
-function selectSpendingType(value){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();renderRecordSearchSummary();syncRecordSaveButton();}
+function selectSpendingType(value){if(!SPENDING_TYPES[value])return;form.spendingType=value;renderSpendingTypeChoices();renderSpendingTypeHint();renderRecordSearchSummary();syncRecordSaveButton();}
 function parsedRecordAmount(){
   const input=document.getElementById('fAmt');if(!input)return null;const raw=input.value.trim();if(!/^\d+(?:\.\d{1,2})?$/.test(raw))return null;const cents=Math.round(Number(raw)*100);return Number.isSafeInteger(cents)&&cents>0?cents:null;
 }
@@ -854,7 +870,7 @@ document.addEventListener('click',event=>{
 });
 document.addEventListener('submit',event=>{if(event.target.id==='filterForm'){event.preventDefault();applyFilters();}});
 document.addEventListener('change',event=>{if(event.target.id==='fDate')refreshProjectForDate();if(event.target.id==='filterRange')syncCustomDateFields();if(event.target.id==='projectType'){const field=document.getElementById('projectPeopleField');if(field)field.style.display=event.target.value==='travel'?'block':'none';renderProjectReference(event.target.value);}});
-document.addEventListener('input',event=>{if(event.target.id==='reviewHighlight'||event.target.id==='reviewAction')saveReviewDraft();if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderQuickChoices();}syncRecordSaveButton();}});
+document.addEventListener('input',event=>{if(event.target.id==='reviewHighlight'||event.target.id==='reviewAction')saveReviewDraft();if(event.target.id==='fAmt'||event.target.id==='fNote'){if(form.noSpendArmed){form.noSpendArmed=false;refreshNoSpendButton();}if(event.target.id==='fNote'){form.quickExpanded=false;renderRecordNoteHint();renderQuickChoices();}syncRecordSaveButton();}});
 document.addEventListener('pointerdown',event=>{if(document.activeElement&&document.activeElement.id==='fNote'&&event.target.closest('[data-action="select-quick-scene"]'))event.preventDefault();});
 document.addEventListener('focusin',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(true);});
 document.addEventListener('focusout',event=>{if(event.target.id==='fNote')setRecordNoteSearchMode(false);});

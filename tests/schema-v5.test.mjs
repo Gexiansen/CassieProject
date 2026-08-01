@@ -101,6 +101,24 @@ const breakdown=vm.runInContext('spendingTypeBreakdown(breakdownRecords)',contex
 assert.equal(breakdown.totalCents,100000);
 assert.equal(breakdown.baselineCents,70000);
 assert.equal(breakdown.adjustableCents,20000);
+context.noteRecords=[
+  {date:'2026-07-01',note:'叮咚',amountCents:1200},
+  {date:'2026-07-02',note:'叮咚买菜',amountCents:800},
+  {date:'2026-07-03',note:'交通电车充电',amountCents:300},
+  {date:'2026-07-04',note:'',amountCents:500},
+];
+const noteBreakdown=vm.runInContext('spendingNoteBreakdown(noteRecords,3)',context);
+assert.deepEqual(Array.from(noteBreakdown.items, item=>item.label),['叮咚买菜','未填写备注','电车充电']);
+assert.equal(noteBreakdown.items[0].count,2);
+assert.equal(noteBreakdown.items[0].amountCents,2000);
+const quality=vm.runInContext("monthRecordQuality('2026-07',noteRecords,['2026-07-05','2026-07-06'])",context);
+assert.equal(quality.monthDays,31);
+assert.equal(quality.spendDays,4);
+assert.equal(quality.confirmedNoSpendDays,2);
+assert.equal(quality.coveredDays,6);
+assert.equal(quality.emptyNoteCount,1);
+assert.equal(quality.emptyNoteCents,500);
+assert.deepEqual({...vm.runInContext("monthProgress('2026-07','2026-07-15')",context)},{monthDays:31,elapsedDays:15,elapsedPercent:15/31*100});
 context.ordinarySamples=[
   {spendingType:'fixed',projectId:''},
   {spendingType:'exceptional',projectId:''},

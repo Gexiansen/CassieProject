@@ -117,6 +117,7 @@ body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .review-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:12px;}
 .review-summary div{background:#f8fafc;border:2px solid #f1f5f9;border-radius:14px;padding:10px 6px;text-align:center;color:#64748b;font-size:11px;font-weight:700;}
 .review-summary b{display:block;color:#475569;font-size:14px;margin-top:3px;}.review-summary b.negative{color:#e11d48;}
+.review-summary small{display:block;margin-top:3px;color:#64748b;font-size:10px;font-weight:600;line-height:1.35;}
 .review-observations{display:flex;flex-direction:column;gap:7px;}
 .review-observation{background:#f8fafc;border-radius:12px;padding:9px 10px;color:#64748b;font-size:12px;line-height:1.5;}
 .review-observation.warn{background:#fffbeb;color:#b45309;}
@@ -233,6 +234,7 @@ body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .record-scroll-body{flex:1;min-height:80px;overflow:auto;padding-top:14px;}
 .field{margin-bottom:16px;}
 .field label{font-size:12px;color:#64748b;font-weight:700;display:block;margin-bottom:6px;}
+.field-help{margin-left:4px;color:#64748b;font-size:10px;font-weight:600;}
 .amount-box{display:flex;align-items:center;border-radius:16px;padding:0 16px;border:2px solid;}
 .amount-box.e{background:#eef2ff;border-color:#c7d2fe;}
 .amount-box.i{background:#ecfdf5;border-color:#a7f3d0;}
@@ -242,7 +244,7 @@ body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .record-main{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:10px;}
 .record-main .field{min-width:0;margin-bottom:12px;}
 .record-main .amount-box,.record-main>.field>input{height:52px;min-height:52px;}
-.record-main .amount-box input{height:100%;padding:0;}
+.record-main .amount-box input{height:calc(100% + 4px);margin-top:-2px;margin-bottom:-2px;padding:0;}
 .record-context{display:grid;grid-template-columns:repeat(var(--context-count,4),minmax(0,1fr));gap:6px;background:#fff;padding:4px 0 0;}
 .record-context button{min-width:0;min-height:44px;border:2px solid #e2e8f0;background:#fff;color:#64748b;border-radius:12px;padding:6px 3px;font-size:13px;font-weight:800;font-family:inherit;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .record-context button.on{border-color:#6366f1;background:#6366f1;color:#fff;}
@@ -257,6 +259,9 @@ body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .record-type-field .spending-type-choices{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;}
 .record-type-field .spending-type-choices button b{font-size:13px;}
 .record-type-field .spending-type-choices button span{display:none;}
+.record-type-hint{margin-top:6px;padding:7px 9px;border-radius:10px;background:#f8fafc;color:#64748b;font-size:11px;line-height:1.45;}
+.record-note-hint{min-height:0;margin-top:4px;color:#6366f1;font-size:10px;line-height:1.35;}
+.record-note-hint:empty{display:none;}
 .field input[type=text],.field input[type=date],.field input[type=number],.field select{width:100%;min-height:44px;background:#f8fafc;border:2px solid #f1f5f9;border-radius:16px;
   padding:10px 12px;font-size:14px;color:#475569;font-weight:500;outline:none;font-family:inherit;}
 .field input:focus{border-color:#c7d2fe;}
@@ -270,6 +275,7 @@ body.modal-open .record-fab{opacity:0;pointer-events:none;}
 .record-sheet.note-search-mode .record-sticky .sheet-head{padding:2px 16px 0;}
 .record-sheet.note-search-mode .record-sticky .sheet-head .r1{justify-content:flex-end;margin:0;}
 .record-sheet.note-search-mode .record-sticky .sheet-head .r1>div:first-child,.record-sheet.note-search-mode .record-no-spend,.record-sheet.note-search-mode .record-date-tag,.record-sheet.note-search-mode .record-date-edit,.record-sheet.note-search-mode .record-context-field,.record-sheet.note-search-mode .record-type-field,.record-sheet.note-search-mode #recordProject{display:none;}
+.record-sheet.note-search-mode .record-note-hint{display:none;}
 .record-sheet.note-search-mode .record-sticky-body{padding-top:0;}
 .record-sheet.note-search-mode .record-search-summary{display:block;}
 .record-sheet.note-search-mode .record-main .field{margin-bottom:8px;}
