@@ -51,7 +51,7 @@ schema v5 将记账维度从传统消费分类改为支出的可调整程度。�
 - `spendingType` 必须是 `fixed`、`flexible`、`discretionary` 或 `exceptional`。
 - `beneficiaryId` 必须引用设置中存在的获益方；停用成员仍可被历史记录引用。
 - `projectId` 为空或引用规划中存在的正式专项。
-- `note` 最多 20 个字符。
+- `note` 最多 40 个字符。
 - 新记录不能使用已停用的成员。
 - 转换工具遇到无法映射的 v4 分类时必须报告并停止，不得猜测。
 

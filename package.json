@@ -1,0 +1,8 @@
+{
+  "name": "cassie-project",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "check": "node --check docs/js/model.js && node --check docs/js/storage.js && node --check docs/js/app.js && npm test"
+  }
+}

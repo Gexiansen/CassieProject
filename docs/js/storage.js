@@ -50,8 +50,16 @@ function readSettings(){
 }
 function saveSettings(){
   if(storageLocked){toast('请先处理数据救援，再调整设置');return false;}
-  try{prefs.schemaVersion=SCHEMA_VERSION;prefs.updatedAt=new Date().toISOString();const normalized=normalizeSettings(prefs);Object.assign(prefs,normalized);localStorage.setItem(SETTINGS_KEY,JSON.stringify(prefs));refreshDerivedSettings(prefs);return true;}
-  catch(error){toast('设置保存失败：'+error.message);return false;}
+  let previousRaw=null;
+  try{
+    previousRaw=localStorage.getItem(SETTINGS_KEY);
+    const candidate={...prefs,schemaVersion:SCHEMA_VERSION,updatedAt:new Date().toISOString()},normalized=normalizeSettings(candidate);
+    localStorage.setItem(SETTINGS_KEY,JSON.stringify(normalized));
+    prefs=normalized;refreshDerivedSettings(prefs);return true;
+  }catch(error){
+    try{prefs=previousRaw===null?defaultSettings():normalizeSettings(JSON.parse(previousRaw));refreshDerivedSettings(prefs);}catch(restoreError){}
+    toast('设置保存失败：'+error.message);return false;
+  }
 }
 
 function defaultPlans(){return {schemaVersion:SCHEMA_VERSION,updatedAt:'',budgets:{},projects:[],currentProjectId:'',goals:[],reviews:{},noSpendDates:[]};}
@@ -107,8 +115,16 @@ function readPlans(){
 }
 function saveDecisions(){
   if(storageLocked){toast('请先处理数据救援，再调整规划');return false;}
-  try{decisions.schemaVersion=SCHEMA_VERSION;decisions.updatedAt=new Date().toISOString();const normalized=normalizePlans(decisions);Object.assign(decisions,normalized);localStorage.setItem(PLANS_KEY,JSON.stringify(decisions));return true;}
-  catch(error){toast('规划数据保存失败：'+error.message);return false;}
+  let previousRaw=null;
+  try{
+    previousRaw=localStorage.getItem(PLANS_KEY);
+    const candidate={...decisions,schemaVersion:SCHEMA_VERSION,updatedAt:new Date().toISOString()},normalized=normalizePlans(candidate);
+    localStorage.setItem(PLANS_KEY,JSON.stringify(normalized));
+    decisions=normalized;return true;
+  }catch(error){
+    try{decisions=previousRaw===null?defaultPlans():normalizePlans(JSON.parse(previousRaw));}catch(restoreError){}
+    toast('规划数据保存失败：'+error.message);return false;
+  }
 }
 
 function normalizeRecord(raw,settings=prefs,plans=decisions){

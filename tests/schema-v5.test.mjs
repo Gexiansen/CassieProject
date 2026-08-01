@@ -25,10 +25,17 @@ assert.deepEqual(rejected.report.unmappedCategories,[{categoryId:'custom-unknown
 assert.equal(convertBackup(custom,{categoryMappings:{'custom-unknown':'fixed'}}).ok,true);
 
 const storage=new Map();
+let failNextKey='';
 const context=vm.createContext({
   console,
   crypto:webcrypto,
-  localStorage:{getItem:key=>storage.has(key)?storage.get(key):null,setItem:(key,value)=>storage.set(key,String(value)),removeItem:key=>storage.delete(key)},
+  toast:()=>{},
+  storageLocked:false,
+  localStorage:{
+    getItem:key=>storage.has(key)?storage.get(key):null,
+    setItem:(key,value)=>{if(key===failNextKey){failNextKey='';throw new Error('quota exceeded');}storage.set(key,String(value));},
+    removeItem:key=>storage.delete(key),
+  },
 });
 vm.runInContext(await readFile(new URL('../docs/js/model.js',import.meta.url),'utf8'),context);
 vm.runInContext(await readFile(new URL('../docs/js/storage.js',import.meta.url),'utf8'),context);
@@ -47,6 +54,39 @@ const legacyState=vm.runInContext('readStoredData(prefs,decisions)',context);
 assert.equal(legacyState.needsUpgrade,true);
 assert.equal(storage.get('cassie_records_v4'),'v4-original-content');
 storage.delete('cassie_records_v4');
+
+const persistedSettings=structuredClone(checked.settings),persistedPlans=structuredClone(checked.plans);
+storage.set('cassie_settings_v5',JSON.stringify(persistedSettings));
+storage.set('cassie_plans_v5',JSON.stringify(persistedPlans));
+context.prefs=structuredClone(persistedSettings);
+context.prefs.beneficiaries[0].name='临时名称';
+failNextKey='cassie_settings_v5';
+assert.equal(vm.runInContext('saveSettings()',context),false);
+assert.equal(vm.runInContext('prefs.beneficiaries[0].name',context),persistedSettings.beneficiaries[0].name);
+assert.equal(storage.get('cassie_settings_v5'),JSON.stringify(persistedSettings));
+
+context.decisions=structuredClone(persistedPlans);
+context.decisions.noSpendDates=['2026-07-19'];
+failNextKey='cassie_plans_v5';
+assert.equal(vm.runInContext('saveDecisions()',context),false);
+assert.deepEqual(JSON.parse(vm.runInContext('JSON.stringify(decisions.noSpendDates)',context)),persistedPlans.noSpendDates);
+assert.equal(storage.get('cassie_plans_v5'),JSON.stringify(persistedPlans));
+
+const recordsBeforePersist=storage.get('cassie_records_v5')||null;
+context.checkedRecords=checked.records;
+failNextKey='cassie_records_v5';
+assert.equal(vm.runInContext('persist(checkedRecords)',context),false);
+assert.equal(storage.get('cassie_records_v5')||null,recordsBeforePersist);
+
+const restoreBefore={
+  records:storage.get('cassie_records_v5'),
+  settings:storage.get('cassie_settings_v5'),
+  plans:storage.get('cassie_plans_v5'),
+};
+failNextKey='cassie_settings_v5';
+assert.equal(vm.runInContext('persistFullRestore([],defaultSettings(),defaultPlans(),true)',context),false);
+assert.deepEqual({records:storage.get('cassie_records_v5'),settings:storage.get('cassie_settings_v5'),plans:storage.get('cassie_plans_v5')},restoreBefore);
+
 context.settingsInput=structuredClone(fixture.settings);
 context.settingsInput.defaultBeneficiaryId='missing';
 assert.equal(vm.runInContext('normalizeSettings(settingsInput).defaultBeneficiaryId',context),'family');
