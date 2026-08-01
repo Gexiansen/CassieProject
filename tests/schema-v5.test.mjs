@@ -178,6 +178,20 @@ assert.equal(projectReference.topSpendingType.name,'专项突发');
 assert.equal(projectReference.topSpendingType.amountCents,120000);
 assert.equal(vm.runInContext('recentProjectReference("renovation",projectList,projectRecords)',context),null);
 
+context.autoProjectList=[
+  {id:'expired-current',status:'active',startDate:'2026-07-01',endDate:'2026-07-31'},
+  {id:'new-project',status:'active',startDate:'2026-08-05',endDate:'2026-08-10'},
+  {id:'overlap-project',status:'active',startDate:'2026-08-05',endDate:'2026-08-12'},
+];
+const autoProject=vm.runInContext("resolveAutoProject(autoProjectList,'expired-current','2026-08-06')",context);
+assert.deepEqual({...autoProject},{projectId:'',reason:'ambiguous',candidateIds:['new-project','overlap-project']});
+const singleAutoProject=vm.runInContext("resolveAutoProject(autoProjectList,'expired-current','2026-08-13')",context);
+assert.deepEqual({...singleAutoProject},{projectId:'',reason:'none',candidateIds:[]});
+const currentAutoProject=vm.runInContext("resolveAutoProject(autoProjectList,'new-project','2026-08-06')",context);
+assert.deepEqual({...currentAutoProject},{projectId:'new-project',reason:'current',candidateIds:['new-project','overlap-project']});
+const onlyNewProject=vm.runInContext("resolveAutoProject(autoProjectList.slice(0,2),'expired-current','2026-08-06')",context);
+assert.deepEqual({...onlyNewProject},{projectId:'new-project',reason:'single',candidateIds:['new-project']});
+
 context.beneficiaryRecords=[
   {beneficiaryId:'family',amountCents:10000},
   {beneficiaryId:'wife',amountCents:20000},

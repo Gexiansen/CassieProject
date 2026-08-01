@@ -93,6 +93,13 @@ function quickRecordScenes(records,recentLimit=3){
   const frequent=values.filter(item=>!recentKeys.has(item.key)).sort((a,b)=>b.count-a.count||b.latest.localeCompare(a.latest)||a.key.localeCompare(b.key));
   return [...recent,...frequent].map(({key,...item})=>item);
 }
+function projectDateApplies(project,date){return !!(project&&project.status==='active'&&typeof date==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(date)&&project.startDate<=date&&date<=project.endDate);}
+function resolveAutoProject(projects=[],currentProjectId='',date=''){
+  const candidates=(Array.isArray(projects)?projects:[]).filter(project=>projectDateApplies(project,date)),candidateIds=candidates.map(project=>project.id),current=candidates.find(project=>project.id===currentProjectId);
+  if(current)return {projectId:current.id,reason:'current',candidateIds};
+  if(candidates.length===1)return {projectId:candidates[0].id,reason:'single',candidateIds};
+  return {projectId:'',reason:candidates.length?'ambiguous':'none',candidateIds};
+}
 function normalizeQuickQuery(value){return String(value||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('zh-CN');}
 function rankQuickRecordScenes(scenes,query='',beneficiaryId='',projectId=''){
   const normalized=normalizeQuickQuery(query),matchLevel=scene=>{const note=normalizeQuickQuery(scene.note);if(!normalized)return 0;if(note===normalized)return 3;if(note.startsWith(normalized))return 2;return note.includes(normalized)?1:0;};
