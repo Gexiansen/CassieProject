@@ -26,6 +26,7 @@ function validId(value){return typeof value==='string'&&/^[a-zA-Z0-9_-]{1,80}$/.
 function validIso(value){return typeof value==='string'&&Number.isFinite(Date.parse(value));}
 function cleanText(value,max){return typeof value==='string'?value.trim().slice(0,max):'';}
 function captureReadError(label,raw,error){storageReadError=label+'读取异常：'+error.message;recoveryRaw+=(recoveryRaw?'\n\n':'')+'【'+label+'】\n'+raw;recoveryError=storageReadError;}
+function reportStorageError(message){if(typeof setPersistentError==='function')setPersistentError(message);else toast(message);}
 
 function defaultSettings(){return {schemaVersion:SCHEMA_VERSION,updatedAt:'',defaultBeneficiaryId:'family',beneficiaries:defaultBeneficiaries()};}
 function normalizeSettings(source){
@@ -58,7 +59,7 @@ function saveSettings(){
     prefs=normalized;refreshDerivedSettings(prefs);return true;
   }catch(error){
     try{prefs=previousRaw===null?defaultSettings():normalizeSettings(JSON.parse(previousRaw));refreshDerivedSettings(prefs);}catch(restoreError){}
-    toast('设置保存失败：'+error.message);return false;
+    reportStorageError('设置保存失败：'+error.message);return false;
   }
 }
 
@@ -123,7 +124,7 @@ function saveDecisions(){
     decisions=normalized;return true;
   }catch(error){
     try{decisions=previousRaw===null?defaultPlans():normalizePlans(JSON.parse(previousRaw));}catch(restoreError){}
-    toast('规划数据保存失败：'+error.message);return false;
+    reportStorageError('规划数据保存失败：'+error.message);return false;
   }
 }
 
@@ -159,7 +160,7 @@ function readStoredData(settings=prefs,plans=decisions){
 }
 function persist(records,force=false){
   if(storageLocked&&!force){toast('请先处理数据救援，再继续记账');return false;}
-  try{localStorage.setItem(RECORDS_KEY,JSON.stringify(recordsEnvelope(records)));return true;}catch(error){toast('保存失败：'+error.message);return false;}
+  try{localStorage.setItem(RECORDS_KEY,JSON.stringify(recordsEnvelope(records)));return true;}catch(error){reportStorageError('保存失败：'+error.message);return false;}
 }
 function persistFullRestore(records,settings,plans,force=false){
   if(storageLocked&&!force){toast('请先处理数据救援，再继续记账');return false;}
@@ -171,8 +172,8 @@ function persistFullRestore(records,settings,plans,force=false){
     return true;
   }catch(error){
     try{[[RECORDS_KEY,previous.records],[SETTINGS_KEY,previous.settings],[PLANS_KEY,previous.plans]].forEach(([key,value])=>{if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);});}
-    catch(rollbackError){toast('完整恢复失败，且本地回滚未完成，请保留恢复前备份');return false;}
-    toast('完整恢复失败：'+error.message);return false;
+    catch(rollbackError){reportStorageError('完整恢复失败，且本地回滚未完成，请保留恢复前备份');return false;}
+    reportStorageError('完整恢复失败：'+error.message);return false;
   }
 }
 function readBackupMeta(){try{const raw=localStorage.getItem(META_KEY);return raw?JSON.parse(raw):{};}catch(error){return {};}}

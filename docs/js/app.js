@@ -14,9 +14,14 @@ let state={records:loaded.records,view:'month',tab:'home',filtersExpanded:false,
 const REVIEW_DRAFTS_KEY='cassie_review_drafts_v1';
 function readReviewDrafts(){try{const parsed=JSON.parse(localStorage.getItem(REVIEW_DRAFTS_KEY)||'null');return parsed&&parsed.version===1&&parsed.drafts&&typeof parsed.drafts==='object'?parsed.drafts:{};}catch(error){return {};}}
 let reviewDrafts=readReviewDrafts(),reviewDraftTimer=null,reviewDraftErrorShown=false;
+let persistentError='';
+function persistentNoticeMarkup(){return persistentError?`<div class="persistent-notice" data-persistent-notice role="alert"><span>${esc(persistentError)}</span><button data-action="dismiss-persistent-notice" aria-label="关闭错误提示">关闭</button></div>`:'';}
+function refreshPersistentNotice(){const markup=persistentNoticeMarkup();document.querySelectorAll('[data-persistent-notice]').forEach(node=>{if(markup)node.outerHTML=markup;else node.remove();});}
+function setPersistentError(message){persistentError=String(message||'操作失败');const dialog=document.querySelector('#modals [role="dialog"]'),body=dialog&&dialog.querySelector('.sheet-body');if(body&&!body.querySelector('[data-persistent-notice]'))body.insertAdjacentHTML('afterbegin',persistentNoticeMarkup());refreshPersistentNotice();if(!document.querySelector('#app [data-persistent-notice]'))render();}
+function clearPersistentError(){persistentError='';refreshPersistentNotice();if(document.getElementById('app'))render();}
 function persistReviewDrafts(){
   try{if(Object.keys(reviewDrafts).length)localStorage.setItem(REVIEW_DRAFTS_KEY,JSON.stringify({version:1,drafts:reviewDrafts}));else localStorage.removeItem(REVIEW_DRAFTS_KEY);reviewDraftErrorShown=false;return true;}
-  catch(error){if(!reviewDraftErrorShown){reviewDraftErrorShown=true;toast('月结草稿保存失败：'+error.message);}return false;}
+  catch(error){if(!reviewDraftErrorShown){reviewDraftErrorShown=true;setPersistentError('月结草稿保存失败：'+error.message);}return false;}
 }
 function saveReviewDraft(){
   const highlight=document.getElementById('reviewHighlight'),action=document.getElementById('reviewAction');if(!highlight||!action)return;
@@ -146,7 +151,7 @@ function render(){
   <div class="top">
     <div class="logo"><div class="pig">🐷</div><h1>我的小账本</h1></div>
     <div class="top-actions"><button class="data-button" data-action="open-data-management" aria-label="数据与备份">数据</button></div>
-  </div>`;
+  </div>${persistentNoticeMarkup()}`;
   const showPlanningPeriod=state.tab==='planning'&&(state.planningView==='budget'||state.planningView==='summary');
   if(showPlanningPeriod)html+=`<div class="compact-period"><button data-action="shift" data-value="-1" aria-label="上一月">‹</button><div class="period-label">${periodLabel}</div>${showToday?`<button class="today" data-action="go-today">回本月</button>`:''}<button data-action="shift" data-value="1" aria-label="下一月">›</button></div>`;
   if(state.tab==='home'&&(backup.warn||storageLocked))html+=`<button class="backup-notice" data-action="open-data-management"><span>${upgradeRequired?'检测到旧版账本，需要先完成断代升级。':storageLocked?'检测到本地数据异常，记账已暂停。':esc(backup.text)}</span><b>${storageLocked?'处理':'去备份'} ›</b></button>`;
@@ -187,7 +192,7 @@ function renderBudgetPlanning(){
   const key=monthKey(),metrics=calculateBudget(key),budget=metrics.budget||{totalCents:null,availableCents:null},previous=decisions.budgets[previousMonthKey(key)],hasPlan=budget.totalCents!==null||(budget.availableCents!==null&&budget.availableCents!==undefined);
   return `<div class="card"><h3>🧭 制定月度计划 <span class="sub">${state.year}年${state.month+1}月</span></h3><p class="planning-note">不再逐笔记录收入；可支配金额表示本月可以安排给支出和目标的钱。</p>
     <div class="budget-form-row"><div class="name">本月可支配金额<span>用于判断计划后结余，选填</span></div><div class="money">¥<input id="budgetAvailable" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月可支配金额" placeholder="未设置" value="${budget.availableCents?(budget.availableCents/100).toFixed(2):''}"></div></div>
-    <div class="budget-form-row"><div class="name">本月日常预算<span>不含正式专项和专项突发支出</span></div><div class="money">¥<input id="budgetTotal" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月日常预算" placeholder="未设置" value="${budget.totalCents?(budget.totalCents/100).toFixed(2):''}"></div></div><div class="budget-actions">${previous&&(previous.totalCents||previous.availableCents)&&!hasPlan?`<button data-action="copy-previous-budget">复制上月计划</button>`:''}<button class="primary" data-action="save-budget">保存月度计划</button></div></div>`;
+    <div class="budget-form-row"><div class="name">本月日常预算<span>不含正式专项和专项突发支出</span></div><div class="money">¥<input id="budgetTotal" type="number" inputmode="decimal" min="0.01" step="0.01" aria-label="本月日常预算" placeholder="未设置" value="${budget.totalCents?(budget.totalCents/100).toFixed(2):''}"></div></div><div class="budget-actions">${previous&&(previous.totalCents||previous.availableCents)&&!hasPlan?`<button data-action="copy-previous-budget">复制上月计划</button>`:''}${hasPlan?`<button class="danger-outline" data-action="clear-budget">清除本月计划</button>`:''}<button class="primary" data-action="save-budget">保存月度计划</button></div></div>`;
 }
 
 function projectCardMarkup(project){
@@ -381,6 +386,13 @@ function saveBudget(){
   if(!saveDecisions()){if(old)decisions.budgets[key]=old;else delete decisions.budgets[key];return;}
   render();toast('本月计划已保存');
 }
+function clearBudget(){
+  const key=monthKey(),old=decisions.budgets[key];if(!old)return;
+  if(!confirm(`确定清除${state.year}年${state.month+1}月的可支配金额和日常预算吗？`))return;
+  delete decisions.budgets[key];
+  if(!saveDecisions()){if(old)decisions.budgets[key]=old;return;}
+  render();toast('本月计划已清除');
+}
 function copyPreviousBudget(){
   const key=monthKey(),source=decisions.budgets[previousMonthKey(key)];if(!source){toast('上月没有可复制的预算');return;}
   const old=decisions.budgets[key];decisions.budgets[key]={totalCents:source.totalCents??null,availableCents:source.availableCents??null,updatedAt:new Date().toISOString()};
@@ -453,12 +465,13 @@ let goalFormId=null;
 function openGoalForm(id=null){
   const goal=id?decisions.goals.find(item=>item.id===id):null;goalFormId=goal?goal.id:null;
   const options=Object.entries(GOAL_TYPES).map(([key,item])=>`<option value="${key}"${goal&&goal.type===key?' selected':''}>${item.emoji} ${item.name}</option>`).join('');
-  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${goal?'编辑财务目标':'新建财务目标'}"><div class="sheet-head"><div class="r1"><h3>🏁 ${goal?'编辑目标':'新建目标'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="goalName">目标名称</label><input id="goalName" type="text" maxlength="20" placeholder="如：家庭应急金" value="${goal?esc(goal.name):''}"></div><div class="field"><label for="goalType">目标类型</label><select id="goalType">${options}</select></div><div class="field"><label for="goalAmount">目标金额（元）</label><input id="goalAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${goal?(goal.targetCents/100).toFixed(2):''}"></div><div class="field"><label for="goalDate">目标日期</label><input id="goalDate" type="date" value="${goal?goal.targetDate:''}"></div><p class="planning-note" style="margin:0">保存后会根据剩余金额和目标日期计算建议月投入；已有投入记录不会因编辑目标而丢失。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-goal">保存目标</button></div></div></div>`;
+  document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="${goal?'编辑财务目标':'新建财务目标'}"><div class="sheet-head"><div class="r1"><h3>🏁 ${goal?'编辑目标':'新建目标'}</h3><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body"><div class="field"><label for="goalName">目标名称</label><input id="goalName" type="text" maxlength="20" placeholder="如：家庭应急金" value="${goal?esc(goal.name):''}"></div><div class="field"><label for="goalType">目标类型</label><select id="goalType">${options}</select></div><div class="field"><label for="goalAmount">目标金额（元）</label><input id="goalAmount" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="0.00" value="${goal?(goal.targetCents/100).toFixed(2):''}"></div><div class="field"><label for="goalDate">目标日期</label><input id="goalDate" type="date"${goal?'':' min="'+todayStr()+'"'} value="${goal?goal.targetDate:''}"></div><p class="planning-note" style="margin:0">新目标日期不能早于今天；编辑已有历史目标时，可以保留原日期，保存前会再次确认。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="save-goal">保存目标</button></div></div></div>`;
   document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});guardModalInputs(['goalName','goalType','goalAmount','goalDate']);
 }
 function saveGoal(){
   const name=document.getElementById('goalName').value.trim().slice(0,20),type=document.getElementById('goalType').value,targetCents=readBudgetInput(document.getElementById('goalAmount')),targetDate=document.getElementById('goalDate').value;
-  if(!name){toast('请填写目标名称');return;}if(!GOAL_TYPES[type]){toast('请选择目标类型');return;}if(targetCents===null||targetCents===false){toast('请输入正确的目标金额');return;}if(!validDate(targetDate)){toast('请选择正确的目标日期');return;}
+  const existingGoal=goalFormId?decisions.goals.find(item=>item.id===goalFormId):null,today=todayStr();
+  if(!name){toast('请填写目标名称');return;}if(!GOAL_TYPES[type]){toast('请选择目标类型');return;}if(targetCents===null||targetCents===false){toast('请输入正确的目标金额');return;}if(!validDate(targetDate)){toast('请选择正确的目标日期');return;}if(!existingGoal&&targetDate<today){toast('新目标日期不能早于今天');return;}if(existingGoal&&targetDate<today&&existingGoal.targetDate!==targetDate&&!confirm('目标日期早于今天，保存后只用于保留历史记录，仍要继续吗？'))return;
   const index=goalFormId?decisions.goals.findIndex(item=>item.id===goalFormId):-1,nowIso=new Date().toISOString(),old=index>=0?decisions.goals[index]:null;
   const next=old?{...old,name,type,targetCents,targetDate,updatedAt:nowIso}:{id:uuid(),name,type,targetCents,targetDate,status:'active',contributions:[],createdAt:nowIso,updatedAt:nowIso};
   if(index>=0)decisions.goals[index]=next;else decisions.goals.push(next);
@@ -737,7 +750,7 @@ function setDefaultBeneficiary(id){if(!prefs.beneficiaries.some(item=>item.id===
 
 /* ============ 备份 ============ */
 function openDataManagement(){
-  const backup=backupStatus(),upgrade=`<div class="rescue">检测到 schema v4 或更早版本的本地数据。v5 不会读取、覆盖或删除旧数据；可以导入转换后的 v5 备份，也可以保留旧数据并从空白 v5 账本开始。</div>`;document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据管理"><div class="sheet-head"><div class="r1"><div><h3>数据管理</h3><p style="font-size:12px;color:#64748b;margin-top:3px">账目、家庭设置和规划都保存在当前浏览器</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${upgradeRequired?upgrade:`<p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>`}${storageLocked&&!upgradeRequired?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}<div class="backup"><button data-action="import-trigger">⬇️ 导入 v5 备份</button>${!storageLocked?`<button data-action="export">⬆️ 导出完整备份</button>`:''}${storageLocked&&!upgradeRequired?`<button data-action="open-recovery">🛟 数据救援</button>`:''}${upgradeRequired?`<button data-action="open-start-fresh">开始空白 v5 账本</button>`:''}${!storageLocked?`<button data-action="open-beneficiary-manager">家庭成员</button>`:''}</div></div></div></div>`;document.body.style.overflow='hidden';
+  const backup=backupStatus(),upgrade=`<div class="rescue">检测到 schema v4 或更早版本的本地数据。v5 不会读取、覆盖或删除旧数据；可以导入转换后的 v5 备份，也可以保留旧数据并从空白 v5 账本开始。</div>`;document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="数据管理"><div class="sheet-head"><div class="r1"><div><h3>数据管理</h3><p style="font-size:12px;color:#64748b;margin-top:3px">账目、家庭设置和规划都保存在当前浏览器</p></div><button class="x" data-action="close-modal" aria-label="关闭">✕</button></div></div><div class="sheet-body">${persistentNoticeMarkup()}${upgradeRequired?upgrade:`<p class="backup-status ${backup.warn?'warn':''}">${esc(backup.text)}</p>`}${storageLocked&&!upgradeRequired?`<div class="rescue">⚠️ 检测到数据异常：${esc(recoveryError)}。为避免覆盖原始内容，新增、编辑和删除已暂停。</div>`:''}<div class="backup"><button data-action="import-trigger">⬇️ 导入 v5 备份</button>${!storageLocked?`<button data-action="export">⬆️ 导出完整备份</button>`:''}${storageLocked&&!upgradeRequired?`<button data-action="open-recovery">🛟 数据救援</button>`:''}${upgradeRequired?`<button data-action="open-start-fresh">开始空白 v5 账本</button>`:''}${!storageLocked?`<button data-action="open-beneficiary-manager">家庭成员</button>`:''}</div></div></div></div>`;document.body.style.overflow='hidden';
 }
 function openStartFresh(){document.getElementById('modals').innerHTML=`<div class="overlay" data-action="close-overlay"><div class="sheet" role="dialog" aria-modal="true" aria-label="开始空白 v5 账本"><div class="sheet-head"><div class="r1"><div><h3>开始空白 v5 账本</h3><p style="font-size:12px;color:#64748b;margin-top:3px">旧版本地数据会原样保留</p></div><button class="x back" data-action="open-data-management" aria-label="返回数据管理">‹</button></div></div><div class="sheet-body"><div class="rescue">新账本会从 0 笔支出和默认家庭设置开始。应用不会删除旧数据，但 v5 页面之后只读取新存储。</div><p style="font-size:13px;color:#64748b;line-height:1.7">如果还要保留历史账目，请先退出并使用一次性转换工具；确认不需要后再继续。</p></div><div class="sheet-foot"><button class="save-btn e" data-action="confirm-start-fresh">确认开始空白账本</button></div></div></div>`;document.body.style.overflow='hidden';document.querySelector('#modals .x').focus({preventScroll:true});}
 function confirmStartFresh(){const nextSettings=defaultSettings(),nextPlans=defaultPlans();if(!persistFullRestore([],nextSettings,nextPlans,true))return;try{localStorage.removeItem(META_KEY);}catch(error){}prefs=nextSettings;decisions=nextPlans;state.records=[];refreshDerivedSettings(prefs);upgradeRequired=false;storageLocked=false;backupMeta={};closeModals();render();toast('空白 v5 账本已启用');}
@@ -757,7 +770,7 @@ function startExport(){
   exportData('完整账本备份',false);
   backupMeta={lastBackupAt:new Date().toISOString(),recordCount:state.records.length,settingsUpdatedAt:prefs.updatedAt,plansUpdatedAt:decisions.updatedAt};
   try{localStorage.setItem(META_KEY,JSON.stringify(backupMeta));}
-  catch(error){closeModals();render();toast('备份已生成，但备份时间记录失败：'+error.message);return;}
+  catch(error){closeModals();setPersistentError('备份已生成，但备份时间记录失败：'+error.message);return;}
   closeModals();render();toast('备份文件已生成');
 }
 function returnToImportPreview(){openImportPreview();}
@@ -791,7 +804,7 @@ document.getElementById('importFile').addEventListener('change',function(e){
   const file=e.target.files[0];if(!file)return;const reader=new FileReader();
   reader.onload=ev=>{try{
     pendingImport=parseBackup(JSON.parse(ev.target.result),file.name);openImportPreview();
-  }catch(error){toast('导入失败：'+error.message);}};
+  }catch(error){setPersistentError('导入失败：'+error.message);}};
   reader.readAsText(file);e.target.value='';
 });
 function openImportPreview(){
@@ -826,7 +839,7 @@ document.addEventListener('click',event=>{
     'save-review':saveReview,'toggle-review-action':()=>toggleReviewAction(value),
     'calendar-shift':()=>shiftCalendar(Number(value)),'toggle-calendar':toggleCalendar,'open-calendar-day':()=>openCalendarDay(value),
     'toggle-year':()=>togY(value),'toggle-month':()=>togM(value),
-    'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'copy-previous-budget':copyPreviousBudget,
+    'toggle-filters':toggleFilters,'apply-filters':applyFilters,'clear-filters':clearFilters,'save-budget':saveBudget,'clear-budget':clearBudget,'copy-previous-budget':copyPreviousBudget,
     'open-add':()=>openRecordForm(),'add-for-date':()=>openRecordForm(null,{date:value}),'open-record-actions':()=>openRecordActions(value),'edit-record':()=>openRecordForm(value),'copy-record':()=>copyRecord(value),'delete-record':()=>{closeModals();delRec(value);},
     'undo-delete':undoDelete,'undo-add':undoAdd,'undo-no-spend':undoNoSpend,'close-modal':requestCloseModals,'close-overlay':requestCloseModals,
     'select-record-context':()=>selectRecordContext(value),'select-record-project':()=>selectRecordProject(value||''),'toggle-project-picker':toggleProjectPicker,'select-spending-type':()=>selectSpendingType(value),'select-quick-scene':()=>applyQuickScene(value),'toggle-quick-scenes':toggleQuickScenes,
@@ -835,7 +848,7 @@ document.addEventListener('click',event=>{
     'open-beneficiary-manager':()=>requestModalTransition(openBeneficiaryManager),'open-beneficiary-name':()=>openBeneficiaryNameForm(value),'save-beneficiary-name':saveBeneficiaryName,'move-beneficiary':()=>moveBeneficiary(value),'toggle-beneficiary':()=>toggleBeneficiary(value),'set-default-beneficiary':()=>setDefaultBeneficiary(value),
     'export':startExport,'confirm-backup-saved':confirmBackupSaved,'open-import-preview':()=>requestModalTransition(returnToImportPreview),'import-trigger':()=>document.getElementById('importFile').click(),
     'apply-import':()=>applyImport(value),'open-recovery':openRecovery,'download-recovery':()=>downloadRecovery(),
-    'accept-recovery':acceptRecovery
+    'accept-recovery':acceptRecovery,'dismiss-persistent-notice':clearPersistentError
   };
   if(actions[action]){actions[action]();if(!hadModal&&document.querySelector('#modals [role="dialog"]'))modalReturnFocus=el;}
 });
