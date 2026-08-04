@@ -249,6 +249,23 @@ function renderReviewPlanning(){
   return h;
 }
 
+function renderHomeProjectContext(){
+  const isCurrentMonth=state.view==='month'&&state.year===now.getFullYear()&&state.month===now.getMonth();
+  if(!isCurrentMonth)return '';
+  const today=todayStr(),resolution=resolveAutoProject(decisions.projects,decisions.currentProjectId,today),applicable=resolution.projectId?projectForId(resolution.projectId):null;
+  if(applicable){
+    const type=PROJECT_TYPES[applicable.type],metrics=calculateProject(applicable),budget=applicable.budgetCents?`<div class="budget-progress"><div class="fill ${budgetLevel(metrics.percent)}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ${metrics.percent.toFixed(1)}％</span></div>`:`<div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>未设置预算</span></div>`,sub=resolution.reason==='current'?'今天记账时自动带入':'今天唯一适用';
+    return `<div class="card"><h3>📍 今日专项 <span class="sub">${sub}</span></h3><div class="project-card current"><div class="goal-title"><div class="name">${type.emoji} ${esc(applicable.name)}<span class="project-current">今日</span><span class="meta">${applicable.startDate} 至 ${applicable.endDate}</span></div></div>${budget}<div class="budget-actions"><button data-action="open-project" data-value="${applicable.id}">查看专项</button></div></div></div>`;
+  }
+  if(resolution.reason==='ambiguous'){
+    const names=resolution.candidateIds.map(id=>projectForId(id)?.name).filter(Boolean).join('、');
+    return `<div class="card"><h3>🧳 今日有多个专项 <span class="sub">需要选择</span></h3><p class="planning-note">${names?`今天适用：${esc(names)}。`:''}记账时请手动选择要归入的专项。</p><div class="budget-actions"><button data-action="open-project-planning">查看专项</button></div></div>`;
+  }
+  const selected=projectForId(decisions.currentProjectId);
+  if(!selected)return '';
+  return `<div class="card"><h3>📍 已选专项 <span class="sub">今天不适用</span></h3><p class="planning-note">“${esc(selected.name)}”不在今天的日期范围内，记账不会自动关联。</p><div class="budget-actions"><button data-action="open-project" data-value="${selected.id}">查看专项</button></div></div>`;
+}
+
 function renderCashflowPlanning(){
   const selected=monthKey(),current=todayStr().slice(0,7),baseDate=selected===current?todayStr():`${selected}-01`,metrics=calculateCashflow(state.records,decisions,baseDate),observations=cashflowObservations(metrics),periodLabel=metrics.periods.map(item=>item.key).reverse().join('、');
   const confidence=metrics.availableCents===null?'等待可支配金额':metrics.hasDailyBudget?'基于本月计划':metrics.sampleCount===3?'历史样本较完整':metrics.sampleCount?'历史样本较少':'等待支出数据';
@@ -271,10 +288,9 @@ function renderDetails(){
 function renderOverview(recs){
   const exp=recs;
   const isCurrentMonth=state.view==='month'&&state.year===now.getFullYear()&&state.month===now.getMonth();
-  if(!state.records.length)return `<div class="card"><h3>👋 从第一笔开始</h3><p style="font-size:14px;color:#64748b;line-height:1.7">先记录今天的一笔支出，再设置本月日常预算。</p><div class="budget-actions"><button class="primary" data-action="open-add" data-value="expense">＋ 记录第一笔支出</button></div></div>`;
+  if(!state.records.length)return `<div class="card"><h3>👋 从第一笔开始</h3><p style="font-size:14px;color:#64748b;line-height:1.7">先记录今天的一笔支出，再设置本月日常预算。</p><div class="budget-actions"><button class="primary" data-action="open-add" data-value="expense">＋ 记录第一笔支出</button></div></div>${renderHomeProjectContext()}`;
   let h=renderBudgetCard();
-  const currentProject=projectForId(decisions.currentProjectId);
-  if(isCurrentMonth&&currentProject){const type=PROJECT_TYPES[currentProject.type],metrics=calculateProject(currentProject),auto=projectAppliesOn(currentProject,todayStr()),budget=currentProject.budgetCents?`<div class="budget-progress"><div class="fill ${budgetLevel(metrics.percent)}" style="width:${Math.min(100,metrics.percent)}%"></div></div><div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>预算 ${metrics.percent.toFixed(1)}％</span></div>`:`<div class="budget-caption"><span>已用 ¥${fmt(metrics.actualCents)}</span><span>未设置预算</span></div>`;h+=`<div class="card"><h3>📍 当前专项 <span class="sub">${auto?'今天记账时自动带入':'当前不在专项日期内'}</span></h3><div class="project-card current"><div class="goal-title"><div class="name">${type.emoji} ${esc(currentProject.name)}<span class="project-current">当前</span><span class="meta">${currentProject.startDate} 至 ${currentProject.endDate}</span></div></div>${budget}<div class="budget-actions"><button data-action="open-project" data-value="${currentProject.id}">查看专项</button></div></div></div>`;}
+  h+=renderHomeProjectContext();
   const breakdown=spendingTypeBreakdown(exp),forecast=spendingForecast(state.records,decisions.projects,todayStr());
   if(exp.length){h+=`<div class="card"><h3>🧩 支出结构 <span class="sub">按可调整程度</span></h3><div class="spending-type-grid">${breakdown.items.map(item=>`<div><span><i style="background:${item.color}"></i>${item.name}</span><b>¥${fmt(item.amountCents)}</b><small>${item.percent.toFixed(1)}％</small></div>`).join('')}</div><div class="decision-summary"><div>基础生活支出<b>¥${fmt(breakdown.baselineCents)}</b><span>固定必需＋弹性必需</span></div><div>保守可结余空间<b>¥${fmt(breakdown.adjustableCents)}</b><span>仅计算可选消费</span></div></div></div>`;}
   if(isCurrentMonth){const nextLabel=forecast.nextMonth.replace('-','年')+'月';h+=`<div class="card"><h3>🔭 下月支出参考 <span class="sub">${nextLabel}</span></h3>${forecast.ready?`<div class="forecast-total"><span>常态支出参考</span><b>¥${fmt(forecast.normalCents)}</b></div><div class="forecast-parts"><span>固定必需 ¥${fmt(forecast.typical.fixed)}</span><span>弹性必需 ¥${fmt(forecast.typical.flexible)}</span><span>可选消费 ¥${fmt(forecast.typical.discretionary)}</span></div>${forecast.projectBudgetCents?`<p class="planning-note">另有已知专项预算 ¥${fmt(forecast.projectBudgetCents)}，未计入常态支出。</p>`:'<p class="planning-note">专项和突发支出不计入常态参考。</p>'}`:`<div class="empty" style="padding:12px 0">至少需要最近 3 个完整月份的普通支出<br><span style="font-size:12px;font-weight:500">当前有 ${forecast.sampleCount} 个月有效样本，不输出低可信度预测</span></div>`}</div>`;}
@@ -359,6 +375,7 @@ function renderList(){
 /* ============ 交互 ============ */
 function setTab(t){if(!['home','details','planning'].includes(t))return;state.tab=t;if(t==='home'){state.view='month';const anchor=dateFromString(state.calendarAnchor);if(anchor.getFullYear()!==state.year||anchor.getMonth()!==state.month)state.calendarAnchor=dateString(new Date(state.year,state.month,1));}else if(t==='planning')state.view='month';render();}
 function openPlanning(){state.tab='planning';state.planningView='budget';state.view='month';render();}
+function openProjectPlanning(){state.tab='planning';state.planningView='projects';state.view='month';render();}
 function setPlanningView(value){if(!['budget','projects','goals','summary'].includes(value))return;state.planningView=value;render();}
 function shift(d){if(state.view==='year'){state.year+=d;render();return;}let m=state.month+d,y=state.year;if(m>11){m=0;y++;}if(m<0){m=11;y--;}state.month=m;state.year=y;render();}
 function goToday(){const date=new Date();state.view='month';state.year=date.getFullYear();state.month=date.getMonth();state.calendarAnchor=todayStr();render();}
@@ -856,7 +873,7 @@ document.addEventListener('click',event=>{
   const action=el.dataset.action,value=el.dataset.value,hadModal=!!document.querySelector('#modals [role="dialog"]');
   if(action==='close-overlay'&&event.target!==el)return;
   const actions={
-    'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,
+    'set-tab':()=>setTab(value),'shift':()=>shift(Number(value)),'go-today':goToday,'open-planning':openPlanning,'open-project-planning':openProjectPlanning,
     'open-project-form':()=>openProjectForm(),'edit-project':()=>openProjectForm(value),'save-project':saveProject,'open-project':()=>openProject(value),'open-project-actions':()=>openProjectActions(value),'set-current-project':()=>{closeModals();setCurrentProject(value);},'set-project-status':()=>{closeModals();setProjectStatus(value);},
     'set-planning-view':()=>setPlanningView(value),'open-goal-form':()=>openGoalForm(),'edit-goal':()=>openGoalForm(value),'save-goal':saveGoal,'open-goal-actions':()=>openGoalActions(value),
     'open-contribution':()=>openContribution(value),'open-contribution-history':()=>openContributionHistory(value),'edit-contribution':()=>{const ids=splitContributionValue(value);openContribution(ids[0],ids[1]);},
