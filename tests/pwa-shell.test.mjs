@@ -25,7 +25,7 @@ vm.runInContext(await readFile(new URL('../docs/sw.js',import.meta.url),'utf8'),
 let installPromise;
 listeners.install({waitUntil:promise=>{installPromise=promise;}});
 await installPromise;
-assert.deepEqual(opened,['cassie-account-v5-20260801-3']);
+assert.deepEqual(opened,['cassie-account-v5-20260807-1']);
 assert.equal(cachedShell.includes('./styles.css'),true);
 assert.equal(cachedShell.includes('./js/model.js'),true);
 assert.equal(cachedShell.includes('./js/storage.js'),true);
@@ -50,9 +50,12 @@ assert.match(appSource,/RECORD_KEYBOARD_OPEN_GAP=140,RECORD_KEYBOARD_CLOSE_GAP=8
 assert.match(appSource,/note===document\.activeElement\)note\.blur\(\)/);
 assert.match(appSource,/aria-current="page"/);
 assert.match(appSource,/showPlanningPeriod=state\.tab==='planning'&&\(state\.planningView==='budget'\|\|state\.planningView==='summary'\)/);
+assert.match(appSource,/time-pace/);
+assert.match(appSource,/monthProgress\(key,todayStr\(\)\)/);
 assert.doesNotMatch(appSource,/data-action="set-view"/);
 assert.match(appSource,/REVIEW_DRAFTS_KEY='cassie_review_drafts_v1'/);
 assert.match(appSource,/function requestCloseModals/);
+assert.match(stylesSource,/\.time-pace/);
 assert.match(appSource,/function openBackupSavedConfirmation/);
 assert.match(appSource,/function setPersistentError/);
 assert.match(appSource,/data-persistent-notice/);
